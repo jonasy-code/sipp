@@ -1,0 +1,134 @@
+Changes in version 3.1 vs. version 3.0
+
+    - Use of the pixel-buffer has been changed so that hidden surface
+      elimination is done before shading. The result is that a shader is never
+      called unless its value is going to be used. Renderings of complex
+      scenes spend a large proportion of their time in the shaders so this
+      often result in large speedups. The cost is a little more memory
+      usage and a slight slowdown of very simple scenes due to less
+      incremental calculations.
+
+    - Support for user specified normal vectors at polygon vertices.
+
+    - Its possible to define free form deformation functions on surfaces. This
+      is done in a way similar to the shader function scheme. There are some
+      known caveats with this, check out the TeXinfo documentation for more
+      details. THIS IS EXPERIMENTAL!
+
+    - A user can now register a callback function which SIPP will call at
+      regular intervals during a rendering (this interval is also user
+      specified). This is helpful for interactive applications who might need
+      to check for events and such.
+
+    - A new function, sipp_render_terminate(), designed to be called from the
+      callback function to abort a running rendering.
+
+    - New function sipp_render_direction() which selects if rendering goes
+      top to bottom or bottom to top.
+
+    - object_delete() renemed to object_unref() for better understanding of
+      what it actually does. object_delete() is still available for
+      compatibility. 
+
+    - New function: surface_unref() to "match" object_unref() on the surfaces.
+
+    - A new primitive object: sipp_teapot() to create the famous Utah Teapot.
+
+    - ANSI-prototypes (in compilers that support it) in the include files.
+
+    - Support in the Makefile for making SIPP as a shared library under
+      Sun-OS. 
+
+    - The internal data structures for Object and Surface rewritten to use
+      dynamic arrays of pointers instead of linked list. This cleaned up the
+      code and removed some subtle possibilies to create memory corruption.
+
+    - User selectable reference counting behavior for surfaces and objects.
+      This is for developers of more complex applications on top of SIPP who
+      need more control over memory manegement. 
+
+    - Support for reference counting and automatic deallocation of surface
+      descriptions. This is also for developers of more complex applications
+      on top of SIPP who need more control over memory manegement.
+
+    - Various minor bugfixes.
+
+
+Changes in version 3.0 vs. version 2.1
+
+    - Pure z-buffer replaced with a more powerful "pixel-buffer" which
+      allow transparent surfaces to be rendered. Transparency is controlled
+      in the shaders which allow interesing effects, like 
+      "transparency-mapping"
+
+    - Shadow casting supported through depth-maps.
+
+    - A more general lightsource concept which make it possible to have 
+      colored lightsources of different kind, turn these on and off and
+      manipulate them in various other ways.
+
+    - It is possible to create several virtual cameras and then use
+      any of them as viewpoint in a rendering.
+
+    - Viewing vectors sent to the shaders are no longer an approximation.
+
+    - Shaders can be more powerful since more information is sent to them, 
+      and a more flexibel shader-lightsource interface is used.
+
+    - A background color can be specified.
+
+    - Texture coordinate interpolation is finally done right (I hope...)
+
+    - Bezier patches and surfaces of revoultion can be created with a
+      simple function call instead of reading them from a file in our
+      weird format.
+
+    - All object primitives can now be created with one of a few different 
+      texture coordinate mappings.
+
+    - A new shader: The familiar Phong illumination model.
+
+    - A complete user manual in texinfo format.
+
+
+Changes in version 2.1 vs. version 2.0.*
+
+    - Support for more rendering modes: Phong, Gouraud, flat and line.
+      Only Phong mode can do real texture mapping though.
+
+    - Support for rendering into other places than files. We have chosen
+      to call this rendering into pixmaps, but there is no restriction on
+      what is really used. This is accomplished through a callback function
+      similar to the shader interface. A basic implementation of pixmaps
+      and bitmaps that could be used are supplied in the library.
+
+    - Oversampling for antialiasing can now be arbitrarily large.
+
+    - It is possible to turn off backface culling. This is useful if you
+      have a database of objects that are inconsequent in the ordering
+      of its vertices (clockwize/counterclockwize).
+
+    - Two new object primitives, cone and prism.
+      Thanks to David Jones (djones@awesome.berkeley.edu) for these.
+
+    - Two new shaders. 
+        1. strauss_shader() - This is an implementation of the shading 
+           model designed by Paul S. Strauss at Silicon Graphics Inc.
+           and described in IEEE CG&A November 1990.
+        2. wood_shader() - A shader that simulates wood texture using
+           noise and turbulence.
+
+    - Matrix and vector handling functions and macros are now "public".
+
+    - Correct interpolation of texture coordinates. Previously there
+      were disturbing "rubberband" effects on objects spanning large
+      depths in the picture.
+
+    - A full polygon clipper is now used instead of the previous, rather
+      strange approach. Objects behind the viewpoint are now handled correctly
+      (I hope), previously they caused strange effects.
+
+    - It is possible to get the current transformation matrix from an object
+      and not only to set it. This makes it a lot easier to do animations.
+
+    - Subobjects and surfaces can now be removed from objects.

@@ -1,0 +1,11 @@
+This directory contains a small demonstration of how one can create an
+animation using the SIPP library. When run, it will produce a sequence of 24
+images which is an animation of a somersaulting marble teapot on top of a
+checkered floor.
+
+The motions are designed to be a "closed loop", i.e. the sequence can be shown
+many consecutive times and the motions should still look continuous.
+
+The default rendering mode is lines, so that nobody accidently overflows his
+diskspace, but any rendering mode (and image size) can be chosen using the
+same flags as in the other demonstration programs (see ../README).

@@ -1,0 +1,95 @@
+*******************************************************************
+             SIPP  --  3d rendering package
+
+             Copyright  Equivalent Software HB   1992
+
+             Authors:   Jonas Yngvesson   jonas-y@isy.liu.se
+                        Inge Wallin       ingwa@isy.liu.se
+                 _
+             Linkoping Institute of Technology
+             Sweden
+*******************************************************************
+
+This is SIPP, the SImple Polygon Processor, version 3.1.  SIPP is a
+library for creating 3-dimensional scenes and rendering them using a
+scan-line z-buffer algorithm.  A scene is built up of objects which
+can be transformed with rotation, translation and scaling.  The
+objects form hierarchies where each object can have arbitrarily many
+subobjects and subsurfaces.  A surface is a number of connected
+polygons which are rendered with either Phong, Gouraud or flat
+shading.  An image can also be rendered as a line drawing of the
+polygon edges without any shading at all.
+
+The library supports texture mapping with textures in up to
+3-dimensions and automatic interpolation of texture coordinates.
+Simple anti-aliasing can be performed through oversampling.  A scene
+can be illuminated by an arbitrary number of light sources and a
+number of different lightsources are availiable.  The light from some
+of them are capable of casting shadows of objects.  A basic shading
+algorithm is provided with the library, but the user can also use his
+own shading algorithms for each surface to produce special effects.
+Objects can have varying degree of transparency, controlled by the
+shader.
+
+This version contains experimental code for rudimentary support of user
+defined non-affine transformation (free form deformation) of shapes
+and textures.
+
+It is possible to create several virtual cameras and use any of them
+as viewpoint for a particular rendering.
+
+Images can be rendered directly onto a file in the Portable Pixmap
+format (ppm) (or, for line images, Portable Bitmap, pbm) or written
+using user-supplied functions.  This function can, for instance,
+write into a pixmap in memory or into a screen window or anything
+else.
+
+To install the library, the demonstration programs and the manuals,
+see the file INSTALL for details.
+
+
+To view the images there are several programs which can display the
+ppm format.  If the X-window system is availiable we can recommend the
+programs xv and xloadimage.  Both are availiable by anonymous ftp from
+ftp.x.org (198.112.44.100) in the contrib directory, and probably
+from several other sites also.  The pbmplus package wich can convert
+the ppm format into a large number of other formats (GIF, TIFF, etc.)
+is also availiable by anonymous ftp from the same site.
+
+
+The directory 'doc' contains standard UNIX man pages for quick
+reference, and also a complete "User's Guide" in texinfo format.  To
+make a typeset version of this manual you need the TeX typesetting
+system.  You can also create an online info-manual of this document,
+either with the program 'makeinfo' or in GNU-emacs with the command
+M-X texinfo-format-buffer.  Here also, see the file INSTALL for more
+details.
+
+
+The directory 'contrib' contains varous little routines that people
+have sent us for use with SIPP. We have no possibility to support any
+of these (some of them might make it into future versions of the
+supported stuff though) so if you have any questions, please contact
+the original authors, see the file 'contrib/README'. We would also
+like to mention the excellent package Tcl-SIPP by Mark Diekhans
+(markd@grizzly.com) which is an interface for SIPP to the
+interpretetive language Tcl. It also contains an interface to the
+Tk-toolkit which allows development of interactive applications under
+the X window system. Tcl-SIPP can be found at: harbor.ecn.purdue.edu in
+the file /pub/tcl/extensions/tsipp*.tar.Z
+
+
+If you have used SIPP before, you might notice a number of
+incompatibilities with version 2.0 and 2.1.  The file COMPATIBILITY
+describes what features are incompatible with the older versions and
+how you can compile your old programs with the new library.
+
+
+Please send any enhancements, bug reports and fixes to us.
+Especially, if you create nice new object types or interesting
+shaders, we would be grateful if you sent the C functions to us.  We
+could then compile a library of object functions and/or shaders and
+let other people share the benefits.
+
+
+                enjoy! /Jonas & Inge

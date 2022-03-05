@@ -1,0 +1,169 @@
+.\" Copyright Equivalent Software HB   1992
+.\" This program and documentation may be distributed freely under
+.\" the terms of GNU GENERAL PUBLIC LICENSE.
+.TH PIXMAP 3X "July , 1991" 3X
+.SH NAME
+sipp_pixmap - pixmap handling code for \fIsipp\fR.
+.br
+sipp_bitmap - bitmap handling code for \fIsipp\fR.
+
+.SH SYNOPSIS
+\fI#include <sipp_pixmap.h>\fR
+.br
+or
+.br
+\fI#include <sipp_bitmap.h>\fR
+.sp
+[g]cc [\fIflags\fR] \fIfiles\fR -lsipp -lm [ \fIlibraries\fR ]
+
+.SH DESCRIPTION
+The sipp(3X) library has provisions to create an image in a pixmap in
+core.  The most common use of this will probably be rendering into X
+bitmaps, Macintosh bitmaps or something similar but for those who do
+not want to use system dependent pixmaps we provide the
+\fISipp_pixmap\fR.  When rendering a line image the target is a bitmap
+file or a bitmap in core rather than a pixmap.  To faciliate this, we
+also provide a bitmap implementation, the \fISipp_bitmap\fR.
+
+.SH PIXMAP 	
+A \fISipp_pixmap\fR is defined like this:
+.sp
+.IP
+\fItypedef\ struct {\fR
+.br
+\fI    int   width;\fR		/* Width of the pixmap */
+.br
+\fI    int   height;\fR		/* Height of the pixmap */
+.br
+\fI    u_char * buffer;\fR	/* A pointer to the image. */
+.br
+\fI}\ Sipp_pixmap;\fR
+
+The pointer \fIbuffer\fR is a pointer to the image where each pixel is
+stored as three unsigned chars in the order red, green blue.  Thus, the
+buffer is 3 * \fIwidth\fR * \fIheight\fR bytes long.
+
+The following functions operate on a \fISipp_pixmap\fR:
+
+.IP \fISipp_pixmap\ *sipp_pixmap_create(width,\ height)\fR
+.br
+\fIint\ width;\fR
+.br
+\fIint\ height;\fR
+.sp
+Returns a new \fISipp_pixmap\fR with the given size.  The memory used
+is allocated using malloc(3).
+
+.IP \fIvoid\ sipp_pixmap_destruct(pm)\fR
+.br
+\fISipp_pixmap\ *pm;\fR
+.sp
+Frees all memory associated to the \fISipp_pixmap pm\fR.
+
+.IP \fIvoid\ sipp_pixmap_set_pixel(pm,\ col,\ row,\ red,\ grn,\ blu)\fR
+.br
+\fISipp_pixmap\ *pm;\fR
+.br
+\fIint\ col;\fR
+.br
+\fIint\ row;\fR
+.br
+\fIu_char\ red;\fR
+.br
+\fIu_char\ grn;\fR
+.br
+\fIu_char\ blu\fR
+.sp
+Set the pixel at (\fIcol\fR, \fIrow\fR) in pixmap \fIpm\fR to be the color
+(\fIred\fR, \fIgrn\fR, \fIblu\fR). (0, 0) is upper left.
+
+.IP \fIvoid\ sipp_pixmap_write(file,\ pm)\fR
+.br
+\fIFILE\ *file;\fR
+.br
+\fISipp_pixmap\ *pm\fR
+.sp
+Write the pixmap \fIpm\fR to the open file \fIfile\fR.  The image is
+written in the Portable Pixmap format (ppm), the same format sipp is
+using when rendering to a file.
+
+.SH BITMAP 	
+A \fISipp_bitmap\fR is defined like this:
+.sp
+.IP
+\fItypedef\ struct {\fR
+.br
+\fI    int   width;\fR		/* Width of the bitmap in pixels */
+.br
+\fI    int   height;\fR		/* Height of the bitmap in pixels */
+.br
+\fI    int   width_bytes;\fR	/* Width of the bitmap in bytes. */
+.br
+\fI    u_char * buffer;\fR	/* A pointer to the image. */
+.br
+\fI}\ Sipp_bitmap;\fR
+
+The pointer \fIbuffer\fR is a pointer to the image where each pixel is
+a bit in an unsigned char.  If the \fIwidth\fR field is not a multiple
+of 8, the last bits in the last byte of a row are not used.  The most
+significant bit in each byte is the leftmost pixel. The entire buffer
+is \fIwidth_bytes\fR * \fIheight\fR bytes long.
+
+The following functions operate on a \fISipp_bitmap\fR:
+
+.IP \fISipp_bitmap\ *sipp_bitmap_create(width,\ height)\fR
+.br
+\fIint\ width;\fR
+.br
+\fIint\ height;\fR
+.sp
+Returns a new \fISipp_bitmap\fR with the given size.  The memory used
+is allocated using malloc(3).
+
+.IP \fIvoid\ sipp_bitmap_destruct(bm)\fR
+.br
+\fISipp_bitmap\ *bm;\fR
+.sp
+Frees all memory associated to the \fISipp_bitmap bm\fR.
+
+.IP \fIvoid\ sipp_bitmap_line(bm,\ col1,\ row1,\ col2,\ row2)\fR
+.br
+\fISipp_bitmap\ *bm;\fR
+.br
+\fIint\ col1;\fR
+.br
+\fIint\ row1;\fR
+.br
+\fIint\ col2;\fR
+.br
+\fIint\ row2;\fR
+.sp
+Draw a line from (\fIcol1\fR,\ \fIrow1\fR) to (\fIcol2\fR,\ \fIrow2\fR) in
+the bitmap \fIbm\fR. (0, 0) is upper left.
+
+.IP \fIvoid\ sipp_bitmap_write(file,\ bm)\fR
+.br
+\fIFILE\ *file;\fR
+.br
+\fISipp_bitmap\ *bm\fR
+.sp
+Write the bitmap \fIbm\fR to the open file \fIfile\fR.  The image is
+written in the Portable Bitmap format (pbm), the same format sipp is
+using when rendering a line drawing to a file.
+
+.SH SEE ALSO
+sipp(3X) - simple polygon processor, a 3d-graphics library
+.br
+geometric(3X) - Vector and matrix functions for the sipp(3X) library
+.br
+primitives(3X) - a collection of geometric primitives for \fIsipp\fR.
+.br
+shaders(3X) - a collection of shaders for \fIsipp\fR.
+
+.SH AUTHORS
+Jonas Yngvesson\	\	(jonas-y@isy.liu.se)
+.br
+Inge Wallin\		(ingwa@isy.liu.se)
+
+.SH BUGS
+No known bugs.

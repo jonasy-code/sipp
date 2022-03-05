@@ -1,0 +1,31 @@
+This directory contains various SIPP-related things that people have
+sent us.  Some are functions for creating new objects some are
+intresting things which uses SIPP some are enhancements on top of
+SIPP. Some of these things might be included in future releases of
+SIPP but we make no promises.
+
+In all cases we simply have NO possibility to support the things in
+here or to keep them up to date and we can NOT guarantee that any of
+them is working. If you run inte trouble with something, turn to the
+original author! We will try to keep a list of them up to date in
+this file.
+
+
+Currently this directory contains:
+xrender.c:
+        Use SIPP to render in an X window. Can do fast preview with
+        subsampling and some other fun features.
+        Author: Rene Mueller <kiwi@iis.ethz.ch>
+
+xchain.c:
+        chain.c from the demo directory with minor modifications to
+        use the above xrender function.
+        Author: Jonas Yngvesson <jonas-y@isy.liu.se>
+
+snail.c:
+        Function to create a "snail" or "shell" object in SIPP.
+        Author: Rene Mueller <kiwi@iis.ethz.ch>
+
+superquad.c:
+        Function to create a superquadric object in SIPP.
+        Author: Rene Mueller <kiwi@iis.ethz.ch>

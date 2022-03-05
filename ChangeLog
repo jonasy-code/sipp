@@ -1,0 +1,216 @@
+Sun Jul 21 00:00:56 1991  Jonas Yngvesson  (jonas-y at gouraud)
+
+        * viewpoint.[ch]: Removed declaration and calculation of
+          alfa and beta (perspective transformation constants).
+          They are no longer needed (see last entry)
+
+        * Changed percpective transformation of the z-coordinate.
+          It is now only scaled and stores the homogenous "coordinate".
+
+        * rendering.c: Changed interpolation of texture coordinates so
+          it is done in perspective coordinates. They are transformed
+          back just before calling the shader. Previously the texture on
+          object spanning large depths showed disturbing "rubberband"
+          effects. 
+
+Thu Jul 18 19:52:17 1991  Jonas Yngvesson  (jonas-y at gouraud)
+
+        * New file: wood.c, a wood shader.
+
+        * New file: woodtest.c. demo of the wood shader.
+
+Mon Jul 15 15:09:54 1991  Jonas Yngvesson  (jonas-y at gouraud)
+
+        * New file: strausstest.c in the demo directory. This program
+          demonstrates the new strauss shader.
+
+        * Documented sipp_cone()
+
+Fri Jul 12 19:37:29 1991  Jonas Yngvesson  (jonas-y at gouraud)
+
+        * Uppdated all demo/test programs to use the new function calls.
+          Added switches to them to decide what rendering mode to use.
+          Updated the Makefile and README file.
+
+        * New file: conetest.c, demonstration/test of the cone and
+          cylinder primitive. cylindertest.c removed.
+
+        * cone.c: Installed David Jones cone code into the library.
+          cylinder.c removed, cylinder is now a special case of a
+          truncated cone.
+
+Wed Jul 10 20:43:35 1991  Jonas Yngvesson  (jonas-y at gouraud)
+
+        * rendering.c: Changed create_edges() so that horizontal lines
+          are not included in the edge lists. These were previously used
+          when rendering line images, but no more (see Jul 1 1991).
+          Changes in merge_edge_lists() and render_line() to comply
+          with this.
+
+        * sipp.c is no more... It had grown out of proportions so I
+          split it up into the following files:
+
+          rendering.[ch] - The actual rendering engine.
+          lightsource.[ch] - Lightsource handling.
+          objects.[ch] - Creation of objects and surfaces, object hierachy
+                         handling and object database handling.
+          smalloc.[ch] - "Safe" malloc and calloc.
+          transforms.c - Object transformations.
+          viewpoint.[ch] - Viewpoint and viewing transformation handling.
+
+          The old sipptypes.h is now (almost) rendering.h. All new .h files
+          defines internal types and interfaces. Public ditos are as before
+          defined in sipp.h
+          
+
+Sat Jul  6 01:07:08 1991  Jonas Yngvesson  (jonas-y at gouraud)
+
+        * sipp.c: New functions object_sub_subobj() and object_sub_surface()
+          to remove a subobject and a surface from an object.
+
+        * sipp.c: New function object_get_transf() to retrieve the current
+          transformation matrix of an object.
+
+Fri Jul  5 20:38:12 1991  Inge Wallin  (ingwa at brassie)
+
+	* Updated the README file to tell about version 2.1 instead of
+	  2.0.2. 
+
+	* Moved the definition of Vector and Transf_mat to geometric.h
+	  instead of sipp.h. Also made the definition of ident_matrix
+	  public. 
+
+	* sipp_prism() documented.
+
+	* New file: geometric.man which documents all functions and macros
+	  dealing with vectors and matrixes.
+
+	* bitmap.[hc] changed name to sipp_bitmap.[hc]. Same for pixmap. 
+
+	* sipp_pixmap.man: Finished documenting the sipp_bitmap and
+	  sipp_pixmap implementations.
+
+Mon Jul  1 17:50:01 1991  Jonas Yngvesson  (jonas-y at gouraud)
+
+        * sipp.c: Changed generation of line images so that the y_bucket
+          and edge lists don't have to be allocated. It's faster and
+          saves LOTS of memory. Lines are drawn directly in
+          create_edges(). The bitmap support in bitmap.c are now used
+          internally in sipp.c. 
+
+        * sipp.c: Changed the polygon clipper so clipping is performed 
+          before the perspective transformation. Otherwize texture
+          coordinates were destoyed by the clipping.
+
+Tue Jun 25 23:48:44 1991  Inge Wallin      (jonas-y at brassie)
+
+        * New file: demo/prismtest.c replacing blocktest.c.
+
+        * New file: prism.c implementing the new object prism.  The file
+          block.c is removed and the code for producing a block is
+          rewritten to use prism instead.
+
+
+Tue Jun 25 14:45:59 1991  Jonas Yngvesson  (jonas-y at gouraud)
+
+        * New file: strauss.c implementing a more advanced shading
+          model than the basic one (slower too...). The model is the
+          one described by Paul Strauss in IEEE CG&A Nov. 1990.
+          Changes in shaders.h also to support this shader.
+
+        * New files: bitmap.c and bitmap.h containing functions handling
+          SIPP bitmaps. These functions could be used when rendering
+          line images into bitmaps instead of files.
+
+        * sipp.c: Added support for rendering line images into bitmaps.
+          The user provides a bitmap pointer and a line drawing function.
+
+        * sipp.c: A global flag decides if backface culling should be
+          performed. If not, backfacing polygons are "inverted" and
+          rendered as usual.
+
+        * sipp.c: Added a complete polygon clipper. Previously, strange
+          things could happen if objects were behind the viewpoint.
+
+Sat Jun  8 17:21:11 1991  Jonas Yngvesson  (jonas-y at gouraud)
+
+        * sipp.c: Support for rendering into pixmaps. A general storage
+          function is called for each rendered line. Rendering of line 
+          images into bitmaps is *NOT* yet supported. The user provides
+          a pixmap pointer and a function to set a pixel in it.
+
+Fri Jun  7 03:50:05 1991  Jonas Yngvesson  (jonas-y at brassie)
+
+        * sipp.c: Added support for new rendering modes: gouraud, flat
+          and line. 
+
+        * sipp.c: Added support for arbitrary oversampling factors.
+
+Fri Jun  7 02:34:20 1991  Inge Wallin  (ingwa at brassie)
+
+        * New file: pixmap.c containing functions for handling SIPP
+          pixmaps. These functions could be used when rendering into
+          a pixmap instead of a file.
+
+        * ChangeLog created.
+
+These are all the older records:
+
+910527  Ver. 2.0.2. A major bug in traverse_object_tree() fixed.
+        The invers transformation of the eyepoint was not correct, 
+        causing polygons erroneously to be marked as backfacing.
+
+910412  Ver. 2.0.1. Some minor bugfixes. Division by zero in
+        create_edges() if an edge was horizontal in both x and y.
+        Free-list became corrupted since the y_bucket was freed
+        twice. Wrong parameters to (D)noise() in bumpy.c. Two lines
+        interchanged in mat_rotate(). A few other minor changes.
+
+901219  At last! 2.0 is out of the bag. And right in time for X-mas :-)
+        *Major* rewrite. A new level in the object hierarchy introduced.
+        An object is now a collection of surfaces and other objects
+        (subobjects). This allows creation of complex composite objects.
+        Objects in the hierarchy have coupled transformations.
+        The old "Object" is now, more appropriately, called Surface.
+        A fatal bug in the viewing transformation fixed.
+        Objects and surfaces have internal reference counters so deletion
+        won't leave dangling references in an hierachy.
+        The code is now almost readable.
+        Images format changed to PPM since much more applications
+        exists that can handle that format.
+        The shader package is extended and a package with functions
+        to create geometric primitives as objects is provided.
+
+901030  More general shader interface. The simple internal shader
+        was moved out of sipp into its own file. Several shaders
+        provided together with it in a "shader package".
+
+900712  Major code beautifying, quite a lot left to do though...
+        Typedefs instead of raw structures,
+        much better typenames, lots of comments added (probably
+        not enough though). Split into a few header files and
+        a source file. More portable interface.
+
+891124  Made the object representation independent of the
+        illumination model used. A user can now supply his
+        own surface description and shading function.
+        Added support for texture mapping (both solid and 2d).
+        No texture mapping is built into the internal shader though.
+
+891120  Added colour. New illumination model. Simple antialiasing
+        with double oversampling and a box filter.
+
+891028  Converted from sippuz to sipp. Z-buffer changed 
+        to scan-line z-buffer.
+        Phong-shading.
+        The stack notion introduced.
+        Changed fixed viewpoint to a user defined one.
+        World coordinates and picture resolution can be chosen
+        freely.
+
+881128  Converted from Pascal to C. Gouraud shading. Redesign of the
+        data structures.
+
+88????  Original program "sippuz - simple polygon processing using a
+        z-buffer", written in Hedrick Pascal on a DEC-20 system
+        running TOPS-20. Greyscales only. Flat shading.

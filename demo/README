@@ -1,0 +1,54 @@
+This directory contains test programs and demonstration programs for
+the SIPP library. The images here can be divided into two
+categories: the mere test images (boring) and the demonstrations
+images (impressive).
+
+All the testprograms takes the following switches:
+
+        -p      Render with PHONG shading.
+        -g      Render with GOURAUD shading.
+        -f      Render with FLAT shading.
+        -l      Render a LINE image.
+        -s n    Make the image (n X n) pixels big.
+
+If no switches are given, the default is to render a (256 X 256) pixels
+big image with PHONG shading. Note that if "-l" is used, the resulting
+image will be a bitmap and have ".pbm" as extension instead of ".ppm".
+
+
+Test image              Created by      Explanation
+---------------------------------------------------
+torus.ppm               torustest       A plain violet torus
+cone.ppm                conetest        One ordinary cone, one truncated
+                                        and one cylinder.
+ellipsoid.ppm           ellipsoid       A violet course ellipsoid.
+                                        Note how the surface of the
+                                        ellipsoid appears smooth in
+                                        spite of the low number of
+                                        polygons in it (PHONG mode).
+prism.ppm               prismtest       Three orange prisms of various form.
+strauss.ppm             strausstest     Demo of the strauss_shader(). Four
+                                        spheres with the same color but
+                                        different smoothness and metalness.
+wood.ppm                woodtest        Demo of the wood shader.
+
+Demo image              Created by      Explanation
+---------------------------------------------------
+chain.ppm               chain           A 3-D chain of torii.
+teapot.ppm              teapot          The standard classic Newell
+                                        teapot. This image demonstrates
+                                        shadows and transparency mapping.
+structure.ppm           structure       A geometric structure,
+                                        demonstrating "eroded"
+                                        appearance of a surface
+planet.ppm              planettest      A planet with fractal coasts
+                                        and clouds.
+isy90.ppm               isy90           The cover of the 1990
+                                        Activity Report at the Dept.
+                                        of EE at Linkoping University.  
+                                        Demonstrates simulated marble and
+                                        granite texture.
+scroll.ppm              scroll          Uses a free form deformation to
+                                        twist a "paper" in the ends. Also
+                                        demonstrates simple texture mapping 
+                                        of a bitmap onto a surface.

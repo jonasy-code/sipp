@@ -1,0 +1,5017 @@
+\input texinfo   @c -*-texinfo-*-
+
+@comment Documentation for the SIPP  3D rendering library
+@comment Copyright (C) 1992,93,94 Equivalent Software HB
+
+@comment This file is part of the SIPP rendering library.
+
+@comment SIPP is free software; you can redistribute it and/or modify
+@comment it under the terms of the GNU General Public License as published by
+@comment the Free Software Foundation; either version 1, or (at your option)
+@comment any later version.
+
+@comment SIPP is distributed in the hope that it will be useful,
+@comment but WITHOUT ANY WARRANTY; without even the implied warranty of
+@comment MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+@comment GNU General Public License for more details.
+
+@comment You can receive a copy of the GNU General Public License from
+@comment the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+
+@setfilename sipp
+@settitle SIPP - a 3D rendering library
+@setchapternewpage on
+     
+@ifinfo
+Copyright @copyright{} 1992 Jonas Yngvesson, Inge Wallin
+@end ifinfo
+     
+@comment The titlepage section does not appear in the Info file.
+@titlepage
+@sp 4
+@comment The title is printed in a large font.
+@center @titlefont{User's Guide}
+@sp
+@center @titlefont{to}
+@sp
+@center @titlefont{SIPP - a 3D rendering library}
+@sp 2
+@center version 3.1
+@sp 3
+@center Jonas Yngvesson
+@center Inge Wallin
+@sp 3
+@center last updated 20 April 1994
+
+@comment  The following two commands start the copyright page
+@comment  for the printed manual.  This will not appear in the Info file.
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1992,1993,1994 Jonas Yngvesson, Inge Wallin
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions that the section entitled ``GNU General
+Public License'' is included exactly as in the original, and provided
+that the entire resulting derived work is distributed under the terms of
+a permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language under the above conditions for modified versions,
+except that the section entitled ``GNU General Public License'' may
+be included in a translation approved by the author instead of in the
+original English.
+@end titlepage
+
+@comment ================================================================
+@comment                   The real text starts here
+@comment ================================================================
+
+@ifinfo
+
+@node    Top,               , (dir),    (dir)
+@comment node-name, next,          previous, up
+@cindex Introduction
+
+
+This Info manual describes SIPP, a 3D rendering library.  
+SIPP can be used for creating 3-dimensional scenes and rendering them
+using a scan-line z-buffer algorithm. A scene is built up of objects
+which can be transformed with rotation, translation and scaling. The
+objects form hierarchies where each object can have arbitrarily many
+subobjects and subsurfaces. A surface is a number of connected polygons
+which are rendered with either Phong, Gouraud or flat shading.  An image
+can also be rendered as a line drawing of the polygon edges without any
+shading at all.
+
+
+@end ifinfo
+@menu
+* License information::  Information about terms for copying SIPP.
+* What is SIPP?::        An overview of SIPP.
+* Installation::         How to install SIPP on your system.
+* Getting started::      Tutorial introduction.
+* Basic concepts::       Some basic concepts used in SIPP.
+* Initializations::      Necessary and optional initializations.
+* Creating objects::     How to build and install objects.
+* Memory management::    Managing memory used by SIPP.
+* Transformations::      Transformations of objects.
+* Deformations::         Free form deformations.
+* Lights::               How to lit the stage.
+* Shadows::              How to create good looking shadows.
+* Viewpoint and cameras::Specifying viewing parameters.
+* Rendering::            The different rendering variants available.
+* Shaders::              Issues regarding shading functions for SIPP
+* Object primitives::    Object primitives included in the library.
+* Future enhancements::  Possible future enhancements of SIPP.
+* Reporting bugs::       Where do you report a bug you have found?
+
+* Concept index::        Index over important concepts in SIPP.
+* Function index::       Index over the available functions in SIPP.
+@end menu
+
+@node   License information,        What is SIPP?,   Top,    Top
+@comment  node-name,    next,   previous,       up
+@unnumbered GNU GENERAL PUBLIC LICENSE
+@center Version 1, February 1989
+@cindex license to copy SIPP
+@cindex Copying license
+@cindex General Public License
+
+@display
+Copyright @copyright{} 1989 Free Software Foundation, Inc.
+675 Mass Ave, Cambridge, MA 02139, USA
+
+Everyone is permitted to copy and distribute verbatim copies
+of this license document, but changing it is not allowed.
+@end display
+
+@unnumberedsec Preamble
+
+  The license agreements of most software companies try to keep users
+at the mercy of those companies.  By contrast, our General Public
+License is intended to guarantee your freedom to share and change free
+software---to make sure the software is free for all its users.  The
+General Public License applies to the Free Software Foundation's
+software and to any other program whose authors commit to using it.
+You can use it for your programs, too.
+
+  When we speak of free software, we are referring to freedom, not
+price.  Specifically, the General Public License is designed to make
+sure that you have the freedom to give away or sell copies of free
+software, that you receive source code or can get it if you want it,
+that you can change the software or use pieces of it in new free
+programs; and that you know you can do these things.
+
+  To protect your rights, we need to make restrictions that forbid
+anyone to deny you these rights or to ask you to surrender the rights.
+These restrictions translate to certain responsibilities for you if you
+distribute copies of the software, or if you modify it.
+
+  For example, if you distribute copies of a such a program, whether
+gratis or for a fee, you must give the recipients all the rights that
+you have.  You must make sure that they, too, receive or can get the
+source code.  And you must tell them their rights.
+
+  We protect your rights with two steps: (1) copyright the software, and
+(2) offer you this license which gives you legal permission to copy,
+distribute and/or modify the software.
+
+  Also, for each author's protection and ours, we want to make certain
+that everyone understands that there is no warranty for this free
+software.  If the software is modified by someone else and passed on, we
+want its recipients to know that what they have is not the original, so
+that any problems introduced by others will not reflect on the original
+authors' reputations.
+
+  The precise terms and conditions for copying, distribution and
+modification follow.
+
+@iftex
+@unnumberedsec TERMS AND CONDITIONS
+@end iftex
+@ifinfo
+@center TERMS AND CONDITIONS
+@end ifinfo
+
+@enumerate
+@item
+This License Agreement applies to any program or other work which
+contains a notice placed by the copyright holder saying it may be
+distributed under the terms of this General Public License.  The
+``Program'', below, refers to any such program or work, and a ``work based
+on the Program'' means either the Program or any work containing the
+Program or a portion of it, either verbatim or with modifications.  Each
+licensee is addressed as ``you''.
+
+@item
+@cindex Distribution
+You may copy and distribute verbatim copies of the Program's source
+code as you receive it, in any medium, provided that you conspicuously and
+appropriately publish on each copy an appropriate copyright notice and
+disclaimer of warranty; keep intact all the notices that refer to this
+General Public License and to the absence of any warranty; and give any
+other recipients of the Program a copy of this General Public License
+along with the Program.  You may charge a fee for the physical act of
+transferring a copy.
+
+@item
+You may modify your copy or copies of the Program or any portion of
+it, and copy and distribute such modifications under the terms of Paragraph
+1 above, provided that you also do the following:
+
+@itemize @bullet
+@item
+cause the modified files to carry prominent notices stating that
+you changed the files and the date of any change; and
+
+@item
+cause the whole of any work that you distribute or publish, that
+in whole or in part contains the Program or any part thereof, either
+with or without modifications, to be licensed at no charge to all
+third parties under the terms of this General Public License (except
+that you may choose to grant warranty protection to some or all
+third parties, at your option).
+
+@item
+If the modified program normally reads commands interactively when
+run, you must cause it, when started running for such interactive use
+in the simplest and most usual way, to print or display an
+announcement including an appropriate copyright notice and a notice
+that there is no warranty (or else, saying that you provide a
+warranty) and that users may redistribute the program under these
+conditions, and telling the user how to view a copy of this General
+Public License.
+
+@item
+You may charge a fee for the physical act of transferring a
+copy, and you may at your option offer warranty protection in
+exchange for a fee.
+@end itemize
+
+Mere aggregation of another independent work with the Program (or its
+derivative) on a volume of a storage or distribution medium does not bring
+the other work under the scope of these terms.
+
+@item
+You may copy and distribute the Program (or a portion or derivative of
+it, under Paragraph 2) in object code or executable form under the terms of
+Paragraphs 1 and 2 above provided that you also do one of the following:
+
+@itemize @bullet
+@item
+accompany it with the complete corresponding machine-readable
+source code, which must be distributed under the terms of
+Paragraphs 1 and 2 above; or,
+
+@item
+accompany it with a written offer, valid for at least three
+years, to give any third party free (except for a nominal charge
+for the cost of distribution) a complete machine-readable copy of the
+corresponding source code, to be distributed under the terms of
+Paragraphs 1 and 2 above; or,
+
+@item
+accompany it with the information you received as to where the
+corresponding source code may be obtained.  (This alternative is
+allowed only for noncommercial distribution and only if you
+received the program in object code or executable form alone.)
+@end itemize
+
+Source code for a work means the preferred form of the work for making
+modifications to it.  For an executable file, complete source code means
+all the source code for all modules it contains; but, as a special
+exception, it need not include source code for modules which are standard
+libraries that accompany the operating system on which the executable
+file runs, or for standard header files or definitions files that
+accompany that operating system.
+
+@item
+You may not copy, modify, sublicense, distribute or transfer the
+Program except as expressly provided under this General Public License.
+Any attempt otherwise to copy, modify, sublicense, distribute or transfer
+the Program is void, and will automatically terminate your rights to use
+the Program under this License.  However, parties who have received
+copies, or rights to use copies, from you under this General Public
+License will not have their licenses terminated so long as such parties
+remain in full compliance.
+
+@item
+By copying, distributing or modifying the Program (or any work based
+on the Program) you indicate your acceptance of this license to do so,
+and all its terms and conditions.
+
+@item
+Each time you redistribute the Program (or any work based on the
+Program), the recipient automatically receives a license from the original
+licensor to copy, distribute or modify the Program subject to these
+terms and conditions.  You may not impose any further restrictions on the
+recipients' exercise of the rights granted herein.
+
+@item
+The Free Software Foundation may publish revised and/or new versions
+of the General Public License from time to time.  Such new versions will
+be similar in spirit to the present version, but may differ in detail to
+address new problems or concerns.
+
+Each version is given a distinguishing version number.  If the Program
+specifies a version number of the license which applies to it and ``any
+later version'', you have the option of following the terms and conditions
+either of that version or of any later version published by the Free
+Software Foundation.  If the Program does not specify a version number of
+the license, you may choose any version ever published by the Free Software
+Foundation.
+
+@item
+If you wish to incorporate parts of the Program into other free
+programs whose distribution conditions are different, write to the author
+to ask for permission.  For software which is copyrighted by the Free
+Software Foundation, write to the Free Software Foundation; we sometimes
+make exceptions for this.  Our decision will be guided by the two goals
+of preserving the free status of all derivatives of our free software and
+of promoting the sharing and reuse of software generally.
+
+@iftex
+@heading NO WARRANTY
+@end iftex
+@ifinfo
+@center NO WARRANTY
+@end ifinfo
+
+@item
+BECAUSE THE PROGRAM IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY
+FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW.  EXCEPT WHEN
+OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES
+PROVIDE THE PROGRAM ``AS IS'' WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED
+OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS
+TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU.  SHOULD THE
+PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING,
+REPAIR OR CORRECTION.
+
+@item
+IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL
+ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY AND/OR
+REDISTRIBUTE THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES,
+INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES
+ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT
+LIMITED TO LOSS OF DATA OR DATA BEING RENDERED INACCURATE OR LOSSES
+SUSTAINED BY YOU OR THIRD PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE
+WITH ANY OTHER PROGRAMS), EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+@end enumerate
+
+@iftex
+@heading END OF TERMS AND CONDITIONS
+@end iftex
+@ifinfo
+@center END OF TERMS AND CONDITIONS
+@end ifinfo
+
+@page
+@unnumberedsec Applying These Terms to Your New Programs
+
+  If you develop a new program, and you want it to be of the greatest
+possible use to humanity, the best way to achieve this is to make it
+free software which everyone can redistribute and change under these
+terms.
+
+  To do so, attach the following notices to the program.  It is safest to
+attach them to the start of each source file to most effectively convey
+the exclusion of warranty; and each file should have at least the
+``copyright'' line and a pointer to where the full notice is found.
+
+@smallexample
+@var{one line to give the program's name and a brief idea of what it does.}
+Copyright (C) 19@var{yy}  @var{name of author}
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 1, or (at your option)
+any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+@end smallexample
+
+Also add information on how to contact you by electronic and paper mail.
+
+If the program is interactive, make it output a short notice like this
+when it starts in an interactive mode:
+
+@smallexample
+Gnomovision version 69, Copyright (C) 19@var{yy} @var{name of author}
+Gnomovision comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
+This is free software, and you are welcome to redistribute it
+under certain conditions; type `show c' for details.
+@end smallexample
+
+The hypothetical commands `show w' and `show c' should show the
+appropriate parts of the General Public License.  Of course, the
+commands you use may be called something other than `show w' and `show
+c'; they could even be mouse-clicks or menu items---whatever suits your
+program.
+
+You should also get your employer (if you work as a programmer) or your
+school, if any, to sign a ``copyright disclaimer'' for the program, if
+necessary.  Here a sample; alter the names:
+
+@example
+Yoyodyne, Inc., hereby disclaims all copyright interest in the
+program `Gnomovision' (a program to direct compilers to make passes
+at assemblers) written by James Hacker.
+
+@var{signature of Ty Coon}, 1 April 1989
+Ty Coon, President of Vice
+@end example
+
+That's all there is to it!
+
+@node   What is SIPP?,   Installation,   License information,    Top
+@comment  node-name,    next,   previous,       up
+@chapter What is SIPP?
+@cindex What is SIPP?
+@cindex SIPP, what is it?
+
+SIPP is a library for creating 3-dimensional scenes and rendering them
+using a scan-line z-buffer algorithm. A scene is built up of objects
+which can be transformed with rotation, translation and scaling. The
+objects form hierarchies where each object can have arbitrarily many
+subobjects and subsurfaces. A surface is a number of connected polygons
+which are rendered with either Phong, Gouraud or flat shading.  An image
+can also be rendered as a line drawing of the polygon edges without any
+shading at all.
+
+The library also provides 3-dimensional texture mapping with automatic
+interpolation of texture coordinates. Simple anti-aliasing can be
+performed through oversampling. The scene can be illuminated by an
+arbitrary number of lightsources. These lightsources can be of three
+basic types: directional, point or spotlight. Light from spotlights can
+cast shadows.
+
+It is possible to create several virtual cameras, and then specify one
+of them to use when rendering the image.
+
+A major feature in SIPP is the ability for a user to provide his own
+shading function for a surface. This makes it easy to experiment with
+various shading models and to do special effects. A basic shading
+algorithm is provided with the library, and also a package of other,
+more special shaders.
+
+Images can be rendered directly onto a file in the Portable Pixmap
+format (ppm) or, for line images, Portable Bitmap, (pbm) or, with a
+function defined by the user, into anything that it is capable of
+plotting a pixel (or drawing a line), e.g. a window in a window system
+or even a plotter file.
+
+The object creation functions in SIPP are on a rather low level so to
+make it easier to build scenes, a set of object primitives, like sphere,
+cylinder, prism etc., is included.
+
+
+@menu
+* Authors::             Authors of SIPP.
+* Archives::            Where can I get a copy of SIPP?
+@end menu
+
+@node     Authors, Archives, ,What is SIPP?
+@comment  node-name,  next,  previous,  up
+@section Authors of SIPP
+@cindex Authors
+
+The following persons have written or contributed to SIPP.
+
+@itemize @bullet
+@item
+Jonas Yngvesson wrote most of the otherwise unattributed functions in
+SIPP as well as most of the documentation.
+
+@item
+Inge Wallin wrote the geometric functions, some object primitives, pixmap
+functions, several demonstration programs and the rest of the
+documentation.
+
+@item
+Mark Diekhans created the new object and surface structures and
+suggested most of the new memory management support. He also wrote
+the support for changing rendering direction, the callback function and
+rendering abortion.
+
+@item
+David Jones provided the code for the prism and cone primitives.
+
+@item
+Jon Buller wrote the noise and Dnoise functions (not specifically for
+SIPP though, they were posted on the net).
+
+@item
+Ray P. Bellis made the support for shared libraries under SunOS.
+
+@item
+Several other people have aided the development by reporting bugs,
+suggested enhancements, etc. etc. I will not mention any names, you know
+who you are.
+@end itemize
+
+
+@node     Archives, , Authors, What is SIPP?
+@comment  node-name,  next,  previous,  up
+@section Where can I get SIPP?
+@cindex sites
+@cindex Archives
+
+There will probably be a number of sites archiving SIPP.
+Currently the latest release can always be fetched via anonymous
+ftp from @code{isy.liu.se}, (IP no. 130.236.1.3) in the directory
+@code{pub/sipp}.
+
+Two older versions (2.0 and 2.1) have been posted to comp.sources.misc.
+They are in Volume 16 and Volume 21 respectively and should be on any
+site that archives that group.
+
+
+@node     Installation, Getting started, What is SIPP?,  Top
+@comment  node-name,     next, previous, up
+@chapter Installation
+@cindex Installation
+
+This section describes the installation of the SIPP rendering library.
+You should install not only the library itself, but also the
+on-line documentation so that your users will know how to use it.  You
+can create typeset documentation from the file @file{sipp.texinfo} as
+well as an on-line Info file.  The following steps are also described in
+the file @file{INSTALL} in the directory @file{sipp-3.1}.
+
+@menu
+* Library installation::        How to install SIPP on your system.
+* Info manual installation::    How to install the Info manual.
+* Typeset manual installation:: How to create typeset documentation about SIPP.
+@end menu
+
+@node     Library installation,   Info manual installation, , Installation
+@comment  node-name,  next,  previous,  up
+@section Installation of the SIPP library
+@cindex Library installation
+
+Edit the file @file{Makefile} to reflect the situation at your site. The
+things you might have to change are clearly marked in the beginning of
+that file. They are also described below.
+
+@itemize @bullet
+@item
+The @code{NOVOID} definition should be used if the C compiler on your
+system does not understand the type @code{void}. 
+
+@item
+If the C library on your system does not contain the functions
+@code{memcpy()} or @code{memset()}, or the include file @file{memory.h}
+does not exist, you should use the @code{NOMEMCPY} definition.
+
+@item
+If your system does not support the @code{alloca()} function, the
+@code{ALLOCA} definition should be used. This will cause SIPP to use the
+portable version of @code{alloca()} available from the GNU project.
+
+@item
+The definitions of @code{LIBDIR}, @code{INCLUDEDIR}, @code{MANDIR} and
+@code{MANEXT} determines where in your file hierarchy SIPP will be installed.
+@code{LIBDIR} is the directory where the final library file
+(@file{libsipp.a}) will be placed. When a program that uses SIPP is
+linked, this directory should be in the path where the linker looks for
+libraries, either direct or with the aid of the @code{-L} switch.
+@code{INCLUDEDIR} is the directory where the include files necessary to
+use SIPP will be placed. When a program that uses SIPP is compiled, this
+directory should be in the path where the compiler searches for include
+files, either direct or with the aid of the @code{-I} switch.
+@code{MANDIR} is the directory in which to place the UNIX style
+@file{man} page provided with SIPP. @code{MANEXT} determines what
+extension that manual file will get.
+
+@item
+If you are on a Sun you can create SIPP as a shared library (it is
+possible that this work for other systems too, but we have no way of
+testing that). Uncomment the definitions of @code{LIBSH} and
+@code{LIBHINST} and choose a set of C-compiler flags to match your
+setup.
+@end itemize
+
+
+Apart from these SIPP specific definitions, the usual C compiler and
+flags to this compiler must of course be set to values suitable on your
+system.
+
+The only other item, apart from the @file{Makefile}, is a definition in
+the include-file @file{sipp.h} in the @file{libsipp} directory. In this
+file a macro called @code{RANDOM()} is defined. If your system does not
+have the @code{drand48()} function, you must change this definition. The
+macro should return a random floating point number in the range (-1, 1).
+
+By just typing @code{make} in the @file{sipp-3.1} directory, the library
+and the demonstration programs will be compiled. The library is not
+installed, but only compiled in place.
+
+By typing @code{make library}, the library will be compiled in place but
+the demonstration programs will not.
+
+Typing @code{make demos} will compile the demonstration programs only.
+Since the demos require it, however, the library will also be compiled
+if it was not done before.
+
+Finally, typing @code{make install} will compile the library if it was
+not done before, and copy that, the include files and the manual pages
+to their appropriate places.
+
+@node Info manual installation, Typeset manual installation, Library installation, Installation
+@comment  node-name,  next,  previous,  up
+@section Installation of the on-line Info manual.
+@cindex Manual installation (on-line)
+
+@enumerate
+@item
+Create the Info files @file{sipp}, @file{sipp-1}, @file{sipp-2} and so
+on from @file{sipp.texinfo}.  If you have the @code{makeinfo} program,
+you can do this by running it on @file{sipp.texinfo}.  Otherwise you can
+do it with emacs by running these steps:
+@enumerate
+@item
+Read @file{sipp.texinfo} into an emacs buffer.
+@item
+Type `@code{M-X texinfo-format-buffer}'
+@item
+Save the newly created Info file @file{sipp}, @file{sipp-1},
+@file{sipp-2} and so on .
+@end enumerate
+
+@item
+Move the Info file @file{sipp}, @file{sipp-1}, @file{sipp-2} and so on
+to the standard Info directory.  Usually this is
+@file{/usr/gnu/emacs/info} or something similar. (See step 3 above).
+
+@item
+Edit the file @file{dir} in the info directory and enter one line to
+contain a pointer to the Info file @file{sipp}.  The line can, for
+instance, look like this:
+
+@example
+* SIPP: (sipp).       3D rendering library.
+@end example
+
+@end enumerate
+
+
+@node Typeset manual installation, , Info manual installation, Installation 
+@comment  node-name,  next,  previous,  up
+@section How to make typeset documentation from sipp.texinfo
+@cindex Manual installation (typeset)
+
+You can also make a typeset manual from the file
+@file{sipp.texinfo}.  To do this, you must have the @TeX{}
+text formatting program installed.  Just follow these steps:
+
+@enumerate
+@item
+If the file @file{texinfo.tex} is not properly installed in the path
+given by the environment variable @var{TEXINPUTS}, get it and put it in
+the same directory as @file{sipp.texinfo} (the @file{doc} directory of
+SIPP).  This file contains macros used by the @TeX{} text formatting
+program to produce typeset output from a texinfo file. You can get this
+from, e.g., @code{prep.ai.mit.edu} in the US or from @code{isy.liu.se}
+in Europe.
+
+@item
+Run @TeX{} by typing `@code{tex sipp.texinfo}'.  You might need to do
+this twice to get all cross references correct.  If you have the
+@code{texindex} program, you can create a sorted index by typing
+`@code{texindex sipp.cp sipp.fn}' between the two @TeX{} passes.  If you
+don't do this, you still get a typeset manual, but you will not get the
+index.
+
+@item
+Convert the resulting device independent file @file{sipp.dvi} to a form
+which your printer can output and print it.  If you have a postscript
+printer there is a program, @code{dvi2ps}, which can do this.  There is
+also a program which comes together with @TeX{}, @code{dvips}, which you
+can use.
+
+@end enumerate
+
+@node     Getting started, Basic concepts ,Installation, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Getting started
+@cindex Getting started
+
+This chapter will be a small introduction of SIPP. We will go through
+the steps of creating a simple scene and then enhance it with some
+special effects. No specific details about the functions we use will be
+explained, they can be found in other parts of this manual.
+
+The first two things in a program using SIPP should be inclusion of
+@file{sipp.h} and a call to @code{sipp_init()}. Then we can start using
+the functions in SIPP to create a scene:
+
+@smallexample
+
+#include <stdio.h>
+
+#include <sipp.h>
+#include <primitives.h>
+
+main()
+@{
+        FILE     *image_fd;
+
+        Object   *sphere;
+        Surf_desc sphere_surface;
+
+
+        sipp_init();
+
+        sphere_surface.ambient = 0.4;
+        sphere_surface.specular = 0.6;
+        sphere_surface.c3 = 0.1;
+        sphere_surface.color.red = 0.70; /* firebrick red */
+        sphere_surface.color.grn = 0.13;
+        sphere_surface.color.blu = 0.13;
+        sphere_surface.opacity.red = 1.0; /* Totally opaque */
+        sphere_surface.opacity.grn = 1.0;
+        sphere_surface.opacity.blu = 1.0;
+
+        sphere = sipp_sphere(2.0, 40, &sphere_surface, basic_shader, WORLD);
+        object_add_subobj(sipp_world, sphere);
+
+        lightsource_create(1.0, 1.0, 1.0,  1.0, 1.0, 1.0,  LIGHT_DIRECTION);
+
+        camera_params(sipp_camera, 0.0, 10.0, 0.0,  
+                      0.0, 0.0, 0.0,  0.0, 0.0, 1.0,  0.4);
+
+        image_fd = fopen("ex1.ppm", "w");
+        render_image_file(400, 400, image_fd, PHONG, 1);
+@}
+
+@end smallexample
+
+If the program is stored in a file called @file{ex1.c} we can create an
+executable program with the following command line:
+
+@smallexample
+cc -o ex1 ex1.c -lsipp -lm
+@end smallexample
+
+When run, the program will create a PPM-file containing a 400x400 image
+of a red sphere lit by a single lightsource.
+
+In the program we are going through the following steps: First we
+initialize the library with a call to @code{sipp_init()}. Next we fill
+in a description of surface properties in the kind of structure used in
+SIPP's basic internal shader.  We then create a sphere that will be
+shaded with the basic shader using the previously defined surface
+properties and tell SIPP to install this sphere among the objects that
+should be considered when rendering. We create a lightsource and define
+where the camera is and where it is looking. Last we open a file and
+tell SIPP to render the scene into that file.
+
+@section Enhancing the scene
+
+A single red sphere is not a very exciting image so we will now enhance
+the image with some more interesting effects. We will put a wooden floor
+under the sphere and exchange the lightsource for a spotlight that will
+cast a shadow of the sphere onto the floor. The floor is created as a
+simple block and we use the wood shader supplied in the library. There
+will be rather high frequencies in the wood pattern so we will render
+the image with some oversampling to make it look better. The code looks
+like this:
+
+@smallexample
+#include <stdio.h>
+
+#include <sipp.h>
+#include <primitives.h>
+#include <shaders.h>
+
+main()
+@{
+        FILE     *image_fd;
+
+        Object   *sphere;
+        Object   *floor;
+        Surf_desc sphere_surface;
+        Wood_desc floor_surface;
+
+
+        sipp_init();
+        sipp_shadows(TRUE, 600);
+
+        sphere_surface.ambient = 0.5;
+        sphere_surface.specular = 0.6;
+        sphere_surface.c3 = 0.1;
+        sphere_surface.color.red = 0.70; /* firebrick red */
+        sphere_surface.color.grn = 0.13;
+        sphere_surface.color.blu = 0.13;
+        sphere_surface.opacity.red = 1.0; /* Totally opaque */
+        sphere_surface.opacity.grn = 1.0;
+        sphere_surface.opacity.blu = 1.0;
+
+        sphere = sipp_sphere(2.0, 40, &sphere_surface, basic_shader, WORLD);
+        object_add_subobj(sipp_world, sphere);
+
+        floor_surface.ambient = 0.5;
+        floor_surface.specular = 0.0;
+        floor_surface.c3 = 0.99;
+        floor_surface.scale = 3.0;
+        floor_surface.base.red = 0.770; /* Very light brown */
+        floor_surface.base.grn = 0.568;
+        floor_surface.base.blu = 0.405;
+        floor_surface.ring.red = 0.468; /* Darker brown */
+        floor_surface.ring.grn = 0.296;
+        floor_surface.ring.blu = 0.156;
+
+        floor = sipp_block(20.0, 20.0, 1.0, &floor_surface, wood_shader,
+                           WORLD);
+        object_move(floor, 0.0, 0.0, -2.5); /* Place it under the sphere */
+        object_add_subobj(sipp_world, floor);
+
+        spotlight_create(10.0, 10.0, 10.0,  0.0, 0.0, 0.0,  40.0, 
+                         1.0, 1.0, 1.0,  SPOT_SOFT,  TRUE);
+
+        camera_params(sipp_camera, 0.0, 10.0, 0.0,  
+                      0.0, 0.0, 0.0,  0.0, 0.0, 1.0,  0.4);
+
+        image_fd = fopen("ex2.ppm", "w");
+        render_image_file(400, 400, image_fd, PHONG, 2);
+@}
+@end smallexample
+
+@node     Basic concepts, Initializations, Getting started, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Basic concepts
+@cindex Basic concepts
+
+This chapter introduces and briefly explains some of the basic concepts
+used in SIPP. They will later be used in this manual without further
+explanation.
+
+@menu
+* Polygons::            What kind of polygons are handled.
+* Surfaces::            What is a surface.
+* Objects::             What is an object.
+* Texture coordinates:: What is texture coordinates.
+* Shading functions::   What is a shading function.
+* Surface descriptions::What is a surface description.
+* Datatypes::           Datatypes defined by SIPP.
+@end menu
+
+@node     Polygons, Surfaces, ,Basic concepts
+@comment  node-name,  next,  previous,  up
+@section Polygons
+@cindex Polygons
+
+SIPP can actually only render polygons, so everything else must be built
+from those. SIPP can handle planar, convex or concave, polygons without
+holes. The polygons have a defined front and back side, and which is
+which is defined by the order in which the polygon vertices are given.
+Vertices must be given counterclockwise when looking at the front side
+of the polygon.
+
+@node     Surfaces, Objects, Polygons, Basic concepts
+@comment  node-name,  next,  previous,  up
+@section Surfaces
+@cindex Surfaces
+
+Surfaces are the first step above polygons in the object hierarchy
+supported by SIPP. A surface is a collection of polygons that is shaded
+by the same shader (@xref{Shading functions}) using the same surface
+description (@xref{Surface descriptions}). A pointer to that shader and
+surface description is stored in the surface. If polygons within a
+surface share vertices, the surface normal will be interpolated across
+the polygons at rendering time, to create the impression of a smooth
+surface.
+
+
+@node     Objects, Texture coordinates, Surfaces, Basic concepts
+@comment  node-name,  next,  previous,  up
+@section Objects
+@cindex Objects
+
+Objects are the highest level in the object hierarchy. An object is a
+collection of surfaces and/or other objects, which are then called
+subobjects. Object trees can be built to arbitrary depths.
+Transformations can be applied to objects and if an object has
+subobjects the transformation will propagate recursively down the object
+tree.  Every object has its current transformation relative to its
+parent object stored in a transformation matrix which can be read and
+written.
+
+There is a predefined object called @code{sipp_world}. When SIPP renders
+a scene it always starts in this object, so all objects that are to be
+rendered must be subobjects (or subsubobjects etc.) to it. The world
+object can be transformed like any other object.
+
+@node     Texture coordinates, Shading functions, Objects, Basic concepts
+@comment  node-name,  next,  previous,  up
+@section Texture coordinates
+@cindex Texture coordinates
+
+At each polygon vertex it is possible to specify up to three floating
+point numbers called texture coordinates. These numbers are linearly
+interpolated across the polygon and sent to the shader (@xref{Shading
+functions}) at rendering time. It is up to the implementor of the shader
+to decide what to use them for. Texture coordinates are not affected by
+object transformations.
+
+@node     Shading functions, Surface descriptions, Texture coordinates, Basic concepts
+@comment  node-name,  next,  previous,  up
+@section Shading functions
+@cindex Shading functions
+
+Every surface (@xref{Surfaces}) in a scene has a shading function (or
+shader) associated with it. The shader is a regular C function, with a
+well defined interface, which is called for every pixel in the surface
+when it is rendered. SIPP supplies the shader with enough information
+for it to do a shading calculation, i.e. decide what color that
+particular pixel should have.  The shader is also responsible for
+deciding the opacity of the surface.  Besides the information supplied
+by SIPP (world position, lightsources, texture coordinates, etc.), the
+shader also gets a surface description (@xref{Surface descriptions})
+which the user has defined. 
+
+@node     Surface descriptions, Datatypes, Shading functions, Basic concepts
+@comment  node-name,  next,  previous,  up
+@section Surface descriptions
+@cindex Surface descriptions
+
+Every surface (@xref{Surfaces}) has a description of its surface
+properties. These properties can be e.g. color, material, opacity, etc.
+Exactly what information is stored depends on which shader
+(@xref{Shading functions}) is used for shading the surface. The exact
+representation of this information is entirely up to the shader
+implementor.
+
+@node     Datatypes, , Surface descriptions, Basic concepts
+@comment  node-name,  next,  previous,  up
+@section Datatypes
+@cindex Datatypes
+
+The include file @file{sipp.h} defines several datatypes that are used
+when working with SIPP. We will describe them briefly here and also give
+the definitions for those that a user might need to access.
+
+@itemize @bullet
+
+@item
+@code{bool}
+
+A boolean type which can have the value @code{TRUE} or @code{FALSE}.
+
+@item 
+@code{Object}
+
+This is an abstract data type holding information about an object.
+Functions that creates objects returns pointers to @code{Object} and all
+functions that operate on objects, e.g. transformations, take such
+pointers as parameters.
+
+@item 
+@code{Surface}
+
+Similar to @code{Object} but contains information about a surface. The user
+only needs to handle pointers to this type also.
+
+@item 
+@code{Color}
+
+This is a structure with three members describing a color in RGB-space.
+Each member is a double and should have a value in the range [0, 1].
+@smallexample
+typedef struct @{
+        double   red;
+        double   grn;
+        double   blu;
+@} Color;
+@end smallexample
+
+@item 
+@code{Vector}
+
+Structure defining a 3-D vector. @xref{Vector operations} for more
+detailed information.
+@smallexample
+typedef struct @{
+        double x;
+        double y;
+        double z;
+@} Vector;
+@end smallexample
+
+@item 
+@code{Transf_mat}
+
+A transformation matrix is used in every object to hold its current
+transformation. The matrix is stored as a 4x3 matrix instead of a
+complete 4x4 matrix in order to save space.  @xref{Matrix operations}
+for more detailed information.
+@smallexample
+typedef struct @{
+        double   mat[4][3];
+@} Transf_mat;
+@end smallexample
+
+@item 
+@code{Camera}
+
+@code{Camera} is a structure holding a virtual camera. All functions
+involved work with pointers to this type. SIPP provides a predefined
+@code{Camera} and a pointer to it called @code{sipp_camera}. This
+camera is the default viewpoint used when rendering a scene.
+
+@item 
+@code{Lightsource}
+
+This structure hold information about a lightsource. Two members in the
+struct are of interest to users writing their own shaders.
+@smallexample
+Color         color;
+@end smallexample
+and
+@smallexample
+Lightsource  *next;
+@end smallexample
+@code{color} decides the color of the light emitted from the lightsource
+and @code{next} points to the next lightsource defined in the scene (or
+NULL). @xref{Writing your own shaders} for a description of how to use this
+information.
+
+@item 
+@code{Surf_desc}
+
+This is the surface description (@xref{Surface descriptions}) for the
+internal shader, @code{basic_shader()} (see @ref{The basic shader}). It
+has the following definition:
+@smallexample
+typedef struct @{
+        double  ambient;
+        double  specular;
+        double  c3;
+        Color   color;
+        Color   opacity;
+@} Surf_desc;
+@end smallexample
+@itemize
+@item
+@code{ambient} is a number in the range [0, 1] specifying how much of
+the surface color that is visible when the object is not lit by any
+lightsource.
+
+@item
+@code{specular} is a number in the range [0, 1] specifying how much
+light that is reflected in a specular highlight on the surface.
+
+@item
+@code{c3} is also a number in the range [0, 1]. It specifies how
+"shiny" the surface is. 0 means a very shiny surface while 1 indicates a
+rather dull one.
+
+@item
+@code{color} is simply the color of the surface.
+
+@item
+@code{opacity} specifies how opaque the surface is. This is stored as a
+color to allow different opacities for the different color bands. The
+values should be in the range [0, 1] with 1 indicating a completely
+opaque object and 0 a completely transparent (invisible) one.
+
+@end itemize
+
+@item 
+@code{Surf_desc_hdr}
+
+Header used for memory management of dynamically allocated surface
+descriptions. @xref{Surface description memory}
+@smallexample
+typedef struct @{
+        int     ref_count;
+        void  (*free_func)();
+        void   *client_data;
+@} Surf_desc_hdr;
+@end smallexample
+@itemize
+@item
+@code{ref_count} is the reference counter for the surface description.
+This is for internal use by SIPP only!
+
+@item
+@code{free_func} point to a function which will be called to release the
+memory used by the header and the surface description when there are no
+more references to them.
+
+@item
+@code{client_data} is a generic pointer where the user can store
+references to anything the @code{free_func} might need.
+
+@end itemize
+
+@end itemize
+
+@node     Initializations, Creating objects, Basic concepts, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Initializations
+@cindex Initializations
+
+Before using any of the functions, SIPP needs to be initialized.
+Initialization is done with a call to the following function:
+@findex @code{sipp_init()}
+@smallexample
+void
+sipp_init()
+@end smallexample
+Apart from initializations, some default settings are created:
+@itemize @bullet
+@item 
+Backfacing polygons are culled.
+@item 
+Background color is black.
+@item
+No shadows are cast.
+@item
+The camera is placed in (0 0 10), looking at the origin and with the
+world y-axis as the up-axis.
+@item
+Rendering direction is top to bottom.
+@end itemize
+@code{sipp_init()} takes no parameters
+
+There are also some functions that determine various global behavior of
+SIPP. These functions can be called at any time:
+@findex @code{sipp_background()}
+@smallexample
+void
+sipp_background(red, green, blue)
+        double  red;
+        double  green;
+        double  blue;
+@end smallexample
+This function sets the background color in the rendered image. The
+parameters are doubles in the range [0, 1]. The default value (set by
+@code{sipp_init()}) is black.
+
+@findex @code{sipp_show_backfaces()}
+@smallexample
+void
+sipp_show_backfaces(flag)
+        bool  flag;
+@end smallexample
+Normally SIPP checks if a polygon is facing away from the viewpoint and
+if that is the case, the polygon is not considered in the rendering.
+There are times when this is not desirable. If one have a database of
+polygons with inconsistent orientations (see @ref{Polygons}), it is
+necessary to render all polygons in it. There are also cases when
+objects have holes and backfacing polygons are visible through that
+hole. If @code{flag} is @code{TRUE} SIPP will render all polygons, if
+@code{flag} is @code{FALSE} (default), backfacing polygons will be
+culled.
+
+@findex @code{sipp_shadows()}
+@smallexample
+void
+sipp_shadows(flag, size)
+        bool  flag;
+        int   size;
+@end smallexample
+This function tells SIPP if objects should cast shadows. When
+@code{flag} is @code{TRUE} shadows are cast. The default is not to do
+it. Only some types of lightsources are capable of producing shadows and
+it is possible to turn that ability on and off for each such lightsource
+(@xref{Lights}). SIPP uses a technique called @i{depth maps} to do
+shadows (@xref{Shadows}). It is a kind of texture mapping and the size
+of the depth maps are defined by the parameter @code{size}. As a rule of
+thumb one could say that the depth maps should be at least as large as
+the image itself but this may vary from case to case.
+
+When @code{sipp_shadows()} have been called with argument @code{TRUE},
+depthmaps will automatically be created at the start of a rendering and
+deleted at the end of it. Sometimes this behaviour is undesirable, e.g.
+when doing an animated walk-trough of a scene one would like to render
+the depthmaps only once and then use them when rendering each frame
+without having to regenerate them each time. This is supported through
+the functions @code{shadowmaps_create()} and
+@code{shadowmaps_destruct()} (@xref{Shadows}) which will explicitly create
+depthmaps and keep them around until they are explicitly destructed.
+
+A word of warning: Rendering images with shadows requires very large
+amounts of memory and takes considerably longer time than doing it
+without them.
+
+@findex @code{sipp_render_direction()}
+@smallexample
+sipp_render_direction(direction)
+        bool direction;
+@end smallexample
+Some image formats (notably Utah RLE) store images with the 
+scanlines in the order bottom to top. The default file format in SIPP
+(@file{ppm}) stores the image with the scanlines in the order top to
+bottom. This function decides in which order SIPP should render the
+scanlines. The @code{direction} argument can have the values
+@code{TOP_TO_BOTTOM} or @code{BOTTOM_TO_TOP}.
+
+@findex @code{sipp_set_update_callback()}
+@smallexample
+sipp_set_update_callback(proc, client_data, period)
+        void  (*proc)();
+        void   *client_data;
+        int     period;
+@end smallexample
+If SIPP is used in a more interactive application, for instance under a
+window system, it is very useful for the application to gain control
+sometimes during a rendering. Perhaps one need to check for window
+system events or something similar. This function registers a callback
+function which SIPP will call at regular intervals during a rendering.
+The callback function will be called with a single argument: the
+@code{client_data} pointer. How often the function will be called is
+controlled with the @code{period} argument. The unit for this period is
+(very approximately) the time it takes to render one pixel. 
+
+A useful capability for the callback function is to be able to terminate
+the ongoing rendering in a reasonable way. This is supported through the
+function @code{sipp_render_terminate} (@xref{Rendering}).
+
+The next two functions are used to control some properties of the memory
+management in SIPP. They are probably only of interest if you develop
+fairly advanced applications on top of SIPP, @xref{Memory management}.
+
+@findex @code{sipp_user_refcount()}
+@smallexample
+sipp_user_refcount(flag)
+        bool  flag;
+@end smallexample
+
+Selects if user references to surfaces and objects should be counted. If
+@code{flag} is @code{TRUE} they are counted otherwise not.
+@xref{Objects and surfaces} for a detailed description of how this
+affect things.
+
+@findex @code{sipp_surface_desc_headers()}
+@smallexample
+bool
+sipp_surface_desc_headers(flag)
+        bool  flag;
+@end smallexample
+This function indicates if surface descriptions are equipped with
+@code{Surf_desc_hdr} headers. If @code{flag} is @code{TRUE} they are
+otherwise not. The function returns the old value of the flag. For a
+more detailed description of how to use these headers:
+@xref{Surface description memory}
+
+@findex @code{sipp_ffd_desc_headers()}
+@smallexample
+bool
+sipp_ffd_desc_headers(flag)
+        bool  flag;
+@end smallexample
+Currently, in the experimental version, memory management for free form
+deformation descriptions is handled in the same way as for surface
+descriptions, even using the same optional header structure
+(@code{Surf_desc_hdr}).
+
+This function indicates if free form deformation descriptions are
+equipped with @code{Surf_desc_hdr} headers. If @code{flag} is
+@code{TRUE} they are otherwise not. The function returns the old value
+of the flag. For a more detailed description of how to use these
+headers: @xref{Surface description memory}
+
+@node     Creating objects, Memory management, Initializations, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Creating objects
+@cindex Creating objects
+@cindex Objects, creating
+
+This chapter describes how to build SIPP objects from polygons and up.
+In the library there are also a number of functions that create
+complete objects on a higher level (see @ref{Object primitives}). Those
+functions all use the low level tools described here.
+
+@menu
+* Creating polygons and surfaces::      The lowest levels.
+* Building objects::                    Objects and hierarchies of them.
+* Duplicating objects::                 More instances of old objects.
+@end menu
+
+@node Creating polygons and surfaces, Building objects, , Creating objects
+@comment  node-name,  next,  previous,  up
+@section Creating polygons and surfaces
+@cindex Creating polygons and surfaces
+@cindex Polygons, creating
+@cindex Surfaces, creating
+
+To build polygons and surfaces, SIPP uses two stacks, a vertex stack and
+a polygon stack. Polygons are created by pushing vertices onto the
+vertex stack and then calling a function that creates a polygon from
+these vertices and push this newly created polygon onto the polygon
+stack. When a number of polygons have been defined they can then be
+combined into a surface.
+
+The order in which vertices are pushed are important because this
+determines the front and the back face of the polygon. Vertices should
+be pushed in @i{counterclockwise} order when looking at the front face
+of the polygon. 
+
+Note also that if polygons share vertices, these vertices should be
+pushed for each polygon. SIPP looks up shared vertices automagically.
+
+The following functions are used in the described process:
+
+@findex @code{vertex_push()}
+@smallexample
+void
+vertex_push(x, y, z)
+        double  x, y, z;
+@end smallexample
+Push a vertex onto the vertex stack.
+
+@findex @code{vertex_tx_push()}
+@smallexample
+void
+vertex_tx_push(x, y, z,  u, v, w)
+        double  x, y, z;
+        double  u, v, w;
+@end smallexample
+Push a vertex with texture coordinates defined by (u, v, w) onto the
+vertex stack. Calls to @code{vertex_push()} and @code{vertex_tx_push()}
+should not be mixed within a polygon since that would make texture
+interpolation to produce garbage. @code{vertex_push()} gives the vertex
+texture coordinates (0 0 0). 
+
+@findex @code{vertex_n_push()}
+@smallexample
+void
+vertex_n_push(x, y, z,  nx, ny, nz)
+        double  x, y, z;
+        double  nx, ny, nz;
+@end smallexample
+Push a vertex with a specified normal vector defined by (nx, ny, nz) onto
+the vertex stack. @code{vertex_n_push()} gives the vertex texture
+coordinates (0 0 0).
+
+@findex @code{vertex_tx_n_push()}
+@smallexample
+void
+vertex_n_tx_push(x, y, z,  u, v, w,  nx, ny, nz)
+        double  x, y, z;
+        double  u, v, w;
+        double  nx, ny, nz;
+@end smallexample
+Push a vertex with texture coordinates defined by (u, v, w) and a
+specified normal vector defined by (nx, ny, nz) onto the vertex stack.
+The same consideration about mixing vertices with and without texture
+coordinates within a polygon as in @code{vertex_tx_push()} applies here.
+
+@findex @code{polygon_push()}
+@smallexample
+void
+polygon_push()
+@end smallexample
+Takes all vertices currently on the vertex stack and creates a polygon
+from them. The new polygon is pushed onto the polygon stack and the vertex
+stack is emptied.
+
+@findex @code{surface_basic_create()}
+@smallexample
+Surface *
+surface_basic_create(ambient, red, green, blue, specular, c3, 
+		     opred, opgreen, opblue)
+        double  ambient;
+        double  red, green, blue;
+        double  specular;
+        double  c3;
+        double  opred, opgreen, opblue;
+@end smallexample
+Takes all polygons currently on the polygon stack, creates a surface
+from them and returns a pointer to the new surface. The created surface
+will be shaded with the basic shading function @code{basic_shader()} and
+the arguments to @code{surface_basic_create()} are the values that will
+be placed in the surface description, which for @code{basic_shader()} is
+of type @code{Surf_desc}(see @ref{Basic concepts} and @ref{Shaders}).
+
+@findex @code{surface_create()}
+@smallexample
+Surface *
+surface_create(surface_desc, shader)
+        void    *surface_desc;
+        Shader  *shader;
+@end smallexample
+Takes all polygons currently on the polygon stack, creates a surface
+from them and returns a pointer to the new surface. The created surface
+will be shaded with the shading function @code{shader} using the surface
+description pointed to by @code{surface_desc} (see @ref{Shaders}).
+
+@findex @code{surface_unref()}
+@smallexample
+void
+surface_unref(surface)
+        Surface  *surface;
+@end smallexample
+Tell SIPP that the reference @code{surface} is not needed anymore. If
+there are no other references to the structure @code{surface} pointed
+to, it will be deleted. Note that the behavior changes slightly
+dependent on the memory management approach selected with
+@code{sipp_user_refcount()}, @xref{Objects and surfaces}.
+
+@findex @code{surface_basic_shader()}
+@smallexample
+void
+surface_basic_shader(surface, ambient, red, green, blue, specular, c3,
+		     opred, opgreen, opblue)
+        Surface *surface;
+        double   ambient;
+        double   red, green, blue;
+        double   specular;
+        double   c3;
+        double   opred, opgreen, opblue;
+@end smallexample
+This function is used when a previously created surface should be
+changed so that it is shaded with @code{basic_shader()}. This function
+can also be used to set new values in the surface description if
+@code{surface} is already shaded with @code{basic_shader()}.
+
+@findex @code{surface_set_shader()}
+@smallexample
+void
+surface_set_shader(surface, surface_desc, shader)
+        Surface *surface;
+        void    *surface_desc;
+        Shader  *shader;
+@end smallexample
+This function is used when a previously created surface should be
+changed so that it is shaded with another shader than the one specified
+at creation time.
+
+
+@node Building objects, Duplicating objects, Creating polygons and surfaces, Creating objects
+@comment  node-name,  next,  previous,  up
+@section Building objects
+@cindex Building objects
+@cindex Objects, building
+@cindex Objects hierarchies
+@cindex Hierarchies of objects
+
+
+An object in SIPP is a more abstract concept than surfaces and polygons.
+It is a general "container" which can hold several surfaces and also
+several other objects, which are then called subobjects. Such
+hierarchies, or trees, of objects can be built to arbitrary depths. When
+an object is transformed in some way, the transformation is propagated
+down to all objects below it in the tree. 
+
+When SIPP renders a scene it begins in the predefined object
+@code{sipp_world} and recursively traverses the tree under it, rendering
+all objects it finds. This means that it is perfectly possible to create
+objects that will not be rendered. For an object to be rendered it must
+be installed somewhere in the tree below @code{sipp_world}.
+
+To build objects and object trees the following functions are provided:
+
+@findex @code{object_create()}
+@smallexample
+Object *
+object_create()
+@end smallexample
+This function creates a new object and returns a pointer to it. The new
+object contains no surfaces or subobjects, and is not installed in any
+tree.
+
+@findex @code{object_unref()}
+@smallexample
+void
+object_unref(object)
+        Object  *object;
+@end smallexample
+Tell SIPP that the reference @code{object} is not needed anymore. If
+there are no other references to the structure @code{object} pointed to,
+it will be deleted. SIPP keeps track of internal references though, and
+if some parts of the tree below @code{object} are referenced from other
+objects (see @ref{Duplicating objects}), those parts are not deleted.
+Note that the behavior changes slightly dependent on the memory
+management approach selected with @code{sipp_user_refcount()},
+@xref{Objects and surfaces}. It is not possible to delete
+@code{sipp_world}.
+
+(This function used to be called @code{object_delete()} and that
+function is still available for compatibility reasons but will disappear
+in future versions.)
+
+@findex @code{object_add_surface()}
+@smallexample
+void
+object_add_surface(object, surface)
+        Object  *object;
+        Surface *surface;
+@end smallexample
+Install a surface in an object.
+
+@findex @code{object_sub_surface()}
+@smallexample
+bool
+object_sub_surface(object, surface)
+        Object  *object;
+        Surface *surface;
+@end smallexample
+Remove a surface from an object. If @code{surface} was not found in
+@code{object}, @code{FALSE} is returned, otherwise @code{TRUE}.
+
+@findex @code{object_add_subobj()}
+@smallexample
+void
+object_add_subobj(object, subobject)
+        Object  *object;
+        Object  *subobject;
+@end smallexample
+Install @code{subobject} as a subobject in @code{object}. Any
+transformations of @code{subobject} will now be performed relative the
+local coordinate system in @code{object}.
+
+A word of warning: There is no detection of "circular lists" in SIPP.
+This means that if an object is installed as a subobject in an object
+that is already below it in the tree, SIPP will go into eternal
+recursion and crash when it tries to render the scene.
+
+@findex @code{object_sub_subobj()}
+@smallexample
+bool
+object_sub_subobj(object, subobject)
+        Object  *object;
+        Object  *subobject;
+@end smallexample
+Remove @code{subobject} as a subobject in @code{object}. If
+@code{subobject} was not found in @code{object}, @code{FALSE} is
+returned, otherwise @code{TRUE}.
+
+
+@node Duplicating objects, , Building objects, Creating objects
+@comment  node-name,  next,  previous,  up
+@section Duplicating objects
+@cindex Duplicating objects
+@cindex Objects, duplicating
+
+If a complicated object has been built, it is often convenient to be
+able to copy and reuse it. SIPP supports three levels of copying object
+hierarchies:
+
+@findex @code{object_instance()}
+@smallexample
+Object *
+object_instance(object)
+        Object  *object;
+@end smallexample
+Create a new instance of an object and return a pointer to it. This is
+the "shallowest" version of object copy in SIPP. It only creates a copy
+of the top level object, pointed to by @code{object}, and let the new
+instance reference the same surfaces and subobjects as the original.
+This saves space but has the property that if a subobject of one of the
+instances are changed in some way (transformed, new subobjects, etc.)
+the same change will appear in the other. The new object will have the
+identity matrix as its transformation matrix.
+
+@findex @code{object_dup()}
+@smallexample
+Object *
+object_dup(object)
+        Object  *object;
+@end smallexample
+This version of object duplication copies not only the top level object,
+but also all the subobjects recursively. All copied objects in the tree
+will reference the same surfaces though, so even if object changes will
+be unique in the two copies, surface changes (new color, new shader,
+etc.) in one copy will affect both. The new object will have the
+identity matrix as its transformation matrix.
+
+@findex @code{object_deep_dup()}
+@smallexample
+Object *
+object_deep_dup(object)
+        Object  *object;
+@end smallexample
+Copy a complete object tree, objects, surfaces and all. The new object
+will have the identity matrix as its transformation matrix.
+
+
+@node     Memory management, Transformations, Creating objects, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Memory management
+@cindex Memory management
+
+This chapter mostly concerns users who develop more advanced
+applications on top of SIPP and need to worry about memory leaks and
+such. If you only use SIPP as a simple tool for rendering, like the demo
+programs (one program -> one scene) you can safely skip to the next
+chapter.
+
+@menu
+* Objects and surfaces::        Managing memory for objects and surfaces
+* Surface description memory::  Managing memory for surface descriptions
+@end menu
+
+@node     Objects and surfaces, Surface description memory, , Memory management
+@comment  node-name,  next,  previous,  up
+@section Objects and surfaces
+@cindex Memory for objects and surfaces
+
+Managing the memory used for surfaces and objects basically consist of
+choosing one of two approaches: either follow a few simple rules and then
+let SIPP handle it by itself or do more of it yourself and gain
+some consistency. The first approach is the default. 
+
+To illustrate the difference between the two modes we will give a small
+example. Consider the following piece of code:
+@smallexample
+Object *obj1, *obj2;
+
+obj1 = object_create();
+obj2 = object_create();
+object_add_subobj(obj1, obj2);
+...
+@end smallexample
+When this is executed we get the following situation:
+@smallexample
+                      +-------+
+        obj1--------->|  A    |
+                      |       |
+                      +-------+
+                          |     
+                          V
+                      +-------+
+        obj2--------->|  B    |
+                      |       |
+                      +-------+
+@end smallexample
+That is, the user has two pointers, @code{obj1} and @code{obj2}, and the
+object referenced by @code{obj1} (@b{A}) has an internal reference to
+the object referenced by @code{obj2} (@b{B}). All is well until the user
+decides to delete one of the objects, then we run into a conflict. If,
+for instance, the user calls @code{object_unref(obj2)}, what should we
+do? We can not free the memory occupied by @b{B} since @b{A} has a
+pointer to it and that would then point into freed memory. Obviously we
+should keep @b{B} around until nothing else references it and then
+delete it. The way to do this is to keep @i{reference counters} in the
+objects. When a reference is added to an object, for instance with
+@code{object_add_subobj()}, we increment the reference counter. When a
+reference is removed we decrement it.
+
+Reference counters work great as long as we only need to consider the
+internal references between objects, since we have full control in the
+library over when they are created and removed (if the user is nice and
+only uses the library functions to manipulate the structures, of
+course). The problem is the reference which the user gets upon creation
+(@code{obj1} and @code{obj2} in the above example). Should they be
+counted or not? 
+
+If the users references are counted it is easy to create memory leaks.
+Suppose the above example had read:
+@smallexample
+Object *obj1, *obj2;
+
+obj1 = object_create();
+object_add_subobj(obj1, object_create());
+...
+@end smallexample
+There is no way for SIPP to know that the user never stored the result from
+the second @code{object_create()}, but sent it directly as an argument
+to a funtion. If the users references are counted, @b{B} would have a
+reference count of 2 while there is actually only 1 reference. Thus
+@b{B} will never be deleted.
+
+If, on the other hand, users references are not counted we have a
+potential for memory corruption instead. Consider the example:
+@smallexample
+Object *obj1, *obj2;
+
+obj1 = object_create();
+obj2 = object_create();
+object_add_subobj(obj1, obj2);
+object_unref(obj2);
+...
+@end smallexample
+When @code{object_unref(obj2)} is called, @b{B} has only one reference
+(the users are not counted, remember), it is decremented and reach zero
+so @b{B} gets deleted. The internal reference in @b{A} now points to
+freed memory...
+
+SIPP uses reference counters in the @code{Surface} and @code{Object}
+structures and let the user decide if users references shoud be counted
+or not.  The default approach does not count them while the other does.
+Which approach that should be used is selected with an initial call to
+the function
+
+@findex @code{sipp_user_refcount()}
+@smallexample
+void
+sipp_user_refcount(flag)
+        bool  flag;
+@end smallexample
+
+If @code{flag} is @code{FALSE} the default approach is used, if
+@code{flag} is @code{TRUE} the users references will be counted.
+
+IMPORTANT: Don't call this function more than once in an application! If
+some objects are created in one mode and some in the other the
+result is unpredictable!
+
+So, how does this affect the user? Well, in the default approach the
+user must be careful with what he does with his references since SIPP is
+not "aware" of them.
+The simple rule to follow in the default approach is:@*
+NEVER call
+@code{surface_unref()} or @code{object_unref()} on a surface or object
+that you have installed somewhere in SIPP (using
+@code{object_add_surface()} or @code{object_add_subobj()}). The only
+exception is if you have subsequently uninstalled it (using
+@code{object_sub_surface()} or @code{object_sub_subobj()}) and are
+positive that nothing else reference it.
+
+
+In the other approach, where the users reference are counted,
+the user faces the
+risk of creating memory leaks instead of memory corruption. Therefore
+the user must always explicitly tell SIPP when he doesn't need his
+references any longer. 
+
+The rule here becomes:@*
+ALWAYS call @code{surface_unref()} or @code{object_unref()} on a surface
+or object which you don't need your own reference to any longer.
+
+Note that this rule makes the following code illegal:
+@smallexample
+Object *obj;
+
+obj = object_create();
+object_add_surface(obj, surface_create(data, shader));
+...
+@end smallexample
+This is because the users reference returned by @code{surface_create()} are
+discarded without @code{surface_unref()} gets called on it.
+
+
+@node     Surface description memory, , Objects and surfaces, Memory management
+@comment  node-name,  next,  previous,  up
+@section Surface descriptions
+@cindex Memory for surface descriptions
+
+Managing memory for surface descriptions is slightly more complicated
+than for objects and surfaces. The reason is that SIPP has no control of
+the data structure used in a surface description, or how they are
+created. This is true also for the experimantal free form deformation
+descriptions, and exactly the same approach is used to manage memory for
+these as for the surface descriptions.
+
+If you are only using statically allocated surface descriptions you will
+have no problems, but if you are using dynamic allocation you need a way
+to get the memory released when it is no longer needed. To support this
+SIPP allows you to add a header to your surface description structures.
+This header is of type @code{Surf_desc_hdr} and is defined in
+@file{sipp.h} (@xref{Datatypes}. The header contains a reference
+counter and a pointer to a function which will be called when it should be
+deleted. It also contains a generic data pointer which can be used to
+store any extra data the releasing function might need. 
+
+The releasing function will be called with a pointer to the header as a
+single argument.
+
+When you create a surface with @code{surface_create()} (or installing a
+new shader in an existing surface with @code{surface_set_shader()})
+SIPP must know if the pointer you send it
+is a direct pointer to the surface description, or a pointer to a
+@code{Surf_desc_hdr}-header immediately preceding it. This is selected
+by calling:
+@findex @code{sipp_surface_desc_headers()}
+@smallexample
+bool
+sipp_surface_desc_headers(flag)
+        bool  flag;
+@end smallexample
+If @code{flag} is @code{TRUE} the surface descriptions installed from now
+on are assumed to have headers. This will be the case until the function
+is called with @code{flag} set to @code{FALSE}. The function returns the
+old value of the flag. Default is @code{FALSE}. You can mix surface
+descriptions with and without headers in an application without problem.
+
+Note that if you are using "header-mode", it is the pointer to the
+@i{header} that should be sent to @code{surface_create()} and
+@code{surface_set_shader()}, not the pointer to the surface description
+itself.
+
+If you are satisfied with the simple malloc-free pair for allocating 
+the surface descriptions, SIPP has two macros which comes in handy when
+you want to use the described scheme with headers.
+
+@code{SIPP_SURF_HDR_ALLOC(type)} allocates a contiguous piece of memory
+which contains an initial @code{Surf_desc_hdr}-header immediately
+followed by a data structure of type @code{type}. You have to fill in
+the @code{free_func} and @code{client_data} elements of the header
+yourself. When you have this piece of memory you need to get a pointer
+to your surface description in it. You can use the macro
+@code{SIPP_SURFP_HDR(type, hdr)} for that, here is an example:
+@smallexample
+Surf_desc_hdr    *surf_hdr;
+My_pet_surf_desc *my_surf_desc;
+
+surf_hdr = SIPP_SURF_HDR_ALLOC(My_pet_surf_desc);
+surf_hdr->free_func = free;
+surf_hdr->client_data = NULL; /* free() don't need anything here */
+my_surf_desc = SIPP_SURFP_HDR(My_pet_surf_desc, surf_hdr);
+@end smallexample
+
+If you are using something other than malloc-free, you need to do more
+work yourself. The best thing is of course if you can make your
+allocating function include the header in its allocation. If not you
+will need to fake it, for instance by using @code{malloc()} to allocate
+something of the same size as your surface description but with a
+header. Then you can copy the contents of your structure to the new one.
+You can store the old pointer in the @code{client_data} element in the
+header and then write your own releasing function which clean up this
+mess.
+
+@code{SIPP_SURF_HDR_ALLOC()} is @code{malloc()}-specific but
+@code{SIPP_SURFP_HDR()} is general and works for any data structure
+headed by a @code{Surf_desc_hdr} header, no matter how it was created.
+
+
+@node     Transformations, Deformations, Memory management, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Transformations
+@cindex Transformations
+
+All objects can be transformed with the usual homogeneous
+transformations: scaling, translation and rotation. The transformation
+is stored in a @i{transformation matrix} for each object. This matrix
+can also be read and written directly.
+
+The same transformations that can be applied to objects can also be
+applied to the matrices directly.  There is also a @i{vector} type
+defined and a number of operations defined on it.
+
+@menu
+* Geometric operations::        Vector and matrix operations.
+* Object transformations::      Transformations of objects
+@end menu
+
+@node     Geometric operations, Object transformations, ,Transformations    
+@comment  node-name,  next,  previous,  up
+@section Geometric operations
+@cindex Geometric operations
+
+To use the vector and matrix functions and macros defined in the
+following section, you must include the following line into your
+program:
+@smallexample
+#include <geometric.h>
+@end smallexample
+In geometric.h include file, all data types, macros and functions
+defined in this section are declared.
+
+@menu
+* Vector operations::    Operations on 3-dimensional vectors.
+* Matrix operations::    Homogeneous transformations defined on matrices
+@end menu
+
+@node  Vector operations, Matrix operations, , Geometric operations
+@comment  node-name,  next,  previous,  up
+@subsection Vector operations
+@cindex Vector operations
+
+SIPP uses row vectors and not column vectors. A vector is defined as
+follows:
+@smallexample
+typedef struct @{
+    double   x;
+    double   y;
+    double   z;
+@} Vector;
+@end smallexample
+
+This vector type is used both for directional vectors and points
+positional vectors.  In the description below, lower case letters denote
+scalar values and upper case letters denote vectors.  All operations are
+macros except the last one, @code{vecnorm()}.
+
+@table @code
+
+@item MakeVector(V, xx, yy, zz)
+@findex @code{MakeVector()}
+Put @code{xx}, @code{yy} and @code{zz} in the @code{x}, @code{y} and
+@code{z} slot of the Vector @code{V} respectively.
+
+@item VecNegate(A)
+@findex @code{VecNegate()}
+Negate all components of the Vector @code{A}.
+
+@item VecDot(A, B)
+@findex @code{VecDot()}
+Return the dot product of the two Vectors @code{A} and @code{B}.
+
+@item VecLen(A)
+@findex @code{VecLen()}
+Return the length of the Vector @code{A}.
+
+@item VecCopy(A, B)
+@findex @code{VecCopy()}
+Copy the Vector @code{B} to the Vector @code{A} (@code{A = B;} using C
+notation).
+
+@item VecAdd(C, A, B)
+@findex @code{VecAdd()}
+Add the two Vectors @code{A} and @code{B} and put the result in @code{C}
+(@code{C = A + B;} using C notation).
+
+@item VecSub(C, A, B)
+@findex @code{VecSub()}
+Subtract the Vector @code{B} from Vector @code{A} and put the result in
+@code{C} (@code{C = A - B;} using C notation).
+
+@item VecScalMul(B, a, A)
+@findex @code{VecScalMul()}
+Multiply the Vector @code{A} with the scalar @code{a} and put the result
+in Vector @code{B} (@code{B = a * A;} using C notation).
+
+@item VecAddS(C, a, A, B)
+@findex @code{VecAddS()}
+Multiply the Vector @code{A} with the scalar @code{a}, add it to Vector
+@code{B} and put the result in Vector @code{C} (@code{C = a * A + B;}
+using C notation).
+
+@item VecComb(C, a, A, b, B)
+@findex @code{VecComb()}
+Linearly combine the two Vectors @code{A} and @code{B} and put the
+result in Vector @code{C} (@code{C} = @code{a * A + b * B;} using C
+notation).
+
+@item VecCross(C, A, B)
+@findex @code{VecCross()}
+Cross multiply Vector @code{A} with Vector @code{B} and put the result
+in @code{C} (@code{C = A} X @code{B;}).
+
+@item void vecnorm(v)@*
+@code{Vector *v;}
+@findex @code{vecnorm()}
+
+Normalize the vector @code{v}, i.e. keep the direction but make it have
+length 1.  The length of @code{v} should not be equal to 0 to begin with.
+@strong{NOTE:} This is the only function operating on vectors in sipp.
+All the other operations are macros.
+
+@end table
+
+
+@node  Matrix operations, ,Vector operations, Geometric operations
+@comment  node-name,  next,  previous,  up
+@subsection Matrix operations
+@cindex Matrix operations
+
+An full homogeneous transformation matrix has 4 x 4 elements.  However,
+all linear transformations use only 4 x 3 values so to save space a SIPP
+transformation matrix only store 4 x 3 values.  Also, if 4 x 4 matrices
+are used, all vectors must have 4 elements which we want to avoid.
+Thus the transformation matrix used in sipp is defined as follows:
+@smallexample
+typedef struct @{
+    double mat[4][3];
+@} Transf_mat;
+@end smallexample
+
+We wrap a @code{struct} around the two-dimensional array since we want
+to be able to say things like @code{&mat} without being forced to write
+@code{(Transf_mat *) &mat[0]} which we find horrendously ugly.
+
+SIPP has a predefined identity matrix declared in geometric.h which you
+can use:
+@smallexample
+extern Transf_mat   ident_matrix;
+@end smallexample
+The rest of this section describes the macro and functions defined in
+the SIPP library which operate on SIPP transformation matrices.
+
+@table @code
+
+@item MatCopy(A, B)
+@findex @code{MatCopy()}
+This macro copies the matrix @code{B} to the matrix @code{A}. @code{A}
+and @code{B} must both be pointers. @strong{NOTE:} This is the only
+macro operating on matrices in SIPP.  All other operations listed here
+are functions.
+
+
+@item Transf_mat *transf_mat_create(initmat)
+@code{Transf_mat *initmat;}
+@findex @code{transf_mat_create()}
+
+Allocate memory for a new transformation matrix and if @code{initmat} is
+equal to @code{NULL}, set the new matrix to the identity matrix.
+Otherwise set the new matrix to the contents of @code{initmat}.  Return
+a pointer to the new matrix.
+
+@item Transf_mat *transf_mat_destruct(mat)
+@code{Transf_mat *initmat;}
+@findex @code{Transf_mat_destruct()}
+
+Free the memory associated with the matrix @code{mat}.
+
+@item void mat_translate(mat, dx, dy, dz)
+@code{Transf_mat *mat;@*
+double dx;@*
+double dy;@*
+double dz;}
+@findex @code{mat_translate()}
+
+Set @code{mat} to the transformation matrix that represents the
+concatenation of the previous transformation in @code{mat} and a
+translation along the vector (@code{dx}, @code{dy}, @code{dz}).
+
+@item void mat_rotate_x(mat, ang)
+@code{Transf_mat *mat;@*
+double ang;}
+@findex @code{mat_rotate_x()}
+
+Set @code{mat} to the transformation matrix that represents the
+concatenation of the previous transformation in @code{mat} and a
+rotation with the angle @code{ang} around the X axis. The angle
+@code{ang} is expressed in radians.
+
+@item void mat_rotate_y(mat, ang)
+@code{Transf_mat *mat;@*
+double ang;}
+@findex @code{mat_rotate_y()}
+
+Set @code{mat} to the transformation matrix that represents the
+concatenation of the previous transformation in @code{mat} and a
+rotation with the angle @code{ang} around the Y axis.  The angle
+@code{ang} is expressed in radians.
+
+@item void mat_rotate_z(mat, ang)
+@code{Transf_mat *mat;@*
+double ang;}
+@findex @code{mat_rotate_z()}
+
+Set @code{mat} to the transformation matrix that represents the
+concatenation of the previous transformation in @code{mat} and a
+rotation with the angle @code{ang} around the Z axis.  The angle
+@code{ang} is expressed in radians.
+
+@item void mat_rotate(mat, point, vector, ang)
+@code{Transf_mat *mat;@*
+Vector *point;@*
+Vector *vector;@*
+double ang;}
+@findex @code{mat_rotate()}
+
+Set @code{mat} to the transformation matrix that represents the
+concatenation of the previous transformation in @code{mat} and a
+rotation with the angle @code{ang} around the line represented by the
+point @code{point} and the vector @code{vector}.  The angle
+@code{ang} is expressed in radians.
+
+@item void mat_scale(mat, xscale, yscale, zscale)
+@code{Transf_mat *mat;@*
+double xscale;@*
+double yscale;@*
+double zscale;}
+@findex @code{mat_scale()}
+
+Set @code{mat} to the transformation matrix that represents the
+concatenation of the previous transformation in @code{mat} and a scaling
+with the scaling factors (@code{xscale}, @code{yscale}, @code{zscale}).
+
+@item void mat_mirror_plane(mat, point, normal)
+@code{Transf_mat *mat;@*
+Vector *point;@*
+Vector *normal;}
+@findex @code{mat_mirror_plane()}
+
+Set @code{mat} to the transformation matrix that represents the
+concatenation of the previous transformation in @code{mat} and a
+mirroring in the plane defined by the point @code{point} and the normal
+vector @code{normal}.
+
+@item void mat_mul(res, a, b)
+@code{Transf_mat *res;@*
+Transf_mat *a;@*
+Transf_mat *b;}
+@findex @code{mat_mul()}
+
+Multiply the two matrices @code{a} and @code{b} and put the result in
+the matrix @code{res}.  All three parameters are pointers to matrices.
+It is possible for @code{res} to point at the same matrix as either
+@code{a} or @code{b} since the result is stored in a temporary matrix
+during the computations.
+
+@item void point_transform(res, vec, mat)
+@code{Vector *res;@*
+Vector *vec;@*
+Transf_mat *mat;}
+@findex @code{point_transform()}
+
+Transform the point (vector) @code{vec} with the transformation matrix
+@code{mat} and put the result into the vector @code{res}.  The two
+vectors @code{res} and @code{vec} should not be the same vector since no
+temporary is used during the computations.
+
+@end table
+
+@node  Object transformations, , Geometric operations, Transformations    
+@comment  node-name,  next,  previous,  up
+@section Object transformations
+@cindex Object transformations
+
+There are two functions for reading and writing such matrices from and
+to objects:
+
+@findex @code{object_get_transf()}
+@smallexample
+Transf_mat *
+object_get_transf(object, matrix)
+        Object      *object;
+        Transf_mat  *matrix;
+@end smallexample
+This function retrieves the transformation matrix of the object pointed
+to by @code{object}. If @code{matrix} is @code{NULL} the function will
+allocate space for a matrix, copy the object's matrix into this space
+and return a pointer to the new matrix. If @code{matrix} is not
+@code{NULL} the objects transformation matrix is copied into the space
+its pointing to and the same pointer is returned.
+
+@findex @code{object_set_transf()}
+@smallexample
+void
+object_set_transf(object, matrix)
+        Object      *object;
+        Transf_mat  *matrix;
+@end smallexample
+This function copies the matrix pointed to by @code{matrix} into
+@code{object}'s transformation matrix.
+
+There is also a special function for resetting an object's
+transformation matrix to the identity matrix, i.e. no transformation
+at all:
+@findex @code{object_clear_transf()}
+@smallexample
+void
+object_clear_transf(object)
+        Object  *object;
+@end smallexample
+
+@subsection Applying transformations
+@cindex Transformations, applying
+
+The transformations in this section are all applied to an object without
+altering its previous transformations, i.e. they will be applied after
+the previous transformations have been completed. What actually happens
+is that the matrix that specifies the new transformation is post
+multiplied into the objects current matrix.
+
+There are four functions for rotating objects:
+@findex @code{object_rot_x()}
+@findex @code{object_rot_y()}
+@findex @code{object_rot_z()}
+@findex @code{object_rot()}
+@smallexample
+void
+object_rot_x(object, angle)
+        Object  *object;
+        double   angle;
+
+void
+object_rot_y(object, angle)
+        Object  *object;
+        double   angle;
+
+void
+object_rot_z(object, angle)
+        Object  *object;
+        double   angle;
+
+void
+object_rot(object, point, vector, angle)
+        Object  *object;
+        Vector  *point;
+        Vector  *vector;
+        double   angle;
+@end smallexample
+The first three functions rotate an object about one of the primary axes
+in the parent object's local coordinate system. @code{angle} is the
+rotation angle given in radians. Positive rotation is given by the
+"right hand rule", i.e. counterclockwise when looking along the axis
+towards the origin.
+
+The fourth function is a more general rotation. It specifies a rotation
+of an object about an arbitrary axis. The axis is defined as passing
+through @code{point} in the direction of @code{vector}, both are
+described in the parent object's local coordinate system. @code{angle}
+is the rotation angle in radians and positive rotation is defined in the
+same way as for the previous three functions.
+
+For scaling an object the following function is used:
+@findex @code{object_scale()}
+@smallexample
+void
+object_scale(object, sx, sy, sz)
+        Object  *object;
+        double   sx, sy, sz;
+@end smallexample
+The object pointed to by @code{object} is scaled towards the origin along the
+three principal axes with the three scaling factors @code{sx, sy} and
+@code{sz} respectively. 
+
+The last standard transformation is translation:
+@findex @code{object_move()}
+@smallexample
+void
+object_move(object, dx, dy, dz)
+        Object  *object;
+        double   dx, dy, dz;
+@end smallexample
+The object is translated along the vector (@code{dx dy dz}) from its
+current position. Note that the movement is relative and not absolute.
+The translation vector is given in the parent coordinate system.
+
+There is also a general transformation function that post-multiplies any
+transformation matrix into the current matrix of an object:
+@findex @code{object_transform()}
+@smallexample
+void
+object_transform(object, matrix)
+        Object      *object;
+        Transf_mat  *matrix;
+@end smallexample
+
+
+@node     Deformations, Lights, Transformations, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Deformations
+@cindex Deformations
+
+There is a rudimantary (end experimental) support for doing free form
+deformations (ffd's or non affine transformations) of surfaces and
+textures in SIPP. This is implemented in a way similar to shading
+functions (@xref{Shaders}): In a surface the user can install a pointer
+to a function which does the deformation. SIPP calls this function for
+each vertex in the surface before the rendering starts. The function
+computes new values for the position and texture coordinates and SIPP
+will use these new values in the rendering. There is no restrictions on
+the new values but too radical changes most probably will cause very strange
+result. Most notably, if vertices are moved so that 
+non planar polygons are created, the calculation of surface normals will
+get unpredictable results. Either be careful about what you do or build
+everything from triangles which are always planar.
+
+The ffd funcion is called when the polygons are still in their original,
+untransformed state. This means that the coordinates available inside
+the function is exactly the same as those passed to the
+vertex_push()-type function used when the polygon was initially created.
+
+Note also that the ffd function is called for each @i{vertex} and not
+for each pixel as the shaders. This means that coarsly tesselated
+surfaces will probably look strange if you start moving the vertices
+around. This is much less powerful than the RenderMan displacement- and
+transformation shaders but it is still possible to get interesting
+result if used with some care.
+
+The deformation function should have the following interface:
+@smallexample
+void
+my_ffd(ffd_data, world, texture, new_world, new_texture)
+        void          *ffd_data;
+        Vector        *position;
+        Vector        *texture;
+        Vector        *new_position;
+        Vector        *new_texture;
+@end smallexample
+@itemize
+@item 
+@code{ffd_data} is a pointer to a data structure the user has
+installed in the surface (see below). This should contain any other data
+the user wants to pass to the deformation function.
+
+@item 
+@code{position} is the position in local object coordinates of the vertex
+that is being deformed.
+
+@item
+@code{texture} contains the values of the texture coordinates at the vertex.
+
+@item 
+@code{new_position} is where the new value for the position should be
+placed upon return.
+
+@item
+@code{new_texture} is where the new value for the texture coordinates
+should be placed upon return.
+@end itemize
+
+
+To install a deformation funtion in a surface you call this function:
+@findex @code{surface_set_ffd()}
+@smallexample
+void
+surface_set_ffd(surface, ffd_func, ffd_data)
+	Surface  *surface;
+	void    (*ffd_func)();
+	void     *ffd_data;
+@end smallexample
+@itemize
+@item 
+@code{surface} points to the surface to which the deformation should be
+applied. 
+
+@item
+@code{ffd_func} is a pointer to a function with the interface described
+above. 
+
+@item 
+@code{ffd_data} points to any data structure which the user want to pass
+to the deformation function. This pointer is passed unaltered as the
+first argument to @code{ffd_func}.
+@end itemize
+
+
+
+@node     Lights, Shadows, Deformations, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Lights
+@cindex Lights
+@cindex Lightsources
+
+SIPP supports two basic kinds of lights, simple @i{lightsources} and
+@i{spotlights}. The main difference is that spotlights can cast shadows,
+while simple lightsources can not. The functions that create any of
+these lights return a pointer to a @code{Lightsource} structure. This
+pointer is used for later manipulations of the light such as moving it
+or turning it off or on. If there is no need for later manipulations
+these pointers can safely be discarded. SIPP keeps track of all created
+lightsources internally.
+
+@menu
+* Creating lights::     Creating lightsources and spotlights.
+* Manipulating lights:: Changing already existing lights.
+@end menu
+
+@node     Creating lights, Manipulating lights, , Lights    
+@comment  node-name,  next,  previous,  up
+@section Creating lights
+@cindex Lightsources, creating
+@cindex Creating lightsources
+
+Simple lightsources can be of two types, directional and point
+lightsources. Directional lightsources emit light that is parallel in
+every point in the scene, similar to light from the sun. Point
+lightsources emit light from a single point in space.
+@findex @code{lightsource_create()}
+@smallexample
+Lightsource *
+lightsource_create(x, y, z, red, green, blue, type)
+        double x, y, z;
+        double red, green, blue;
+        int    type;
+@end smallexample
+@itemize @bullet
+@item
+@code{x, y, z}
+
+If a directional lightsource is created these numbers specifies a vector
+pointing to the lightsource. If it is a point lightsource the numbers
+specify the exact location of it. 
+
+@item
+@code{red, green, blue}
+
+These numbers indicate the color of the emitted light. All three should
+be in the range [0, 1].
+
+@item
+@code{type}
+
+This parameter defines which type of lightsource that is created. It
+should be one of the predefined values @code{LIGHT_DIRECTION} or
+@code{LIGHT_POINT}.
+@end itemize
+
+A spotlight emits a "cone" of light. There are two types of spotlights
+in SIPP. One has a sharp edge on its lightcone and the other has a soft
+edge that blends out smoothly. Rendering scenes with soft edged
+spotlights takes slightly longer time than scenes with only sharp edged
+spotlights.
+@findex @code{spotlight_create()}
+@smallexample
+Lightsource *
+spotlight_create(x1, y1, z1, x2, y2, z2, opening, red, green, blue, 
+                 type, shadow)
+        double x1, y1, z1;
+        double x2, y2, z2;
+        double opening;
+        double red, green, blue;
+        int    type;
+        bool   shadow;
+@end smallexample
+@itemize @bullet
+@item
+@code{x1, y1, z1}
+
+This is the position of the spotlight.
+
+@item
+@code{x2, y2, z2}
+
+This is a point at which the spotlight is pointing. It is in the middle
+of the lightcone.
+
+@item
+@code{opening}
+
+This defines, in degrees, the opening angle of the lightcone. The cone
+defined will be completely lit, a soft edged lightcone will start to
+blend out outside this angle.
+
+@item
+@code{red, green, blue}
+
+The color of the emitted light. All three numbers are in the range [0, 1].
+
+@item
+@code{type}
+
+Tells SIPP which type of spotlight to create. Should be one of the
+predefined values @code{SPOT_SHARP} or @code{SPOT_SOFT}.
+
+@item
+@code{shadow}
+
+If @code{TRUE}, the light from the spotlight will be able to cast
+shadows, otherwise not. Whether shadows actually are cast or not depend
+on which value @code{sipp_shadows()} (@xref{Initializations}) was called
+with last.
+@end itemize
+
+There is also a function for releasing the memory used by a lightsource
+or a spotlight.
+@findex @code{light_destruct()}
+@smallexample
+void
+light_destruct(light)
+        Lightsource  *light;
+@end smallexample
+@itemize @bullet
+@item
+@code{light}
+
+Pointer to the lightsource or spotlight that is to be destructed.
+@end itemize
+
+@node     Manipulating lights, , Creating lights, Lights    
+@comment  node-name,  next,  previous,  up
+@section Manipulating lights
+@cindex Manipulating lightsources
+@cindex Lightsources, manipulating
+When lights have been created they can be manipulated in various ways.
+There are functions that are specific for lightsources, functions
+specific for spotlights and generic functions which works for both kind
+of lights. 
+
+@findex @code{lightsource_put()}
+@smallexample
+void
+lightsource_put(lightsrc, x, y, z)
+        Lightsource  *lightsrc;
+        double        x, y, z;
+@end smallexample
+This function is used to modify the direction, or position, of a
+lightsource. If (@code{x, y, z}) are interpreted as a position or as a
+direction vector depends on whether @code{lightsrc} is pointing at a point
+lightsource or a directional lightsource. 
+
+@findex @code{spotlight_pos()}
+@smallexample
+void
+spotlight_pos(spot, x, y, z)
+        Lightsource  *spot;
+        double        x, y, z;
+@end smallexample
+Modify the position of a spotlight.
+
+@findex @code{spotlight_at()}
+@smallexample
+void
+spotlight_at(spot, x, y, z)
+        Lightsource  *spot;
+        double        x, y, z;
+@end smallexample
+Modify the position the spotlight is pointing at.
+
+@findex @code{spotlight_opening()}
+@smallexample
+void
+spotlight_opening(spot, opening)
+        Lightsource  *spot;
+        double        opening;
+@end smallexample
+Modify the opening angle of the lightcone of a spotlight. @code{opening}
+is given in degrees.
+
+@findex @code{spotlight_shadows()}
+@smallexample
+void
+spotlight_shadows(spot, flag)
+        Lightsource  *spot;
+        bool          flag;
+@end smallexample
+Turn shadow casting on or off for a specific spotlight. @code{flag} set
+to @code{TRUE} means that the spotlight can cast shadows.
+
+@findex @code{light_color()}
+@smallexample
+void
+light_color(light, red, green, blue)
+        Lightsource  *light;
+        double        red, green, blue;
+@end smallexample
+Change the color of the emitted light from a lightsource or a spotlight.
+(@code{red, green, blue}) are all numbers in the range [0, 1].
+
+@findex @code{light_active()}
+@smallexample
+void
+light_active(light, flag)
+        Lightsource  *light;
+        bool          flag;
+@end smallexample
+Turn a lightsource or a spotlight on or off. If @code{flag} is
+@code{TRUE} the light is activated.
+
+The last function is not really a manipulation function. It evaluates
+how much light from a certain lightsource or spotlight that reaches a
+specific point in the scene. It also calculates a vector pointing from
+this point at the light. The return value is a number in the range [0,
+1] where 1 means that all light from the lightsource reaches the point and 0
+means that none of the light reaches it. The function is intended to be
+used in shading functions.  We describe it formally here and refer to
+the chapter on how to write your own shaders for instructions and
+examples of how to use it (@xref{Writing your own shaders}).
+@findex @code{light_eval()}
+@smallexample
+double
+light_eval(light, position, light_vector)
+        Lightsource  *light;
+        Vector       *position;
+        Vector       *light_vector;
+@end smallexample
+@itemize @bullet
+@item
+@code{light}
+
+Pointer to the lightsource or spotlight to evaluate.
+
+@item
+@code{position}
+
+Pointer to a vector specifying which point in the scene we want to check
+the illumination for. The position is given in the world coordinate system.
+
+@item
+@code{light_vector}
+
+Points to a space where @code{light_eval()} will store a normalized
+vector pointing from @code{position} at the light.
+@end itemize
+
+
+
+@node     Shadows, Viewpoint and cameras, Lights, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Shadows
+@cindex Shadows
+
+
+
+SIPP creates shadows with a technique called @i{depth maps}.
+A detailed description of this technique can be found in the article
+@i{Rendering Antialiased Shadows with Depth Maps} by Reeves, Salesin and Cook
+in the Proceedings of SIGGRAPH 1987. 
+
+In principle, a depth map is generated for each
+light that should cast shadows. The depth map is simply an image
+of the scene, as seen from the light, but instead of a color we
+store the depth (Z-buffer value) in each "pixel". The finished map will
+contain the distance to the object closest to the light in each
+point. 
+
+When the scene is rendered we transform each point we are shading into
+depth map coordinates and if it is further away from the light
+than the value stored in the corresponding point in the depth map, the
+point is in shadow. The actual implementation is of course a bit more
+complicated with some sampling and filtering but we won't go into that.
+
+The reason we describe this algorithm at all is that it is easier to
+understand how to get good looking shadows and why shadows sometimes
+look weird if one have an understanding of the underlying process. 
+
+First of all: The shadows are generated by sampling in the depth maps.
+Sampling usually means we are in danger of aliasing and this is very
+true in our case. SIPP automatically fits the depth map for a spotlight
+so that it covers all area lit by the spotlight's light cone
+(@xref{Creating lights}). If this area is large and the depth map
+resolution is low, the shadows will get very jagged. 
+
+Also, if we have a large surface that is close to perpendicular to the
+depth map plane, the depth map "pixels" will be projected as long stripes
+on that surface, so even if the depth map resolution is high, a shadow
+cast on such a surface will suffer from aliasing (be jagged).
+
+So, if the edges of a shadow look weird, try increasing the size of the
+depth map (the depth map size is set with @code{sipp_shadows()},
+@xref{Initializations}). If they still look weird, or you run out of
+memory, try changing the position of the lightsource that generate the
+shadow. After some tweaking it is usually possible to get fairly decent
+shadows.
+
+@section Generating depth maps
+
+The are two ways to generate depth maps in SIPP, either automatically
+for each new rendering, or explicitly on a command which will then keep
+the depth maps around until they are explicitly deleted.
+
+To make SIPP automatically generate the depth maps for each new
+rendering, and delete them afterwards, call the function
+@code{sipp_shadows()} with the argument @code{TRUE} before starting a
+rendering (@xref{Initializations}). 
+
+To explicitly create the depth maps call the following function:
+@findex @code{shadowmaps_create()}
+@smallexample
+void
+shadowmaps_create(size)
+        int  size;
+@end smallexample
+The argument @code{size} determines the size of the generated depth maps,
+they will be (@code{size x size}) "pixels". When a rendering is
+performed after this function has been called, the generated depth maps
+are used to create the shadows in the scene. The depth maps are @i{not}
+deleted automatically afterwards. This is very useful if a static scene
+is rendered several times, perhaps from different viewpoints, since the
+time to generate depth maps is only spent once. 
+
+Another usage is to generate the depth maps before some of the objects
+are installed in the scene, if it is certain that they will never cast a
+shadow on any other object (a floor being a typical example). The depth
+map generation will the be considerably faster since fewer objects need
+to be rendered.  When the remaining objects are installed, the rendering can
+be started and shadows is still cast on them but not from them.
+
+To delete the depth maps when they are not needed anymore, or the scene
+has changed too much to use the same depth maps, call the following
+function: 
+@findex @code{shadowmaps_destruct()}
+@smallexample
+void
+shadowmaps_destruct()
+@end smallexample
+
+
+
+@node     Viewpoint and cameras, Rendering, Shadows, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Viewpoint and cameras
+@cindex Viewpoint and cameras
+@cindex Virtual cameras
+@cindex Cameras and viewpoint
+
+The viewpoint model used in SIPP are a fairly standard one. A point
+where the camera is located, a point which the camera looks at, a vector
+telling which direction is up and the focal distance in the camera.  The
+user can create several @i{virtual cameras} and tell SIPP to use any of
+them as viewpoint when rendering an image. There is also a predefined
+camera called @code{sipp_camera} which is the default viewpoint. When
+@code{sipp_init()} is called, this camera is initialized to be located in
+(0 0 10), looking at the origin, with the world y-axis as the up
+direction and a focal factor (see below) of 0.25. The user can of course
+change these values to whatever he likes.
+
+To create and manipulate cameras, SIPP provide the following functions:
+
+@findex @code{camera_create()}
+@smallexample
+Camera *
+camera_create()
+@end smallexample
+This function creates a new virtual camera and initializes it to the
+same default setting as @code{sipp_init()} does with @code{sipp_camera}
+(see above).
+
+@findex @code{camera_destruct()}
+@smallexample
+void
+camera_destruct(camera)
+        Camera  *camera;
+@end smallexample
+Release the memory used by a virtual camera. @code{sipp_camera} can't be
+destructed and if the camera which is currently used as viewpoint is
+destructed, the current viewpoint will be reset to @code{sipp_camera}.
+
+@findex @code{camera_position()}
+@smallexample
+void
+camera_position(camera, x, y, z)
+        Camera  *camera;
+        double   x, y, z;
+@end smallexample
+Place @code{camera} at the position (@code{x, y, z}) in the world
+coordinate system.
+
+@findex @code{camera_look_at()}
+@smallexample
+void
+camera_look_at(camera, x, y, z)
+        Camera  *camera;
+        double   x, y, z;
+@end smallexample
+Set @code{camera} to look at the point (@code{x, y, z}) in the world
+coordinate system.
+
+@findex @code{camera_up()}
+@smallexample
+void
+camera_up(camera, x, y, z)
+        Camera  *camera;
+        double   x, y, z;
+@end smallexample
+Set the up direction of @code{camera} to be the vector (@code{x, y, z})
+in the world coordinate system. The up direction is not allowed to be
+parallel to the viewing direction, i.e. the vector from the camera
+position to the point it is looking at.
+
+@findex @code{camera_focal()}
+@smallexample
+void
+camera_focal(camera, focal)
+        Camera  *camera;
+        double   focal;
+@end smallexample
+Set @code{camera}'s focal factor to be @code{focal}. The focal factor is
+the ratio between half the screen height and the distance from the
+viewpoint to the screen. Another way of describing it is tan(v/2) where
+v is the opening angle of the view. A large focal factor will result in
+a wide angle view while a small factor will give a telescopic effect.
+See figure below:
+@smallexample
+                                screen
+                                |
+                                | s
+    viewpoint                   |
+        *-----------------------|
+                    d           |
+                                |
+                                |
+
+
+        focal = s / d
+@end smallexample
+
+
+
+@findex @code{camera_params()}
+@smallexample
+void
+camera_params(camera, x1, y1, z1, x2, y2, z2, ux, uy, uz, focal)
+        Camera  *camera;
+        double   x1, y1, z1;
+        double   x2, y2, z2;
+        double   ux, uy, uz;
+        double   focal;
+@end smallexample
+Set all parameters of a camera in one call. (@code{x1, y1, z1}) is the
+position, (@code{x2, y2, z2}) is the point the camera is looking at,
+(@code{ux, uy, uz}) is the up direction and @code{focal} is the focal
+factor. Note that the up direction is not allowed to be parallel to the
+viewing direction, i.e. the vector from the camera position to the point
+it is looking at.
+
+@findex @code{camera_use()}
+@smallexample
+void
+camera_use(camera)
+        Camera  *camera;
+@end smallexample
+Tell SIPP to use @code{camera} as the current viewpoint.
+
+@node     Rendering, Shaders, Viewpoint and cameras, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Rendering
+@cindex Rendering
+
+SIPP can render images in four different modes: 
+@itemize @bullet
+@item
+@code{PHONG} rendering interpolates surface normal and texture
+coordinates across polygons and calls the appropriate shading function
+in each point. This mode is the slowest but produces the best results
+and is the only mode where any texturing effects can be used. Note that
+most of the interesting effects that is possible to produce with SIPP,
+e.g. shadows and position dependent light (spotlights, point lights),
+are in fact texturing effects.
+@item
+@code{GOURAUD} rendering only calls the shader in the vertices of the
+polygons and then interpolates the calculated colors across them. The
+opacities returned from the shader is interpolated in the same manner.
+@item
+@code{FLAT} rendering calls the shader once per polygon and then fills
+the whole polygon with the resulting color. The whole polygon will also
+get the opacity returned from the shader.
+@item
+@code{LINE} rendering will produce a monochrome line image with only the
+edges of the polygons drawn. No shaders are involved. No hidden line
+elimination are performed but backfacing polygons are not drawn unless
+specifically ordered with @code{sipp_show_backfaces()}
+(@xref{Initializations}).
+@end itemize
+ There are two ways of rendering the currently specified scene.
+They differ in the place to which the rendered image is sent.
+
+@menu
+* Rendering to file::           Rendering into a PPM or PBM file.
+* Rendering to other devices::  Rendering with a user specified function
+* Rendering to in-core images:: Rendering to an image in memory
+* Aborting a rendering::        Terminate a rendering prematurely
+@end menu
+
+@node   Rendering to file, Rendering to other devices, ,Rendering
+@comment  node-name,  next,  previous,  up
+@section Rendering to file
+@cindex Rendering to file
+
+There are two functions for rendering into a file.
+
+@findex @code{render_image_file()}
+@smallexample
+void
+render_image_file(width, height, file, mode, oversampling)
+        int    width, height;
+        FILE  *file;
+        int    mode;
+        int    oversampling;
+@end smallexample
+
+@itemize
+@item 
+@code{width, height}
+
+These parameters specify the size of the image in pixels. If the two
+sizes are different, the focal factor of the camera 
+(@xref{Viewpoint and cameras})
+is defined to refer to the smaller of the two.
+
+@item
+@code{file}
+
+This is a pointer to an open file on which the image will be written. If
+the system supports it, it could just as well be a pipe or a socket of
+course.
+
+@item
+@code{mode}
+
+This defines the rendering mode, @code{LINE}, @code{FLAT},
+@code{GOURAUD} or @code{PHONG} as described earlier.
+
+@item
+@code{oversampling}
+
+This parameter defines how much oversampling should be performed for
+anti-aliasing. Each pixel will be rendered internally as a mesh of
+(@code{oversampling x oversampling}) subpixels and the average color in
+this mesh will be used to represent the final pixel. This parameter is
+ignored in @code{LINE} mode.
+@end itemize
+
+The other function for rendering into a file is useful when doing
+animations. Since video formats are usually interlaced, it is possible
+to get a smoother motion if each @i{field} (half-frame) is rendered
+separately and the motion is updated between these fields instead of
+between frames. Unfortunately @code{LINE} rendering can not be used
+when rendering fields.
+
+@findex @code{render_field_file()}
+@smallexample
+void
+render_field_file(width, height, file, mode, oversampling, field)
+        int    width, height;
+        FILE  *file;
+        int    mode;
+        int    oversampling;
+        int    field;
+@end smallexample
+
+@itemize
+@item 
+@code{width, height}
+
+These parameters specify the size of the image in pixels. It is the
+height of the @i{frame} that should be specified in @code{height}, not
+the field, the field height is determined internally.
+
+@item
+@code{file}
+
+This is a pointer to an open file on which the field will be written. If
+the system supports it, it could just as well be a pipe or a socket of
+course.
+
+@item
+@code{mode}
+
+This defines the rendering mode, @code{FLAT},
+@code{GOURAUD} or @code{PHONG} as described earlier.
+
+@item
+@code{oversampling}
+
+This parameter defines how much oversampling should be performed for
+anti-aliasing. 
+
+@item
+@code{field}
+
+This defines if an odd or even field should be produced. The
+value should be one of the predefined constants @code{ODD} or @code{EVEN}.
+@code{ODD} will result in only odd scanlines being rendered, with 0
+being the top scanline.
+
+@end itemize
+
+@node   Rendering to other devices, Rendering to in-core images, Rendering to file, Rendering
+@comment  node-name,  next,  previous,  up
+@section Rendering to other devices
+@cindex Rendering to other devices
+
+Sometimes one does not want the rendered image to be stored in a file.
+Perhaps it should be displayed in a window or further processed in some
+way. SIPP provides a way to have a function called for each rendered
+pixel, or for each line if a line image is rendered. The function is
+given information about which pixel it is and what resulting color it
+got.  Since one of the most used applications of this probably is
+rendering to a pixmap in memory, SIPP has special support for that. 
+@xref{Rendering to in-core images}.
+
+Use a call to the following function to render to another device than a
+file:
+
+@findex @code{render_image_func()}
+@smallexample
+void
+render_image_func(width, height, pix_func, data, mode, oversampling)
+        int    width, height;
+        void (*pix_func)();
+        void  *data;
+        int    mode;
+        int    oversampling;
+@end smallexample
+
+@itemize
+@item 
+@code{width, height}
+
+These parameters specify the size of the image in pixels. If the two
+sizes are different, the focal factor of the camera 
+(@xref{Viewpoint and cameras})
+is defined to refer to the smaller of the two.
+
+@item
+@code{pix_func}
+
+This is a pointer to a function that SIPP calls once for each rendered
+pixel.  If @code{LINE} rendering is used it is called for each line
+instead. The function must have the following interface:
+
+@smallexample
+void
+my_pixel_function(data, col, row, red, green, blue)
+        my_data       *data;
+        int            col, row;
+        unsigned char  red, green, blue;
+@end smallexample
+@itemize
+@item
+@code{data}
+This is the same @code{data} pointer that was passed to
+@code{render_image_func()}.
+@item 
+@code{col, row}
+Specifies position of the pixel. (0, 0) is upper left.
+@item 
+@code{red, green, blue}
+This is the color of the pixel quantified to 24 bits, 8 bits for each of
+red, green and blue.
+@end itemize
+
+If @code{LINE} rendering is used instead, the user provided function is
+called for each rendered line instead of each pixel and should have the
+following interface:
+@smallexample
+void
+my_line_function(data, col1, row1, col2, row2)
+        my_data       *data;
+        int            col1, row1;
+        int            col2, row2;
+@end smallexample
+@itemize
+@item 
+@code{data}
+This is the same @code{data} pointer that was passed to
+@code{render_image_func()}.
+@item 
+@code{row1, col1, row2, col2}
+Specification of the two endpoints of the line. (0, 0) is upper left,
+@end itemize
+
+@item
+@code{data}
+
+This is a pointer to any data structure that the pixel function (see
+next item) needs. It could be a pointer to a specific pixmap or window
+or whatever.
+
+@item
+@code{mode}
+
+This defines the rendering mode, @code{LINE}, @code{FLAT},
+@code{GOURAUD} or @code{PHONG} as described earlier.
+
+@item
+@code{oversampling}
+
+This parameter defines how much oversampling should be performed for
+anti-aliasing. Each pixel will be rendered internally as a mesh of
+(@code{oversampling x oversampling}) subpixels and the average color in
+this mesh will be used to represent the final pixel. This parameter is
+ignored in @code{LINE} mode.
+@end itemize
+
+
+There is also a corresponding function to @code{render_field_file()} for
+rendering a field into a user defined place. As in that function,
+@code{LINE} rendering can not be used when rendering fields.
+
+@findex @code{render_field_func()}
+@smallexample
+void
+render_field_func(width, height, pix_func, data, mode, oversampling, field)
+        int    width, height;
+        void (*pix_func)();
+        void  *data;
+        int    mode;
+        int    oversampling;
+        int    field;
+@end smallexample
+All parameters have the same meaning as in @code{render_image_func()}
+except the last one.
+
+@itemize
+@item 
+@code{field}
+
+This defines if an odd or even field should be produced. The
+value should be one of the predefined constants @code{ODD} or @code{EVEN}.
+@code{ODD} will result in only odd scanlines being rendered, with 0
+being the top scanline.
+
+@end itemize
+
+@node   Rendering to in-core images, Aborting a rendering, Rendering to other devices, Rendering
+@comment  node-name,  next,  previous,  up
+@section Rendering to in-core images
+@cindex Rendering to in-core images
+
+To people who want to create images in memory, we provide two image
+formats similar in kind to the Portable Pixmap (ppm) and Portable Bitmap
+(pbm).  Only very simple operations are defined on them, but the
+definition of the types are also given here, so those who want to write
+their own functions operating on the images can do so.
+
+@menu
+* Sipp_pixmap:: The pixmap type (24 bits/pixel)
+* Sipp_bitmap:: The pixmap type (1 bit/pixel)
+@end menu
+
+@node Sipp_pixmap, Sipp_bitmap, , Rendering to in-core images    
+@comment  node-name,  next,  previous,  up
+@subsection The Sipp_pixmap image data type
+@cindex @code{Sipp_pixmap}
+
+To use the pixmap operations you must put the following line into your
+source file:
+@smallexample
+#include <sipp_pixmap.h>
+@end smallexample
+In this include file, the @code{Sipp_pixmap} data type is defined as
+well as all operations operating on it.  Only the most basic operations
+are defined.
+
+A @code{Sipp_pixmap} is defined like this:
+@smallexample
+typedef struct @{
+    int      width;             /* Width of the pixmap */
+    int      height;            /* Height of the pixmap */
+    unsigned char * buffer;     /* A pointer to the image. */
+@} Sipp_pixmap;
+@end smallexample
+The pointer @code{buffer} is a pointer to the image where each pixel is
+stored as three unsigned chars in the order red, green, blue.  Thus, the
+buffer is 3 * @code{width} * @code{height} bytes long.
+
+The following functions are defined for a @code{Sipp_pixmap}:
+
+@smallexample
+Sipp_pixmap *
+sipp_pixmap_create(width, height)
+        int  width;
+        int  height;
+@end smallexample
+@findex @code{sipp_pixmap_create()}
+Returns a newly created @code{Sipp_pixmap} with the given size.  The new
+pixmap is filled with zeros on creation.
+
+@smallexample
+void
+sipp_pixmap_destruct(pm)
+        Sipp_pixmap *pm;
+@end smallexample
+@findex @code{sipp_pixmap_destruct()}
+Frees all memory associated to the @code{Sipp_pixmap pm} and returns it
+to the heap.
+
+@smallexample
+void
+sipp_pixmap_set_pixel(pm, col, row, red, grn, blu)
+        Sipp_pixmap   *pm;
+        int            col;
+        int            row;
+        unsigned char  red;
+        unsigned char  grn;
+        unsigned char  blu;
+@end smallexample
+@findex @code{sipp_pixmap_set_pixel()}
+Set the pixel at (@code{col}, @code{row}) in pixmap @code{pm} to be the
+color (@code{red}, @code{grn}, @code{blu}). (0, 0) is upper left.  Note
+that this function is directly usable in @code{render_image_func()}
+defined in @ref{Rendering to other devices}, when using the @code{FLAT},
+@code{GOURAUD} or @code{PHONG} mode of rendering.
+
+@smallexample
+void
+sipp_pixmap_write(file, pm)
+        FILE         *file;
+        Sipp_pixmap  *pm;
+@end smallexample
+@findex @code{sipp_pixmap_write()}
+Write the pixmap @code{pm} to the open file @code{file}.  The image is
+written in the Portable Pixmap format P6 (raw ppm), the same format SIPP
+is using when rendering to a file.
+
+@node Sipp_bitmap, , Sipp_pixmap, Rendering to in-core images    
+@comment  node-name,  next,  previous,  up
+@subsection The Sipp_bitmap image data type
+@cindex @code{Sipp_bitmap}
+
+To use the pixmap operations you must put the following line into your
+source file:
+@smallexample
+#include <sipp_bitmap.h>
+@end smallexample
+
+In this include file, the @code{Sipp_bitmap} data type is defined as
+well as all operations operating on it.  Only the most basic operations
+are defined.
+
+A @code{Sipp_bitmap} is defined like this:
+@smallexample
+typedef struct @{
+    int   width;                 /* Width of the bitmap in pixels */
+    int   height;                /* Height of the bitmap in pixels */
+    int   width_bytes;           /* Width of the bitmap in bytes. */
+    unsigned char * buffer;             /* A pointer to the image. */
+@} Sipp_bitmap;
+@end smallexample
+The pointer @code{buffer} is a pointer to the image where each pixel is
+a bit in an unsigned char, eight pixels per char.  If the @code{width}
+field is not a multiple of 8, the last bits in the last byte of a row
+are not used.  The most significant bit in each byte is the leftmost
+pixel. The entire buffer is @code{width_bytes} * @code{height} bytes
+long.
+
+The following functions operate on a @code{Sipp_bitmap}:
+
+@smallexample
+Sipp_bitmap *
+sipp_bitmap_create(width, height)
+        int width;
+        int height;
+@end smallexample
+@findex @code{sipp_bitmap_create()}
+Returns a new @code{Sipp_bitmap} with the given size.  The new bitmap is
+filled with zeros on creation.
+
+@smallexample
+void
+sipp_bitmap_destruct(bm)
+        Sipp_bitmap  *bm;
+@end smallexample
+@findex @code{sipp_bitmap_destruct()}
+Frees all memory associated to the @code{Sipp_bitmap bm} and returns it
+to the heap.
+
+@smallexample
+void
+sipp_bitmap_line(bm, col1, row1, col2, row2)
+        Sipp_bitmap  *bm;
+        int           col1;
+        int           row1;
+        int           col2;
+        int           row2;
+@end smallexample
+@findex @code{sipp_bitmap_line()}
+Draw a line from (@code{col1}, @code{row1}) to (@code{col2},
+@code{row2}) in the bitmap @code{bm}. (0, 0) is upper left. Note that
+this function is directly usable in @code{render_image_func()} defined
+in @ref{Rendering to other devices}, when using the @code{LINE} mode of
+rendering.
+
+@smallexample
+void
+sipp_bitmap_write(file, bm)
+        FILE         *file;
+        Sipp_bitmap  *bm;
+@end smallexample
+@findex @code{sipp_bitmap_write()}
+Write the bitmap @code{bm} to the open file @code{file}.  The image is
+written in the Portable Bitmap format P4 (pbm), the same format SIPP is
+using when rendering a line drawing to a file.
+
+@node   Aborting a rendering, , Rendering to in-core images, Rendering
+@comment  node-name,  next,  previous,  up
+@section Aborting a rendering
+@cindex Aborting a rendering
+
+Sometimes there is a need to abort a rendering prematurely. A user may
+have pressed a "cancel-button" in a GUI or some similar reason. To be
+able to do this the application must gain control once in a while during
+a rendering and SIPP provides a callback mechanism for this
+@xref{Initializations}. To abort a rendering  gracefully, the callback
+function should call the following function:
+
+@smallexample
+void
+sipp_render_terminate()
+@end smallexample
+@findex @code{sipp_render_terminate()}
+
+After this function has been called, it is @i{very} important that
+control is returned to SIPP! Otherwise the rendering is not aborted as
+it should. @code{sipp_render_terminate()} only indicates to SIPP that
+the rendering should be terminated, the actual cleanup and exit is
+performed only after control has been returned to SIPP.
+
+@node     Shaders, Object primitives, Rendering, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Shaders
+@cindex Shaders
+
+
+A major feature in SIPP is the very flexible way shading functions are
+handled. Each surface has a pointer to a function that is called
+whenever a point on that surface is rendered. The interface to these
+shading functions is well defined so it is quite easy for a user to
+write his own. SIPP also provides a number of shaders in the library for
+various effects.
+
+@menu
+* Provided shaders::            Shaders provided with the library
+* Writing your own shaders::    How to write your own shading functions
+@end menu
+
+@node Provided shaders, Writing your own shaders, , Shaders 
+@comment  node-name,  next,  previous,  up
+@section Provided shaders
+@cindex Provided shaders
+@cindex Shaders, provided
+
+This section describes all the shaders that are provided with SIPP. To
+use any of them, except @code{basic_shader()}, the program must contain
+the following line:
+@smallexample
+#include <shaders.h>
+@end smallexample
+The most important thing to know when using a shader is how it
+represents its surface description and what this description should
+contain. All provided shaders in SIPP use a normal C struct as surface
+description.
+
+@menu
+* The basic shader::    The basic shader used by most of the rest of
+                        the shaders
+
+* The Phong shader::    The standard Phong shading model.
+* The Strauss shader::  More realistic shader by Paul Strauss.
+* The marble shader::   A shader creating a marble pattern
+* The granite shader::  A shader creating a granite like pattern
+* The wood shader::     A shader creating a wooden pattern
+* The bozo shader::     A somewhat whimsical shader creating a pattern
+                        originally used by Bozo the clown.
+
+* The mask shader::     A shader usable when the contents of a mask
+                        should control which one of two shaders will
+                        determine the color of each pixel.
+* The bumpy shader::    A shader which creates the illusion of a bumpy
+                        surface
+* The planet shader::   Creates a 3-dimensional pattern of a planet surface 
+@end menu
+
+@node     The basic shader, The Phong shader, , Provided shaders
+@comment  node-name,  next,  previous,  up
+@subsection The basic shader
+@cindex basic shader
+@cindex shader, basic
+@findex @code{basic_shader()}
+
+The basic shader in SIPP, @code{basic_shader()}, is basically a Phong
+shader but, with some influence from Blinn, the "shinyness" of the
+surface is described with a number in the range [0, 1] and the
+implemented "shinyness" function changes with this constant in a more
+natural way (at least in our opinion).
+
+Surface description:
+@smallexample
+typedef struct @{
+        double ambient;
+        double specular;
+        double c3;
+        Color  color;
+        Color  opacity;
+@} Surf_desc;
+@end smallexample
+@itemize
+@item
+@code{ambient} is a number in the range [0, 1] specifying how much of
+the surface color that is visible when the object is not lit by any
+lightsource.
+
+@item
+@code{specular} is a number in the range [0, 1] specifying how much
+light that is reflected in a specular highlight on the surface.
+
+@item
+@code{c3} is also a number in the range [0, 1]. It specifies how
+"shiny" the surface is. 0 means a very shiny surface while 1 indicates a
+rather dull one.
+
+@item
+@code{color} is simply the color of the surface.
+
+@item
+@code{opacity} specifies how opaque the surface is. This is stored as a
+color to allow different opacities for the different color bands. The
+values should be in the range [0, 1] with 1 indicating a completely
+opaque object and 0 a completely transparent (invisible) one.
+@end itemize
+
+
+@node     The Phong shader, The Strauss shader, The basic shader, Provided shaders
+@comment  node-name,  next,  previous,  up
+@subsection The Phong shader
+@cindex Phong shader
+@cindex shader, Phong
+@findex @code{phong_shader()}
+
+@code{phong_shader()} implements the well known Phong illumination
+model. 
+
+Surface description:
+@smallexample
+typedef struct @{
+        double ambient;
+        double diffuse;
+        double specular;
+        int    spec_exp;
+        Color  color;
+        Color  opacity;
+@} Phong_desc;
+@end smallexample
+@itemize
+@item
+@code{ambient} is a number in the range [0, 1] specifying how much of
+the surface color that is visible when the object is not lit by any
+lightsource.
+
+@item
+@code{diffuse} is a number in the range [0, 1] specifying how much
+light that is reflected diffusely from the surface.
+
+@item
+@code{specular} is a number in the range [0, 1] specifying how much
+light that is reflected in a specular highlight on the surface.
+
+@item
+@code{spec_exp} is the exponent in the specular highlight calculation.
+It specifies how "shiny" the surface is. Useful values are about 1 to
+200, where 1 is a rather dull surface and 200 is a very shiny one.
+
+@item
+@code{color} is the color of the surface.
+
+@item
+@code{opacity} specifies how opaque the surface is. This is stored as a
+color to allow different opacities for the different color bands. The
+values should be in the range [0, 1] with 1 indicating a completely
+opaque object and 0 a completely transparent (invisible) one.
+@end itemize
+
+
+@node     The Strauss shader, The marble shader, The Phong shader, Provided shaders
+@comment  node-name,  next,  previous,  up
+@subsection The Strauss shader
+@cindex Strauss shader
+@cindex shader, Strauss
+@findex @code{strauss_shader()}
+
+@code{strauss_shader()} is a shader designed by Paul Strauss at Silicon
+Graphics Inc. and published in IEEE CG&A Nov. 1990. In his article he
+explains that most shading models in use today, e.g. Phong,
+Cook-Torrance, are difficult to use for non-experts, and this for
+several reasons.  The parameters and their effect on a surface are non-
+intuitive and/or complicated. The shading model Strauss designed has
+parameters that is easy to grasp and have a reasonably deterministic
+effect on a surface, but yet produces very realistic results.
+
+Surface description:
+@smallexample
+typedef struct @{
+        double  ambient;
+        double  smoothness;
+        double  metalness;
+        Color   color;
+        Color   opacity;
+@} Strauss_desc;
+@end smallexample
+@itemize
+@item
+@code{ambient} is a number in the range [0, 1] specifying how much of
+the surface color that is visible when the object is not lit by any
+lightsource.
+
+@item
+@code{smoothness} is a number in the range [0, 1] that describes how smooth
+the surface is. This parameter controls both diffuse and specular
+reflections. 0 means a dull surface while 1 means a very smooth and
+shiny one.
+
+@item
+@code{metalness} is a number in the range [0, 1]. It describes how
+metallic the material is. It controls among other things how much of the
+surface color should be mixed into the specular reflections at different
+angles. 0 means a non-metal while 1 means a very metallic surface.
+
+@item
+@code{color} is the color of the surface.
+
+@item
+@code{opacity} specifies how opaque the surface is. This is stored as a
+color to allow different opacities for the different color bands. The
+values should be in the range [0, 1] with 1 indicating a completely
+opaque object and 0 a completely transparent (invisible) one.
+@end itemize
+
+
+@node     The marble shader, The granite shader, The Strauss shader, Provided shaders
+@comment  node-name,  next,  previous,  up
+@subsection The marble shader
+@cindex marble shader
+@cindex shader, marble
+@findex @code{marble_shader()}
+
+@code{marble_shader()} uses a three dimensional texture to create the
+appearance of marble. The texture is created by mixing distorted strips
+of one color into another "base" color of the surface.
+
+Surface description:
+@smallexample
+typedef struct @{
+        double ambient;
+        double specular;
+        double c3;
+        double scale;
+        Color  base;
+        Color  strip;
+        Color  opacity;
+@} Marble_desc;
+@end smallexample
+@itemize
+@item
+@code{ambient, specular, c3} and @code{opacity} have the same meaning as
+in @code{basic_shader()} (see @ref{The basic shader}).
+
+@item
+@code{scale} describes how much the texture coordinates should be scaled
+before applying the texture. When scaling get larger, the object will
+get larger in comparison to the marble pattern.
+
+@item
+@code{base} is the base color of the surface.
+
+@item
+@code{strip} is the color of the strips which is mixed in with the base
+color.
+@end itemize
+
+
+@node The granite shader, The wood shader, The marble shader, Provided shaders
+@comment  node-name,  next,  previous,  up
+@subsection The granite shader
+@cindex granite shader
+@cindex shader, granite
+@findex @code{granite_shader()}
+
+@code{granite_shader()} is very similar to @code{marble_shader()}. It
+also mixes two colors to create a three dimensional texture, but the
+mixing is done in a different manner so the result should look like granite.
+
+Surface description:
+@smallexample
+typedef struct @{
+        double ambient;
+        double specular;
+        double c3;
+        double scale;
+        Color  col1;
+        Color  col2;
+        Color  opacity;
+@} Granite_desc;
+@end smallexample
+@itemize
+@item
+@code{ambient, specular, c3} and @code{opacity} have the same meaning as
+in @code{basic_shader()} (see @ref{The basic shader}).
+
+@item
+@code{scale} describes how much the texture coordinates should be scaled
+before applying the texture. When scaling get larger, the object will
+get larger in comparison to the granite pattern.
+
+@item
+@code{col1} and @code{col2} are the two colors that are mixed.
+@end itemize
+
+
+@node The wood shader, The bozo shader, The granite shader, Provided shaders
+@comment  node-name,  next,  previous,  up
+@subsection The wood shader
+@cindex wood shader
+@cindex shader, wood
+@findex @code{wood_shader()}
+
+@code{wood_shader()} creates a simulated wood texture on a surface.  It
+uses two colors, one as the base (often lighter) color of the wood and
+one as the color of the (often darker) rings in it.  The rings are put
+into the base color about the x-axis and are then distorted slightly. A
+similar pattern is repeated at regular intervals to create an illusion
+of logs or boards.
+
+Surface description:
+@smallexample
+typedef struct @{
+        double ambient;
+        double specular;
+        double c3;
+        double scale;
+        Color  base;
+        Color  ring;
+        Color  opacity;
+@} Wood_desc;
+@end smallexample
+@itemize
+@item
+@code{ambient, specular, c3} and @code{opacity} have the same meaning as
+in @code{basic_shader()} (see @ref{The basic shader}).
+
+@item
+@code{scale} describes how much the texture coordinates should be scaled
+before applying the texture. When scaling get larger, the object will
+get larger in comparison with the wood texture.
+
+@item
+@code{base} and @code{ring} are the colors in the wood.
+@end itemize
+
+
+@node The bozo shader, The mask shader, The wood shader, Provided shaders
+@comment  node-name,  next,  previous,  up
+@subsection The bozo shader
+@cindex bozo shader
+@cindex shader, bozo
+@findex @code{bozo shader}
+
+@code{bozo_shader()} uses a random number, correlated with the three
+dimensional texture coordinates, to chose a color from a fixed set. The
+user supplies an array of colors to choose from. 
+
+Surface description:
+@smallexample
+typedef struct @{
+        Color  colors[];
+        int    no_of_cols;
+        double ambient;
+        double specular;
+        double c3;
+        double scale;
+        Color  opacity;
+@} Bozo_desc;
+@end smallexample
+@itemize
+@item
+@code{colors} are an array of colors with @code{no_of_cols} entries.
+
+@item
+@code{ambient, specular, c3} and @code{opacity} have the same meaning as
+in @code{basic_shader()} (see @ref{The basic shader}).
+
+@item
+@code{scale} describes how much the texture coordinates should be scaled
+before applying the texture.
+@end itemize
+
+
+@node The mask shader, The bumpy shader, The bozo shader, Provided shaders
+@comment  node-name,  next,  previous,  up
+@subsection The mask shader
+@cindex mask shader
+@cindex shader, mask
+@findex @code{mask_shader()}
+
+@code{mask_shader()} uses a user provided decision function to mask
+between two different shaders. The decision function is passed all three
+texture coordinates and returns TRUE or FALSE.
+
+The decision function should have the following interface:
+@smallexample
+bool 
+my_masker(mask, u, v, w)
+        my_mask_data *mask;
+        int           u, v, w;
+@end smallexample
+@itemize
+@item 
+@code{my_mask_data} is a pointer to any data structure that the decision
+function needs. A common use for @code{mask_shader()} is to use a bitmap
+to mask something onto a surface, in this case @code{my_mask_data} could
+point to the bitmap itself.
+
+@item 
+@code{u, v} and @code{w} is the interpolated texture coordinates sent to
+the shader.
+@end itemize
+
+Surface description:
+@smallexample
+typedef struct @{
+        Shader *t_shader;
+        void   *t_surface;
+        Shader *f_shader;
+        void   *f_surface;
+        void   *mask_data;
+        bool  (*masker)();
+@} Mask_desc;
+@end smallexample
+@itemize
+@item
+The shader @code{t_shader} and the surface description @code{t_surface}
+is used to shade the surface whenever the decision function returns TRUE.
+
+@item
+The shader @code{f_shader} and the surface description @code{f_surface}
+is used to shade the surface whenever the decision function returns FALSE.
+
+@item
+@code{mask_data} points to any data structure the decision function need.
+
+@item
+@code{masker} is a pointer to the decision function.
+@end itemize
+
+
+@node  The bumpy shader, The planet shader, The mask shader, Provided shaders
+@comment  node-name,  next,  previous,  up
+@subsection The bumpy shader
+@cindex bumpy shader
+@cindex shader, bumpy
+@findex @code{bumpy_shader()}
+
+@code{bumpy_shader()} is a not really a shader. It is a function that
+changes the surface normal to create the impression of a bumpy surface.
+The bumps are dependent on the three dimensional texture coordinates.
+Any other shader can be used to do the final shading calculations.
+
+Surface description:
+@smallexample
+typedef struct @{
+        Shader *shader;
+        void   *surface;
+        double scale;
+        bool   bumpflag;
+        bool   holeflag;
+@} Bumby_desc;
+@end smallexample
+@itemize
+@item
+@code{shader} points to the shader that should be called to do the
+actual shading calculations.
+
+@item
+@code{surface} is a pointer to the surface description that should be
+used in @code{shader}.
+
+@item
+@code{scale} describes how much the texture coordinates should be scaled
+before applying the texture. 
+
+@item
+@code{bumpflag} and @code{holeflag} make it possible to flatten out half
+of the bumps. If only bumpflag is TRUE only bumps "standing out" from
+the surface are visible.  The rest of the surface will be smooth.  If,
+on the other hand, only holeflag is TRUE only bumps going "into" the
+surface will be visible, thus giving the surface an eroded look. If
+both flags are true, the whole surface will get a bumpy appearance,
+rather like an orange.
+@end itemize
+
+
+
+@node     The planet shader, ,The bumpy shader, Provided shaders
+@comment  node-name,  next,  previous,  up
+@subsection The planet shader
+@cindex planet shader
+@cindex shader, planet
+@findex @code{planet_shader()}
+
+@code{planet_shader()} is a somewhat specialized shader that produces a
+texture that resembles a planet surface. The planet is of the Tellus
+type with a mixture of oceans and continents.  Some of the surface is
+covered by semi-transparent clouds which enhances the effect greatly.
+On the other hand, no polar caps are provided and this decreases the
+realism.
+
+The texture is 3-dimensional, so it is possible to create cube planets
+or even planets with cut-out parts that still have surfaces that
+resemble the earth surface.  The texture is not scalable, and is
+designed to be used with texture coordinates in the range [-1, 1],
+e.g. a unit sphere. The world coordinates need not have the
+same order of magnitude of course .
+
+Surface description: The planet shader uses the same surface description
+as @code{basic_shader()}, a @code{Surf_desc} (see @ref{The basic
+shader}), but the colors on the surface are hard coded in the shader, so
+the color entry in the description is ignored.
+
+
+@node     Writing your own shaders, , Provided shaders, Shaders    
+@comment  node-name,  next,  previous,  up
+@section Writing your own shaders
+@cindex writing shaders
+@cindex shaders, writing your own 
+
+As mentioned earlier, SIPP calls a shading function for every point that
+is rendered. To be able to perform all necessary calculations, the
+shader needs quite a lot of information of the state the rendering is
+in. All information are sent to the shader as pointers to the data used
+internally in SIPP. It is very important that this information is left
+unchanged. If any processing of the values is needed, e.g. normalization
+of the surface normal, the result must be stored in local variables in
+the shader.
+
+The shading functions have the following interface:
+@smallexample
+void
+my_shader(world, normal, texture, view_vec, lights, surface, color, opacity)
+        Vector        *world;
+        Vector        *normal;
+        Vector        *texture;
+        Vector        *view_vec;
+        Lightsource   *lights;
+        void          *surface;
+        Color         *color;
+        Color         *opacity;
+@end smallexample
+@itemize
+@item 
+@code{world} is the position in world coordinates of the point that is
+rendered. 
+
+@item
+@code{normal} is the surface normal in the point. Note: this vector is NOT
+normalized. 
+
+@item
+@code{texture} contains the interpolated values of the texture
+coordinates.
+
+@item
+@code{view_vec} is a vector pointing from the rendered point at the
+viewpoint, i.e. the currently active camera.
+
+@item
+@code{lights} points to the linked list holding all lights.
+
+@item
+@code{surface} is a pointer to a surface description, i.e. a data area
+holding information specific for the rendered surface and the shader.
+The implementor of the shader decides what to put in this area. It is
+the same pointer that was sent to @code{surface_create()}
+(@xref{Creating objects}).
+
+@item
+@code{color} points to an area where the shader should place the
+calculated color of the point.
+
+@item
+@code{opacity} points to an area where the shader should place the calculated
+opacity of the point.
+@end itemize
+
+
+Since shaders are regular C functions they can be "cascaded". If one do
+not want to implement a complete illumination calculation but want to do
+some special effect, like texture or bumpmapping, the easiest way is to
+write a shader that only manipulates the surface color, normal or
+whatever, and then calls another shader, like @code{phong_shader()}, to
+do the actual shading. This is the way most of the shaders provided in
+SIPP work (see @ref{Provided shaders}).
+
+If one wants to implement a new shading model, things get slightly more
+complicated. Lightsources and possible shadows must be considered. The
+heart of such a shader must contain a loop over all lightsources, which
+are stored in a linked list. Inside this loop every lightsource is
+@i{evaluated} to see how much light from it that reaches the shaded
+point. Here is an skeleton example of how the code could look:
+
+@smallexample
+void
+my_shader(world, normal, texture, view_vec, lights, surface, color, opacity)
+        Vector        *world;
+        Vector        *normal;
+        Vector        *texture;
+        Vector        *view_vec;
+        Lightsource   *lights;
+        void          *surface;
+        Color         *color;
+        Color         *opacity;
+@{
+        Lightsource  *lp;            /* Current lightsource */
+        Vector        light_vec;     /* Direction to current lightsource */
+        double        light_factor;  /* Fraction of light reaching us */
+        Color         light_color;   /* Resulting color from lightsource */
+
+        /*
+         * Other declarations and various initializations
+         * ...
+         * ...
+         */     
+        
+        /*
+         * Loop over all lightsources
+         */
+
+        for (lp = lights; lp != NULL; lp = lp->next)
+        @{
+                /* Find out where the lightsource are and */
+                /* how much light from it that reaches us. */
+
+                light_factor = light_eval(lp, world, &light_vec);
+
+                /* Calculate contributed light from the lightsource */
+
+                light_color.red = light_factor * lp->color.red;
+                light_color.grn = light_factor * lp->color.grn;
+                light_color.blu = light_factor * lp->color.blu;
+
+                /*
+                 * Calculate shading contribution from the
+                 * lightsource using whatever model the shader
+                 * implements.
+                 * ...
+                 * ...
+                 */
+        @}
+
+        /*
+         * Store the final calculated color and opacity
+         * for the point where SIPP can find it and return.
+         */
+
+        color->red = ....
+        color->grn = ....
+        color->blu = ....
+
+        opacity->red = ....
+        opacity->grn = ....
+        opacity->blu = ....
+@}
+@end smallexample
+
+The function @code{light_eval()} and its parameters are described in
+more detail in the chapter on lightsources (see @ref{Manipulating
+lights}).
+
+
+@node     Object primitives, Future enhancements, Shaders, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Object primitives
+@cindex Object primitives
+@cindex primitive object
+
+As mentioned before, SIPP only renders surfaces built up of polygons.
+Sometimes this is too low a level for the user to program in, so some
+higher level of abstraction is needed.  In the SIPP library a number of
+functions are provided that generate higher level objects from ordinary
+SIPP surfaces.  Most of them are simple geometric primitives, but some
+are more sophisticated such as Bezier surfaces. If other types of
+objects are needed the user has to build them by him/herself
+(@xref{Creating objects}).
+
+@cindex texture mapping, types of
+Each object primitive which can be created in SIPP has an argument that
+describes what kind of texture coordinates should be assigned to the
+surface of the object. This parameter can have one of the following
+predefined values:
+
+@itemize @bullet
+@item
+@code{NATURAL}
+
+This value tell SIPP to use a two dimensional mapping which is
+"natural" for this particular object. It might be one of the other
+available mappings or it might be something unique for the object. The
+description of the functions for creating the individual objects
+specifies how this mapping is done.
+
+@item
+@code{CYLINDRICAL}
+
+A two dimensional mapping. The coordinates are assigned as if the object
+were projected on a cylinder surrounding the object and centered on the
+z-axis object. The coordinates are mapped so that @code{x} goes from 0
+to 1 around the base of the cylinder and @code{y} goes from 0 to 1 from
+bottom to top on it.
+
+@item
+@code{SPHERICAL}
+
+Same as @code{CYLINDRICAL}, but the object are projected on a sphere
+surrounding it instead.
+
+@item
+@code{WORLD}
+
+A three dimensional mapping. The texture coordinates are the same three
+dimensional coordinates as the world coordinates of the object at
+creation time.
+
+@end itemize
+
+The following objects are provided in the standard SIPP distribution.
+To use them, you must put the line
+@smallexample
+#include <primitives.h>
+@end smallexample
+into your @code{C} source file.
+
+@menu
+* The cube object::     Creating a cube
+* The block object::    Creating a block
+* The prism object::    Creating a prism
+* The sphere object::   Creating a sphere
+* The ellipsoid object::Creating a ellipsoid
+* The cylinder object:: Creating a cylinder
+* The cone object::     Creating a cone
+* The torus object::    Creating a torus
+* The Bezier patch::    Creating a Bezier patch from function calls
+* The Bezier rotation curve:: Creating a Bezier surface from a rotated
+                        Bezier curve
+* The Bezier file::     Creating a Bezier patch from a data file
+* The teapot::          Creating a "Utah Teapot"
+@end menu
+
+@node     The cube object, The block object, , Object primitives
+@comment  node-name,  next,  previous,  up
+@section The cube object
+@cindex cube object
+@cindex object, cube
+@findex @code{sipp_cube()}
+
+This function creates a cube centered about the origin. 
+
+The @code{NATURAL} texture mapping is similar to @code{CYLINDRICAL} but
+the @code{x} coordinate is not taken from projection on a cylinder but
+is evenly distributed around the perimeter. An odd thing in all the 2D
+mappings (all except @code{WORLD}) for the cube is that the top face
+will have texture coordinates (0.0, 1.0) while the bottom will get 
+(0.0, 0.0). 
+
+@findex @code{sipp_cube()}
+@smallexample
+Object *
+sipp_cube(size, surface, shader, texture)
+        double   size;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{size}
+
+Size of the sides on the cube.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the cube.
+
+@item
+@code{shader}
+
+Shader to use when shading the cube.
+
+@item
+@code{texture}
+
+Choice of texture mapping.
+@end itemize
+
+@node     The block object, The prism object, The cube object, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The block object
+@cindex block object
+@cindex object, block
+@findex @code{sipp_block()}
+
+This function creates a rectangular block centered about the origin. 
+
+The @code{NATURAL} texture mapping is similar to @code{CYLINDRICAL} but
+the @code{x} coordinate is not taken from projection on a cylinder but
+is evenly distributed around the perimeter. An odd thing in all the 2D
+mappings (all except @code{WORLD}) for the block is that the top face
+will have texture coordinates (0.0, 1.0) while the bottom will get 
+(0.0, 0.0). 
+
+@findex @code{sipp_block()}
+@smallexample
+Object *
+sipp_block(xsize, ysize, zsize, surface, shader, texture)
+        double   xsize, ysize, zsize;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{xsize, ysize, zsize}
+
+Size of the sides on the block.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the block.
+
+@item
+@code{shader}
+
+Shader to use when shading the block.
+
+@item
+@code{texture}
+
+Choice of texture mapping.
+@end itemize
+
+@node     The prism object, The sphere object, The block object, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The prism object
+@cindex prism object
+@cindex object, prism
+@findex @code{sipp_prism(0}
+
+This function creates a prism, i.e. a polygon in the x,y-plane which is
+extruded along the z-axis.
+
+The @code{NATURAL} texture mapping is similar to @code{CYLINDRICAL} but
+the @code{x} coordinate is not taken from projection on a cylinder but
+is evenly distributed around the perimeter. An odd thing in all the 2D
+mappings (all except @code{WORLD}) for the prism is that the top face
+will have texture coordinates (0.0, 1.0) while the bottom will get 
+(0.0, 0.0). 
+
+@findex @code{sipp_prism()}
+@smallexample
+Object *
+sipp_prism(num_points, points, zsize, surface, shader, texture)
+        int      num_points;
+        Vector   points[];
+        double   zsize;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{num_points}
+Number of points defining the prism.
+
+@item
+@code{points}
+Array of @code{num_points} points defining the prism. The points should
+be given counterclockwise when looking at the prism from above (positive
+Z). Only the @code{x} and @code{y} members in the vectors are
+significant, the @code{z} member is ignored.
+
+@item
+@code{zsize}
+
+Size of the prism along the z-axis.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the prism.
+
+@item
+@code{shader}
+
+Shader to use when shading the prism.
+
+@item
+@code{texture}
+
+Choice of texture mapping.
+@end itemize
+
+
+@node     The sphere object, The ellipsoid object, The prism object, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The sphere object
+@cindex sphere object
+@cindex object, sphere
+@findex @code{sipp_sphere()}
+
+This function creates a sphere centered around the origin.
+
+The @code{NATURAL} texture mapping is @code{SPHERICAL}.
+
+@findex @code{sipp_sphere()}
+@smallexample
+Object *
+sipp_sphere(radius, resol, surface, shader, texture)
+        double   radius;
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{radius}
+
+The radius of the sphere.
+
+@item
+@code{resol}
+
+The sphere is tessellated into polygons. @code{resol} tells SIPP how
+many polygons there should be around the "equator" of the sphere.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the sphere.
+
+@item
+@code{shader}
+
+Shader to use when shading the sphere.
+
+@item
+@code{texture}
+
+Choice of texture mapping.
+@end itemize
+
+
+@node     The ellipsoid object, The cylinder object, The sphere object, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The ellipsoid object
+@cindex ellipsoid object
+@cindex object, ellipsoid
+
+This function creates an ellipsoid centered around the origin.
+
+The @code{NATURAL} texture mapping is @code{SPHERICAL}.
+
+@findex @code{sipp_ellipsoid()}
+@smallexample
+Object *
+sipp_ellipsoid(xradius, yradius, zradius, resol, surface, shader, texture)
+        double   xradius;
+        double   yradius;
+        double   zradius;
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{xradius, yradius, zradius}
+
+The radii of the ellipsoid in the principal axes directions.
+
+@item
+@code{resol}
+
+The ellipsoid is tessellated into polygons. @code{resol} tells SIPP how
+many polygons to generate around the "equator" of the ellipsoid.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the ellipsoid.
+
+@item
+@code{shader}
+
+Shader to use when shading the ellipsoid.
+
+@item
+@code{texture}
+
+Choice of texture mapping.
+@end itemize
+
+
+@node     The cylinder object, The cone object, The ellipsoid object, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The cylinder object
+@cindex cylinder object
+@cindex object, cylinder
+
+This function creates a cylinder centered around the z-axis and the origin.
+
+The @code{NATURAL} texture mapping is @code{CYLINDRICAL}.
+
+@findex @code{sipp_cylinder()}
+@smallexample
+Object *
+sipp_cylinder(radius, resol, surface, shader, texture)
+        double   radius;
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{radius}
+
+Radius of the cylinder.
+
+@item
+@code{resol}
+
+The cylinder is tessellated into polygons, @code{resol} tells SIPP how
+many polygons there should be around it.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the cylinder.
+
+@item
+@code{shader}
+
+Shader to use when shading the cylinder.
+
+@item
+@code{texture}
+
+Choice of texture mapping.
+@end itemize
+
+
+@node     The cone object, The torus object, The cylinder object, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The cone object
+@cindex cone object
+@cindex object, cone
+
+This function creates a, possibly truncated, cone centered around the
+z-axis and the origin.
+
+The @code{NATURAL} texture mapping is @code{CYLINDRICAL}.
+
+@findex @code{sipp_cone()}
+@smallexample
+Object *
+sipp_cone(topradius, bottomradius, resol, surface, shader, texture)
+        double   topradius;
+        double   bottomradius;
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{topradius, bottomradius}
+
+Radius of the cone at the top and bottom. If the cone should be pointed
+at one of the end, specify 0 as radius.
+
+@item
+@code{resol}
+
+The cone is tessellated into polygons, @code{resol} tells SIPP how
+many polygons there should be around it.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the cone.
+
+@item
+@code{shader}
+
+Shader to use when shading the cone.
+
+@item
+@code{texture}
+
+Choice of texture mapping.
+@end itemize
+
+@node     The torus object, The Bezier patch, The cone object, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The torus object
+@cindex torus object
+@cindex object, torus
+
+This function creates a torus centered around the z-axis and the origin.
+
+The @code{NATURAL} texture mapping is a two dimensional mapping with the
+@code{x} coordinate going around the "small" circle and the @code{y}
+coordinate going around the "large" circle.
+
+@findex @code{sipp_torus()}
+@smallexample
+Object *
+sipp_torus(bigradius, smallradius, res1, res2, surface, shader, texture)
+        double   bigradius;
+        double   smallradius;
+        int      res1;
+        int      res2;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{bigradius, smallradius}
+
+Radius of the big and small circle defining the torus, the small circle
+is swept along the big one to sweep out the torus.
+
+@item
+@code{res1, res2}
+
+The torus will be tessellated into @code{res1 x res2} polygons.
+@code{res1} is the number of vertices around the big circle and
+@code{rad2} is the number of vertices around the small one.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the torus.
+
+@item
+@code{shader}
+
+Shader to use when shading the torus.
+
+@item
+@code{texture}
+
+Choice of texture mapping.
+@end itemize
+
+
+@node     The Bezier patch, The Bezier rotation curve, The torus object, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The Bezier patch
+@cindex Bezier patch
+@cindex object, Bezier patch
+
+This function creates one or more Bezier patches. All created patches in
+a call will belong to the same surface.
+
+The texture coordinates are a bit special for the Bezier patches.
+@code{CYLINDRICAL} and @code{SPHERICAL} coordinates are not applicable,
+if they are specified, SIPP will use @code{NATURAL} anyway. The
+@code{NATURAL} mapping is a two dimensional mapping using the surface
+parameters @i{u} and @i{v}, see figure below. Note that these parameters
+range from 0 to 1 within each patch!
+
+The patches are defined with a list of vertex coordinates and a set
+of 16 indices into that list for each patch. The following figure show
+in which order the indices to vertices corresponding to control points for
+the patch should be given (and how @i{u} and @i{v} varies over the patch):
+@smallexample
+  v=1  13____14____15____16
+        |     |     |     |
+        |     |     |     |
+        9____10____11____12
+        |     |     |     |
+        |     |     |     |
+        5_____6_____7_____8
+        |     |     |     |
+        |     |     |     |
+  v=0   1_____2_____3_____4
+
+       u=0               u=1
+@end smallexample
+@findex @code{sipp_bezier_patch()}
+@smallexample
+Object *
+sipp_bezier_patch(num_vertex, vertex, num_patch, vx_index, resol, 
+                  surface, shader, texture)
+        int      num_vertex;
+        Vector   vertex[];
+        int      num_patch;
+        int      vx_index[];
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{num_vertex, vertex}
+
+The array @code{vertex} contains a list of @code{num_vertex} vertices.
+
+@item
+@code{num_patch}
+
+The number of patches that should be defined.
+
+@item
+@code{vx_index}
+
+A list of @code{16 * num_patch} indices into @code{vertex} defining the
+control mesh of the patches. The vertices for each patch should be
+specified in the order indicated in the figure above.
+
+@item
+@code{resol}
+
+Each patch will be tessellated into @code{resol x resol} polygons.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the patches.
+
+@item
+@code{shader}
+
+Shader to use when shading the patches.
+
+@item
+@code{texture}
+
+Choice of texture mapping (only @code{NATURAL} and @code{WORLD} is
+applicable.
+@end itemize
+
+
+@node     The Bezier rotation curve, The Bezier file, The Bezier patch, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The Bezier rotation curve
+@cindex Bezier rotation curve
+@cindex object, Bezier rotation curve
+
+This function creates a surface by rotating one or more Bezier curves
+about the world z-axis.
+
+The texture coordinates are a bit special for these surfaces.
+@code{SPHERICAL} and @code{CYLINDRICAL} mappings are not applicable, and
+@code{NATURAL} mapping will apply to the piece of surface created by
+each Bezier curve separately. The @code{NATURAL} mapping uses the curve
+parameter @i{u} along each curve as @code{x} coordinate and goes from 0
+to 1 around the perimeter of the rotational surface on the other axis
+
+The curves are defined with a list of vertex coordinates and a set
+of 4 indices into that list for each curve. The following figure show
+in which order the indices to vertices corresponding to control points for
+the curve should be given.
+@smallexample
+        4  u=1
+z-axis   \
+    ^     \
+    |      3
+    |      |
+    |      |
+    |      2
+    |       \
+    |        \
+    |         1  u=0
+@end smallexample
+@findex @code{sipp_bezier_rotcurve()}
+@smallexample
+Object *
+sipp_bezier_rotcurve(num_vertex, vertex, num_curve, vx_index, resol, 
+                  surface, shader, texture)
+        int      num_vertex;
+        Vector   vertex[];
+        int      num_curve;
+        int      vx_index[];
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{num_vertex, vertex}
+
+The array @code{vertex} contains a list of @code{num_vertex} vertices.
+
+@item
+@code{num_patch}
+
+The number of curves that should be defined.
+
+@item
+@code{vx_index}
+
+A list of @code{4 * num_patch} indices into @code{vertex} defining the
+control polygon for the curves. The vertices for each curve should be
+specified in the order indicated in the figure above.
+
+@item
+@code{resol}
+
+Each rotational surface will be tessellated into @code{resol x 4*resol}
+polygons, @code{resol} vertices along the curve and @code{4*resol}
+vertices around the perimeter.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the surface.
+
+@item
+@code{shader}
+
+Shader to use when shading the surface.
+
+@item
+@code{texture}
+
+Choice of texture mapping (only @code{NATURAL} and @code{WORLD} is
+applicable.
+@end itemize
+
+
+@node     The Bezier file, The teapot, The Bezier rotation curve, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The Bezier file
+@cindex Bezier file
+
+This functions reads descriptions of Bezier patches or Bezier curves
+in a predefined format from a file and creates objects out of them. The
+file can contain a description of patches or curves, but not both. If
+curves are defined, a surface will be created by rotating them about the
+world z-axis. The file contain basically the same information as the
+parameters to a call to @code{sipp_bezier_patch()} or
+@code{sipp_bezier_rotcurve()} and texture mapping is applied in the same
+way as in these functions too.
+
+The format of the file is very simple. Please note however, that the
+format differs slightly from the way the data were specified in the
+previous two functions. This is for compatibility with older versions.
+The differences are noted in detail at the spots marked @i{Diff:} below.
+
+First in the file is a keyword defining the type of description in the
+file, @code{bezier_curves:} or @code{bezier_patches:}. Then follows a
+description of the vertices (control points). First the word
+@code{vertices:} followed by an integer number that tells how many
+vertices there are in the description, then the word @code{vertex_list:}
+followed by the x, y and z coordinates for each vertex. The number of
+vertices must be same as the number given above. This is, however, not
+checked for.
+
+If the file contains curves, the keyword @code{curves:} followed by the
+number of Bezier curves in the file is on the next line. After this
+line, a line with the single keyword @code{curve_list:} follows. Lastly,
+the Bezier curves themselves follow as numbers in groups of four by
+four.@*
+@i{Diff:} Each number is an index into the vertex list with the first index
+having number 1.@*
+@i{Diff:} The indices are given in the opposit order compared to @code{sipp_bezier_rotcurve()}.
+
+If the file contains patches, the format is the same with the following
+exceptions: The word @code{patches:} is substituted for @code{curves:},
+the word @code{patch_list:} is substituted for @code{curve_list:} and
+the indices into the vertex list are grouped 16 by 16 instead of 4 by 4.@*
+@i{Diff:} Each number is an index into the vertex list with the first index
+having number 1.
+
+Comments can be inserted anywhere in a Bezier curve/patch description
+file by using the hashmark character, @code{#}. The comment lasts to the end of
+the line.
+
+As an example of a Bezier file is here the body of a standard Newell
+teapot:
+@smallexample
+# Bezier curves (rotational body) for teapot body.
+
+bezier_curves:
+
+vertices: 10
+vertex_list:
+    3.500000E-01    0.000000E+00    5.625000E-01
+    3.343750E-01    0.000000E+00    5.953125E-01
+    3.593750E-01    0.000000E+00    5.953125E-01
+    3.750000E-01    0.000000E+00    5.625000E-01
+    4.375000E-01    0.000000E+00    4.312500E-01
+    5.000000E-01    0.000000E+00    3.000000E-01
+    5.000000E-01    0.000000E+00    1.875000E-01
+    5.000000E-01    0.000000E+00    7.500000E-02
+    3.750000E-01    0.000000E+00    1.875000E-02
+    3.750000E-01    0.000000E+00    0.000000E+00
+
+curves:    3
+curve_list:
+
+  1 2 3 4
+
+  4 5 6 7
+
+  7 8 9 10
+
+#End of teapot bezier file
+@end smallexample
+@findex @code{sipp_bezier_file()}
+@smallexample
+Object *
+sipp_bezier_file(file, resol, surface, shader, texture)
+        FILE    *file;
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{file}
+
+An open filepointer to the file containing the descriptions.
+
+@item
+@code{resol}
+
+Each rotational surface will be tessellated into @code{resol x 4*resol}
+polygons, @code{resol} vertices along the curve and @code{4*resol}
+vertices around the perimeter.
+
+Patches will be tessellated into @code{resol x resol} polygons.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the surfaces.
+
+@item
+@code{shader}
+
+Shader to use when shading the surfaces.
+
+@item
+@code{texture}
+
+Choice of texture mapping (only @code{NATURAL} and @code{WORLD} is
+applicable.
+@end itemize
+
+
+@node     The teapot, , The Bezier file, Object primitives
+@comment  node-name,  next,  previous,  up
+@section The teapot
+@cindex teapot
+
+This function creates a model of the famous "Utah Teapot" as a SIPP
+object. The model is built as a combination of four subobjects: the
+body, the lid, the handle and the spout. These subobjects are also
+available as separate primitive objects.
+
+@menu
+* The teapot body::     Creating a teapot body 
+* The teapot lid::      Creating a teapot lid
+* The teapot handle::   Creating a teapot handle
+* The teapot spout::    Creating a teapot spout
+@end menu
+
+The body and the lid are created as Bezier rotation curves while the
+handle and the spout are created as sets of four Bezier patches each.
+Texture coordinates and resolution are assigned in the same way as for
+these primitives (@xref{The Bezier rotation curve} and @xref{The Bezier
+patch}).
+
+@findex @code{sipp_teapot()}
+@smallexample
+Object *
+sipp_teapot(resol, surface, shader, texture)
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{resol}
+
+Each rotational surface will be tessellated into @code{resol x 4*resol}
+polygons, @code{resol} vertices along the curve and @code{4*resol}
+vertices around the perimeter. The teapot body is built from three
+rotational surfaces and the lid from two.
+
+Patches will be tessellated into @code{resol x resol} polygons. Both the
+handle and the spout are built from four patches.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the surfaces.
+
+@item
+@code{shader}
+
+Shader to use when shading the surfaces.
+
+@item
+@code{texture}
+
+Choice of texture mapping (only @code{NATURAL} and @code{WORLD} is
+applicable.
+@end itemize
+
+
+@node     The teapot body, The teapot lid, , The teapot    
+@comment  node-name,  next,  previous,  up
+@subsection The teapot body
+@cindex teapot body
+
+This function creates the body of the "Utah Teapot" from three Bezier
+rotational curves. 
+
+@findex @code{sipp_teapot_body()}
+@smallexample
+Object *
+sipp_teapot_body(resol, surface, shader, texture)
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{resol}
+
+Each rotational surface will be tessellated into @code{resol x 4*resol}
+polygons, @code{resol} vertices along the curve and @code{4*resol}
+vertices around the perimeter. The teapot body is built from three
+rotational surfaces.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the surfaces.
+
+@item
+@code{shader}
+
+Shader to use when shading the surfaces.
+
+@item
+@code{texture}
+
+Choice of texture mapping (only @code{NATURAL} and @code{WORLD} is
+applicable.
+@end itemize
+
+@node     The teapot lid, The teapot handle, The teapot body, The teapot    
+@comment  node-name,  next,  previous,  up
+@subsection The teapot lid
+@cindex teapot lid
+
+This function creates the lid of the "Utah Teapot" from two Bezier
+rotational curves. 
+
+@findex @code{sipp_teapot_lid()}
+@smallexample
+Object *
+sipp_teapot_lid(resol, surface, shader, texture)
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{resol}
+
+Each rotational surface will be tessellated into @code{resol x 4*resol}
+polygons, @code{resol} vertices along the curve and @code{4*resol}
+vertices around the perimeter. The teapot lid is built from two
+rotational surfaces.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the surfaces.
+
+@item
+@code{shader}
+
+Shader to use when shading the surfaces.
+
+@item
+@code{texture}
+
+Choice of texture mapping (only @code{NATURAL} and @code{WORLD} is
+applicable.
+@end itemize
+
+@node     The teapot handle, The teapot spout, The teapot lid, The teapot    
+@comment  node-name,  next,  previous,  up
+@subsection The teapot handle
+@cindex teapot handle
+
+This function creates the handle of the "Utah Teapot" from four Bezier
+patches.
+
+@findex @code{sipp_teapot_handle()}
+@smallexample
+Object *
+sipp_teapot_handle(resol, surface, shader, texture)
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{resol}
+
+Each patch will be tessellated into @code{resol x resol} polygons.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the surfaces.
+
+@item
+@code{shader}
+
+Shader to use when shading the surfaces.
+
+@item
+@code{texture}
+
+Choice of texture mapping (only @code{NATURAL} and @code{WORLD} is
+applicable.
+@end itemize
+
+@node     The teapot spout, , The teapot handle, The teapot    
+@comment  node-name,  next,  previous,  up
+@subsection The teapot spout
+@cindex teapot spout
+
+This function creates the spout of the "Utah Teapot" from four Bezier
+patches.
+
+@findex @code{sipp_teapot_spout()}
+@smallexample
+Object *
+sipp_teapot_spout(resol, surface, shader, texture)
+        int      resol;
+        void    *surface;
+        Shader  *shader;
+        int      texture;
+@end smallexample
+@itemize
+@item
+@code{resol}
+
+Each patch will be tessellated into @code{resol x resol} polygons.
+
+@item
+@code{surface}
+
+Pointer to the surface description to use when shading the surfaces.
+
+@item
+@code{shader}
+
+Shader to use when shading the surfaces.
+
+@item
+@code{texture}
+
+Choice of texture mapping (only @code{NATURAL} and @code{WORLD} is
+applicable.
+@end itemize
+
+
+@node     Future enhancements, Reporting bugs, Object primitives, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Future enhancements
+@cindex Enhancements
+
+SIPP is constantly under development and we often run into new
+interesting things that we would like to see included. Here is a small
+list of such things, some more realistic than others. If you feel like
+adding to this list, please do! Check out the chapter on bug reports
+(@ref{Reporting bugs}) for information on how to get in touch with us.
+
+@itemize @bullet
+@item
+More sophisticated anti-aliasing. This should not be so difficult with the
+new pixel buffer.
+
+@item
+Generalized interface to lightsources, much in the same way as the
+shader interface. This would allow users to design "lightsource shaders"
+
+@item
+Better support for animation.
+
+@item
+Support for some more advanced object primitives, especially patches
+(Hermite, NURBS, etc.)
+
+@item
+Four channel output. Write out an alpha channel together with RGB. This
+is troublesome if we want to stick with the ppm-format which does not
+support this. Possible solutions include switching to Utah Raster format
+or writing the alpha channel in a separate pgm-file.
+
+@item
+Curved surface rendering (this would mean a name change I guess... :-) )
+
+@item
+Use some sort of "virtual memory" by swapping things to disk. This would
+make it possible to run SIPP on machines with brain-damaged OS and/or
+hardware which doesn't support real VM.
+
+@item
+Front-end for reading RIB-files (RenderMan Interface Bytestream). This
+might not be as impossible as it may sound.
+
+@item
+Store objects in a "higher order" format, and tessellate to polygons at
+rendering time. This could allow generalizing the object interface too
+so users could supply their own objects, with tessellation functions.
+(Yes, I have been reading the RenderMan specs...)
+@end itemize
+
+@section Contributions
+
+We are grateful for all donations of code that we can receive. We are
+especially looking for new primitive objects and interesting shaders.
+
+@node     Reporting bugs, Concept index, Future enhancements, Top    
+@comment  node-name,  next,  previous,  up
+@chapter Reporting bugs
+@cindex Reporting bugs
+@cindex Bugs, reporting
+
+We have tried to test SIPP thoroughly, but since it is constantly being
+developed, there are probably numerous bugs remaining, both in the
+source code and in the documentation.  If you find a bug in either,
+please send a bug report to either @code{jonas-y@@isy.liu.se} or
+@code{ingwa@@isy.liu.se}. We will try to be as quick as possible in
+fixing the bugs and redistributing the fixes.
+
+/Jonas Yngvesson & Inge Wallin
+
+
+@node    Concept index, Function index, Reporting bugs, Top
+@comment node-name,    next,  previous,      up
+@unnumbered Concept index
+
+@printindex cp
+
+@node    Function index,    ,  Concept index, Top
+@comment node-name,    next,  previous,      up
+@unnumbered Function index
+
+@printindex fn
+
+@contents
+@bye

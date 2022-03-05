@@ -1,0 +1,325 @@
+.\" Copyright Equivalent Software HB   1992
+.\" This program and documentation may be distributed freely under
+.\" the terms of GNU GENERAL PUBLIC LICENSE.
+.TH SHADERS 3X "December , 1990" 3X
+.SH NAME
+shaders - a collection of shaders for SIPP.
+.SH SYNOPSIS
+\fI#include <sipp.h>\fR
+.br
+\fI#include <shaders.h>\fR
+.sp
+[g]cc [\fIflags\fR] \fIfiles\fR -lsipp -lm [ \fIlibraries\fR ]
+
+.SH DESCRIPTION
+SIPP provides, as default, a simple shading model and a shading function
+called \fIbasic_shader()\fR. If this shader is not sufficient for a particular
+surface, the user can implement his/her own shading function and have SIPP
+call that one instead. SIPP also has a set of ready made shaders which
+provides other shading models or special effects.
+.sp
+This manual gives a short description the set of
+shaders beside \fIbasic_shader()\fR that are included in the library.  All
+shaders described here, except \fIstrauss_shader()\fR and \fIphong_shader()\fR
+provide some kind of special effect on a surface and call \fIbasic_shader()\fR
+to do the actual shading calculations. See the user manual for a detailed
+description of the shaders.
+
+.SH SHADERS AND SURFACE DESCRIPTORS
+The following shader functions are provided with the SIPP library. 
+
+.IP \fIstrauss_shader()\fR
+\fIstrauss_shader()\fR is an implementation of a shader described by Paul
+Strauss in IEEE CG&A Nov. 1990. The shading model Strauss designed has
+parameters that is easy to grasp and have a reasonably deterministic effect on
+a surface, but yet produces very realistic results.
+.sp
+The surface description used in \fIstrauss_shader()\fR is called
+\fIStrauss_desc\fR and looks like this:
+.br
+\fItypedef struct {\fR
+.br
+\fI\    double  ambient;\fR
+.br
+\fI\    double  smoothness;\fR
+.br
+\fI\    double  metalness;\fR
+.br
+\fI\    Color   color;\fR
+.br
+\fI\    Color   opacity;\fR
+.br
+\fI} Strauss_desc;\fR
+.sp
+\fIambient\fR is a value between 0 and 1 which determines how much of the base
+color of a surface that is visible when it is not illuminated by any
+lightsource.
+.br
+\fIsmoothness\fR is a value between 0 and 1 that describes how smooth the
+surface is. This parameter controls both diffuse and specular reflections. 0
+means a dull surface while 1 means a very smooth and shiny one.
+.br
+\fImetalness\fR is alo a value between 0 and 1. It describes how metallic the
+material is. It controls among other things how much of the surface color
+should be mixed into the specular reflections at different angles. 0 means a
+non-metal while 1 means a very metallic surface.
+.br
+\fIcolor\fR is (of course) the base color of the surface.
+.br
+\fIopacity\fR specifies how opaque the surface is. This is stored as a
+color to allow different opacities for the different color bands.
+
+.IP \fIwood_shader()\fR
+\fIwood_shader()\fR creates a simulated wood texture on a surface.
+It uses two colors, one as the base (often lighter) color of the wood
+and one as the color of the (often darker) rings in it.
+The rings are put into the base color about the x-axis and are then distorted 
+using \fInoise()\fR and \fIturbulence()\fR. A similar pattern is repeated at
+regular intervals to create an illusion of logs or boards.
+.sp
+The surface description for a wood surface is called
+\fIWood_desc\fR and is defined as follows:
+.br
+\fItypedef struct {\fR
+.br
+\fI\    double   ambient;\fR
+.br
+\fI\    double   specular;\fR
+.br
+\fI\    double   c3;\fR
+.br
+\fI\    double   scale;\fR
+.br
+\fI\    Color    base;\fR
+.br
+\fI\    Color    ring;\fR
+.br
+\fI\    Color   opacity;\fR
+.br
+\fI} Wood_desc;\fR
+.sp
+Except for the two colors and the field \fIscale\fR, \fIWood_desc\fR
+looks exactly like a \fISurf_desc\fR and the fields are used in the
+same way. 
+.br
+\fIscale\fR is a factor which determines the size of the
+wood pattern depending on the size of the texture coordinate system
+in relation to the world coordinate system. You will have to
+experiment some to get this right.
+.br
+\fIbase\fR is the color of the base material, and \fIring\fR is the
+color of the darker rings.
+.br
+\fIopacity\fR specifies how opaque the surface is. This is stored as a
+color to allow different opacities for the different color bands.
+
+.IP \fImarble_shader()\fR
+\fImarble_shader()\fR creates a simulated marble texture on a surface.
+It uses two colors, one as the base material and one as the
+interspersed material. The interspersed material is put into the
+base material in strips that are distorted using \fInoise()\fR and
+\fIturbulence()\fR. 
+.sp
+The surface description for a marble surface is called
+\fIMarble_desc\fR and is defined as follows:
+.br
+\fItypedef struct {\fR
+.br
+\fI\    double   ambient;\fR
+.br
+\fI\    double   specular;\fR
+.br
+\fI\    double   c3;\fR
+.br
+\fI\    double   scale;\fR
+.br
+\fI\    Color    base;\fR
+.br
+\fI\    Color    strip;\fR
+.br
+\fI\    Color   opacity;\fR
+.br
+\fI} Marble_desc;\fR
+.sp
+Except for the two colors and the field \fIscale\fR, \fIMarble_desc\fR
+looks exactly like a \fISurf_desc\fR and the fields are used in the
+same way. 
+.br
+\fIscale\fR is a factor which determines the size of the
+marble pattern depending on the size of the texture coordinate system
+in relation to the world coordinate system. 
+.br
+\fIbase\fR is the color of the base material, and \fIstrip\fR is the
+color of the interspersed material.
+.br
+\fIopacity\fR specifies how opaque the surface is. This is stored as a
+color to allow different opacities for the different color bands.
+
+.IP \fIgranite_shader()\fR
+\fIgranite_shader()\fR is very similar to \fImarble_shader()\fR in
+that it also
+mixes two colors using \fInoise()\fR and \fIturbulence()\fR. The
+difference is in 
+how the mixing is done. The two colors are mixed whithout treating
+them separately in any way. 
+.sp
+The surface description used in \fIgranite_shader()\fR is called
+\fIGranite_desc\fR and is defined as follows:
+.br
+\fItypedef struct {\fR
+.br
+\fI\    double   ambient;\fR
+.br
+\fI\    double   specular;\fR
+.br
+\fI\    double   c3;\fR
+.br
+\fI\    double   scale;\fR
+.br
+\fI\    Color    col1;\fR
+.br
+\fI\    Color    col2;\fR
+.br
+\fI\    Color   opacity;\fR
+.br
+\fI} Granite_desc;\fR
+.sp
+The fields have the same meaning as in \fIMarble_desc\fR.
+
+.IP \fIbozo_shader()\fR
+\fIbozo_shader()\fR uses \fInoise()\fR to chose a color from a fixed set.
+The range of possible return value from \fInoise()\fR are divided into parts
+of equal size and each part is assigned a color. The size of the parts
+are dependent on the number of colors.
+.sp
+The surface description is called \fIBozo_desc\fR and is defined as
+follows:
+.br
+\fItypedef struct {\fR
+.br
+\fI\    Color   *colors;\fR
+.br
+\fI\    int      no_of_cols;\fR
+.br
+\fI\    double   ambient;\fR
+.br
+\fI\    double   specular;\fR
+.br
+\fI\    double   c3;\fR
+.br
+\fI\    double   scale;
+.br
+\fI\    Color   opacity;\fR
+.br
+\fI} Bozo_desc;\fR
+.sp
+\fIcolors\fR is a pointer to an array of \fIColor\fR structs and
+\fIno_of_cols\fR defines the number of entries in this array. The other
+fields have the same function as in the prevoiusly described shaders.
+
+.IP \fImask_shader()\fR
+\fImask_shader()\fR uses a decision function to mask between
+two different shaders.
+The user supplies a pointer
+to some data that the function need and a pointer to the function itself. 
+.sp
+The surface description is called \fIMask_desc\fR and has the
+following definition:
+.br
+\fItypedef struct {\fR
+.br
+\fI\    Shader *t_shader;\fR
+.br
+\fI\    void   *t_surface;\fR
+.br
+\fI\    Shader *f_shader;\fR
+.br
+\fI\    void   *f_surface;\fR
+.br
+\fI\    void   *mask_data;\fR
+.br
+\fI\    bool  (*masker)();\fR
+.br
+\fI} Mask_desc;\fR
+.sp
+\fIt_shader\fR is used together with the surface description
+\fIt_surface\fR when \fImasker()\fR returns TRUE.
+.br
+\fIf_shader\fR is used together with the surface description
+\fIf_surface\fR when \fImasker()\fR returns FALSE.
+.br
+\fImask_data\fR is a pointer to the data that the decision function need.
+.br
+\fImasker\fR is the decision function.
+
+.IP \fIbumpy_shader()\fR
+\fIbumpy_shader()\fR is a function that perturbates the normal of a
+surface using \fIDnoise()\fR. Any other shader can be used to do the final
+shading calculations. 
+.sp
+The surface description is called \fIBumpy_desc\fR and is defined as
+follows:
+.br
+\fItypedef struct {\fR
+.br
+\fI\    Shader *shader;\fR
+.br
+\fI\    void   *surface;\fR
+.br
+\fI\    double scale;\fR
+.br
+\fI\    bool   bumpflag;\fR
+.br
+\fI\    bool   holeflag;\fR
+.br
+\fI} Bumpy_desc;\fR
+.sp
+\fIshader\fR and \fIsurface\fR define the shader to be used for the
+final shading calculations. 
+.br
+\fIscale\fR has the same meaning as in previous shaders using \fInoise()\fR.
+.br
+\fIbumpflag\fR and \fIholeflag\fR make it possible to flatten out
+half of the bumps. If only \fIbumpflag\fR is TRUE only bumps "standing
+out" from the surface are visible. The rest of the surface will be smooth.
+If, on the other hand, only \fIholeflag\fR is TRUE only bumps going
+"into" the surface will be visible, thus giving the surface an
+eroded look. If both flags are true, the whole surface will get a
+bumpy appearence, rather like an orange.
+
+.IP \fIplanet_shader()\fR
+\fIplanet_shader()\fR is a somewhat specialized shader that produces a texture
+that resembles a planet surface. The planet is of the Tellus type with a
+mixture of oceans and continents. Some of the surface is covered by
+semi-transparent clouds which enhances the effect greatly. On the other hand,
+no polar caps are provided and this decreases the realism.
+.sp
+The texture is 3-dimensional, so it is possible to create cube planets or even
+planets with cut-out parts that still have surfaces that resemble the earth
+surface. The texture is not scalable, and is designed to be used with texture
+coordinats in the range -1.0 to 1.0, e.g. a unit sphere. Of course the world
+coordinats need not have the same order of magnitude.
+.sp
+\fIplanet_shader()\fR uses an ordinary \fISurf_desc\fR in which the
+\fIcolor\fR field is ignored.
+
+.SH SEE ALSO
+sipp(3X) - simple polygon processor, a 3d-graphics library
+.br
+geometric - Vector and matrix functions for SIPP.
+.br
+primitives(3X) - a collection of geometric primitives for SIPP.
+.br
+sipp_pixmapq(3X) - pixmap handling code for SIPP.
+.br
+sipp_bitmap(3X) - bitmap handling code for SIPP.
+
+.SH AUTHORS
+Jonas Yngvesson\	\	(jonas-y@isy.liu.se)
+.br
+Inge Wallin\		(ingwa@isy.liu.se)
+
+.SH BUGS
+The planet texture should be enhanced with polar caps and it should be
+possible to give parameters to control, among other factors, the ratio of
+ocean/land and the cloudiness.

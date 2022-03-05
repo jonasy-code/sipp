@@ -1,0 +1,269 @@
+.\" Copyright Equivalent Software HB   1992
+.\" This program and documentation may be distributed freely under
+.\" the terms of GNU GENERAL PUBLIC LICENSE.
+.TH GEOMETRIC 3X "July , 1991" 3X
+.SH NAME
+geometric - Vector and matrix functions for the sipp(3X) library
+
+.SH SYNOPSIS
+\fI#include <geometric.h>\fR
+.sp
+[g]cc [\fIflags\fR] \fIfiles\fR -lsipp -lm [ \fIlibraries\fR ]
+
+.SH DESCRIPTION
+The sipp(3X) 3D rendering library uses a lot of vector calculations
+and geometric transformations.  The functions which implement these
+features are declared in geometric.h and are described in this manual.
+
+.SH VECTOR OPERATIONS
+Sipp uses row vectors, not column vectors and a vector is defined as
+follows:
+
+\fItypedef \ struct\ {\fR
+.br
+\fI	double\ x;\fR
+.br
+\fI	double\ y;\fR
+.br
+\fI	double\ z;\fR
+.br
+\fI}\ Vector;\fR
+
+A vector is used both for directional vectors and points (positional
+vectors).  In the description of the sipp vector macros and functions
+below, lower case letters denote scalar values and upper case letters
+denote vectors.
+
+.IP \fIMakeVector(V,\ xx,\ yy,\ zz)
+Put \fIxx\fR, \fIyy\fR and \fIzz\fR in the x, y and z slot of the
+Vector \fIV\fR respectively.
+
+.IP \fIVecNegate(A)\fR
+Negate all components of the Vector \fIA\fR.
+
+.IP \fIVecDot(A,\ B)\fR
+Return the dot product of the two Vectors \fIA\fR and \fIB\fR.
+
+.IP \fIVecLen(A)\fR
+Return the length of the Vector \fIA\fR.
+
+.IP \fIVecCopy(B,\ A)\fR
+Copy the Vector \fIA\fR to the Vector \fIB\fR (\fIB\fR = \fIA\fR;
+using C notation).
+
+.IP \fIVecAdd(C,\ A,\ B)\fR
+Add the two Vectors \fIA\fR and \fIB\fR and put the result in \fIC\fR
+(Add \fIA\fR to \fIB\fR giving \fIC\fR; using COBOL notation).
+
+.IP \fIVecSub(C,\ A,\ B)\fR
+Subtract the Vector \fIB\fR from Vector \fIA\fR and put the result in
+\fIC\fR (\fIC\fR = \fIA\fR - \fIB\fR; using C notation).
+
+.IP \fIVecScalMul(B,\ a,\ A)\fR
+Multiply the Vector \fIA\fR with the scalar \fIa\fR and put the result
+in Vector \fIB\fR (\fIB\fR = \fIa\fR * \fIA\fR; using C notation).
+
+.IP \fIVecAddS(C,\ a,\ A,\ B)\fR
+Multiply the Vector \fIA\fR with the scalar \fIa\fR, add it to Vector
+\fIB\fR and put the result in Vector \fIC\fR (\fIC\fR = \fIa\fR *
+\fIA\fR + \fIB\fR; using C notation). 
+
+.IP \fIVecComb(C,\ a,\ A,\ b,\ B)\fR
+Linearly combine the two Vectors \fIA\fR and \fIB\fR and put the
+result in Vector \fIC\fR (\fIC\fR = \fIa\fR * \fIA\fR + \fIb\fR *
+\fIB\fR; using C notation).  
+
+.IP \fIVecCross(C,\ A,\ B)\fR
+Cross multiply Vector \fIA\fR with Vector \fIB\fR and put the result
+in \fIC\fR (\fIC\fR = \fIA\fR X \fIB\fR; using C notation).
+
+.IP \fIvoid\ vecnorm(v)\fR
+.br
+\fIVector\ *v;\fR
+.sp
+Normalize the vector \fIv\fR, i.e. keep the direction but make it have
+length 1.  The length of \fIv\fR should not be equal to 0 to begin with.
+.B NOTE:
+This is the only function operating on vectors in sipp.
+
+.SH MATRIX OPERATIONS
+An ordinary homogenous transformation matrix has 4 X 4 elements.
+However, all linear transformations only use 4 X 3 values so to save
+space a sipp transformation matrix only store 4 X 3 values.  Thus the
+transformation matrix used in sipp is defined as follows:
+
+\fItypedef\ struct\ {\fR
+.br
+\fI	double\ mat[4][3];\fR
+.br
+\fI}\ Transf_mat;\fR
+
+We wrap a struct around the two-dimensional array since we want to be
+able to say things like \fI&mat\fR without being forced to write
+\fI(Transf_mat\ *)\ &mat[0]\fR which we find horribly ugly.
+
+There is a predefined identity matrix declared in geometric.h which
+you can use if you want to:
+
+\fIextern\ Transf_mat\ ident_matrix;\fR
+
+The rest of this section describes the macro and functions defined in
+the sipp library which work on sipp transformation matrixes.
+
+.IP \fIMatCopy(A,\ B)\fR
+This macro copies the matrix \fIB\fR to the matrix \fIA\fR. \fIA\fR
+and \fIB\fR should both be pointers.
+.B NOTE:
+This is the only macro operating on matrices in sipp.
+
+
+.IP \fITransf_mat\ *transf_mat_create(initmat)\fR
+.br
+\fITransf_mat\ *initmat;\fR
+.sp
+Allocate memory for a new transformation matrix and if \fIinitmat\fR
+is equal to \fINULL\fR, set the new matrix to the identity matrix.
+Otherwise set the new matrix to the contents of \fIinitmat\fR.  Return
+a pointer to the new matrix.
+
+.IP \fITransf_mat\ *transf_mat_destruct(mat)\fR
+.br
+\fITransf_mat\ *initmat;\fR
+.sp
+Free the memory associated with the matrix \fImat\fR.
+
+.IP \fIvoid\ mat_translate(mat,\ dx,\ dy,\ dz)\fR
+.br
+\fITransf_mat\ *mat;\fR
+.br
+\fIdouble\ dx;\fR
+.br
+\fIdouble\ dy;\fR
+.br
+\fIdouble\ dz;\fR
+.sp
+Set \fImat\fR to the transformation matrix that represents the
+concatenation of the previous transformation in \fImat\fR and a
+translation along the vector (\fIdx\fR,\ \fIdy\fR,\ \fIdz\fR).
+
+.IP \fIvoid\ mat_rotate_x(mat,\ ang)\fR
+.br
+\fITransf_mat\ *mat;\fR
+.br
+\fIdouble\ ang;\fR
+.sp
+Set \fImat\fR to the transformation matrix that represents the
+concatenation of the previous transformation in \fImat\fR and a
+rotation with the angle \fIang\fR around the X axis. The angle
+\fIang\fR is expressed in radians.
+
+.IP \fIvoid\ mat_rotate_y(mat,\ ang)\fR
+.br
+\fITransf_mat\ *mat;\fR
+.br
+\fIdouble\ ang;\fR
+.sp
+Set \fImat\fR to the transformation matrix that represents the
+concatenation of the previous transformation in \fImat\fR and a
+rotation with the angle \fIang\fR around the Y axis.  The angle
+\fIang\fR is expressed in radians.
+
+.IP \fIvoid\ mat_rotate_z(mat,\ ang)\fR
+.br
+\fITransf_mat\ *mat;\fR
+.br
+\fIdouble\ ang;\fR
+.sp
+Set \fImat\fR to the transformation matrix that represents the
+concatenation of the previous transformation in \fImat\fR and a
+rotation with the angle \fIang\fR around the Z axis.  The angle
+\fIang\fR is expressed in radians.
+
+.IP \fIvoid\ mat_rotate(mat,\ point,\ vector,\ ang)\fR
+.br
+\fITransf_mat\ *mat;\fR
+.br
+\fIVector\ *point;\fR
+.br
+\fIVector\ *vector\fR
+.br
+\fIdouble\ ang;\fR
+.sp
+Set \fImat\fR to the transformation matrix that represents the
+concatenation of the previous transformation in \fImat\fR and a
+rotation with the angle \fIang\fR around the line represented by the
+point \fIpoint\fR and the vector \fIvector\fR.  The angle
+\fIang\fR is expressed in radians.
+
+.IP \fIvoid\ mat_scale(mat,\ xscale,\ yscale,\ zscale)\fR
+.br
+\fITransf_mat\ *mat;\fR
+.br
+\fIdouble\ xscale;\fR
+.br
+\fIdouble\ yscale;\fR
+.br
+\fIdouble\ zscale;\fR
+.sp
+Set \fImat\fR to the transformation matrix that represents the
+concatenation of the previous transformation in \fImat\fR and a
+scaling with the scaling factors (\fIxscale\fR,\ \fIyscale\fR,\ \fIzscale\fR).
+
+.IP \fIvoid\ mat_mirror_plane(mat,\ point,\ normal)\fR
+.br
+\fITransf_mat\ *mat;\fR
+.br
+\fIVector\ *point;\fR
+.br
+\fIVector\ *normal\fR
+.sp
+Set \fImat\fR to the transformation matrix that represents the
+concatenation of the previous transformation in \fImat\fR and a
+mirroring in the plane defined by the point \fIpoint\fR and the normal
+vector \fInormal\fR. 
+
+.IP \fIvoid\ mat_mul(res,\ a,\ b)\fR
+.br
+\fITransf_mat\ *res\fR
+.br
+\fITransf_mat\ *a\fR
+.br
+\fITransf_mat\ *b\fR
+.sp
+Multiply the two matrixes \fIa\fR and \fIb\fR and put the result in
+the matrix \fIres\fR.  All three parameters are pointers to matrixes.
+It is possible for \fIres\fR to point at the same matrix as either
+\fIa\fR or \fIb\fR since the result is stored in a temporary matrix
+during the computations.
+
+.IP \fIvoid\ point_transform(res,\ vec,\ mat)\fR
+.br
+\fIVector\ *res\fR
+.br
+\fIVector\ *vec;\fR
+.br
+\fITransf_mat\ *mat;\fR
+.sp
+Transform the point (vector) \fIvec\fR with the transformation matrix
+\fImat\fR and put the result into the vector \fIres\fR.  The two
+vectors \fIres\fR and \fIvec\fR should not be the same vector since no
+temporary is used during the computations.
+
+.SH SEE ALSO
+sipp(3X) - simple polygon processor, a 3d-graphics library
+.br
+shaders(3X) - a collection of shaders for \fIsipp\fR.
+.br
+primitives(3X) - a collection of object primitives for \fIsipp\fR.
+.br
+sipp_pixmap(3X) - pixmap handling code for \fIsipp\fR.
+.br
+sipp_bitmap(3X) - bitmap handling code for \fIsipp\fR.
+
+.SH AUTHORS
+Jonas Yngvesson\	\	(jonas-y@isy.liu.se)
+.br
+Inge Wallin\		(ingwa@isy.liu.se)
+
+.SH BUGS
+No known bugs.

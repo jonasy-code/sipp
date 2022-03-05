@@ -1,0 +1,135 @@
+                   Compatibility Guide for SIPP 3.1
+                   ================================
+
+There should hopefully be no compatibility problem between versions
+3.1 and 3.0 of SIPP. The only differences in the interface are that
+object_sub_surface() and object_sub_subobj() now return a bool value.
+However, since these two were previously void-returns there should be
+no problems. Apart from that there are only some new functions which
+does not affect old code.
+
+object_delete() has changed name to object_unref() but the old name
+are still available for compatibility. This will be dropped from
+future releases though, so we do advice you to update your code.
+
+
+Compatibility between 3.0 and 2.x
+
+  To support the new features introduced in version 3.0 of SIPP we had
+to drop some backward compatibility.  Most significantly, the
+interface to shaders and shader-lightsource interaction has changed
+due to added functionality.  Some functions have been replaced by
+similar functions with new names and other functions take new
+parameters.  How difficult it is to port a program which used an older
+version of SIPP (2.x) varies depending on how much of the features in
+SIPP the program used.
+
+  Some of the incompatibilities can be fixed by just replacing old
+function calls with new ones. The include files in the library defines
+a number of macros which makes this automatically whenever possible.
+The new calls which are produced in this way supply new parameters so
+that the call have the same effect as in the previous version. In
+the listing of incompatibilities below we have marked all cases where
+the include files take care of them with an asterisk "*".  If you
+check the list and find only *-marked entries that apply to your
+program, a simple recompilation should be enough.  Otherwise the code
+must be changed.
+
+We strongly suggest that you update your code to the new calling
+conventions, even if the macros fix all your problems since the macros
+might not be supported in future releases.
+
+
+* The internal "database" which contained all objects which should be
+  included in a scene has been dropped.  Instead there is a
+  "world"-object which should have all objects in a rendering somewhere
+  below it in the object hierarchy. 
+  Fix needed:
+      Change "object_install(foo)" to "object_add_subobj(sipp_world, foo)"
+      Change "object_uninstall(foo)" to "object_sub_subobj(sipp_world, foo)"
+
+
+* The functions for manipulating the viewpoint has disappeared.  Instead
+  there is a predefined camera which is used by default.
+  Fix needed:
+      Change "view_from(x, y, z)" to "camera_position(sipp_camera, x, y, z)"
+      Change "view_at(x, y, z)" to "camera_look_at(sipp_camera, x, y, z)"
+      Change "view_up(x, y, z)" to "camera_up(sipp_camera, x, y, z)"
+      Change "view_focal(r)" to "camera_focal(sipp_camera, r)"
+      Change "viewpoint(x, y, z, x2, y2, z2, ux, uy, uz, r)" to
+             camera_params(sipp_camera,x, y, z, x2, y2, z2, ux, uy, uz, r)"
+
+
+* The lightsource interface have changed a lot to support new types of 
+  lightsources and shadow casting.  Directional lightsources are still
+  available though, but a different function is used to create them.  
+  Fix needed:
+      Change "lightsource_push(x, y, z, i)" to 
+             "lightsource_create(x, y, z, i, i, i, LIGHT_DIRECTION)"
+
+
+* The function "render_image_pixmap()" is replaced with a new function
+  which does the same thing but has a more descriptive name and takes
+  its parameters in a more logical order.
+  Fix needed:
+      Change "render_image_pixmap(w, h, data, function, m, o)" to
+             "render_image_func(w, h, function, data, m, o)"
+
+
+  The surface descriptions for almost all the included shaders
+  (including basic_shader()) have a new entry describing the opacity of
+  the surface.  It is stored in a Color structure to allow different
+  opacity in the different color bands.  1.0 means a totally opaque
+  object while 0.0 means a totally transparent (invisible) one.
+  Fix needed:
+      Add a definition of opacity whenever a surface description gets
+      filled in with values.  Check the manual to see which surface
+      descriptions have had this member added.
+
+
+  The functions "surface_basic_create()" and "surface_basic_shader()"
+  which fills in a Surf_desc indirectly have also got new parameters
+  which define opacity.  Unfortunately it is not possible to add
+  parameters to a function using a macro, so you will have to fix this
+  yourself by hand. 
+  Fix needed:
+      Add parameters describing opacity to "surface_basic_create()"
+      and "surface_basic_shader()".
+
+
+  The mask shader is no longer specialized to use an image of some kind
+  to mask between two shaders.  It is now much smaller, and more
+  general but leaves more work to be done by the user. :-) 
+  Fix needed:
+      Check the manual to see the new definition of mask_shader() and
+      its surface description and change your code to fit it.
+
+
+  All functions that create object primitives have a new parameter
+  added which defines the kind of texture coordinates that should be
+  mapped onto the object.  If your program does not use texture
+  coordinates (which includes using a supplied shader that does) and
+  you have a forgiving compiler, you can ignore this.  It is probably
+  safest to add the new parameter though.
+  Fix needed:
+      Add a parameter defining texture coordinate system to all object
+      functions (sipp_cube(), sipp_cone() etc.).  To get the same
+      effect as in previous versions, use the parameter "WORLD".
+
+
+  The function that creates surfaces by rotating a bezier curve now
+  rotates the curve about the z-axis instead of the y-axis since this
+  is more like what most other rendering packages do.
+  Fix needed:
+      Change any files describing bezier curves. In the vertex list
+      you do the following substitutions:
+         new y <=> -old z  (Note the negation)
+         new z <=> old y
+
+
+  Finally, if you have written your own shaders there are quite large
+  differences.  We strongly suggest you read the section "Writing your
+  own shaders" in the user manual for detailed information of the new
+  interface.  Primarily, the shaders take more and different
+  parameters and use a special function to evaluate light from
+  lightsources. 

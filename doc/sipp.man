@@ -1,0 +1,744 @@
+.\" Copyright Equivalent Software HB   1992
+.\" This program and documentation may be distributed freely under
+.\" the terms of GNU GENERAL PUBLIC LICENSE.
+.TH SIPP 3X "July , 1992" 3X
+.SH NAME
+sipp - simple polygon processor, a 3d-graphics library
+.SH SYNOPSIS
+\fI#include <sipp.h>\fR
+.sp
+[g]cc [\fIflags\fR] \fIfiles\fR -lsipp -lm [ \fIlibraries\fR ]
+
+.SH DESCRIPTION
+SIPP is a library for creating 3-dimensional scenes and rendering them
+using a scan-line z-buffer algorithm. A scene is built up of objects
+which can be transformed with rotation, translation and scaling. The
+objects form hierarchies where each object can have arbitrarily many
+subobjects and subsurfaces. A surface is a number of connected polygons
+which are rendered with either Phong, Gouraud or flat shading.  An image
+can also be rendered as a line drawing of the polygon edges without any
+shading at all.
+
+The library also provides 3-dimensional texture mapping with automatic
+interpolation of texture coordinates. Simple anti-aliasing can be
+performed through oversampling. The scene can be illuminated by an
+arbitrary number of lightsources. These lightsources can be of three
+basic types: directional, point or spotlight. Light from spotlights can
+cast shadows.
+
+It is possible to create several virtual cameras, and then specify one
+of them to use when rendering the image.
+
+A major feature in SIPP is the ability for a user to provide his own
+shading function for a surface. This makes it easy to experiment with various
+shading models and to do special effects. The shader controls both the color
+and opacity of a surface. A basic shading algorithm is provided with the
+library, and also a number of other, more specialized shaders.
+
+Images can be rendered directly onto a file in the Portable Pixmap format
+(ppm) or, for line images, Portable Bitmap, (pbm) or, with a function defined
+by the user, into anything that it is capable of plotting a pixel (or drawing
+a line).This could, for instance, be a window in a window system or even a
+plotter file.
+
+.SH USAGE
+This manual page is intended as a quick reference guide to data types and
+functions available in SIPP. See the \fBUser's Guide to SIPP\fR for a
+detailed description of the meaning of the function arguments and the usage of
+the functions.
+
+.SH DATA TYPES
+The include file \fIsipp.h\fR defines the following data types:
+
+.IP \fIbool\fR
+A boolean type, with values \fITRUE\fR or
+\fIFALSE\fR. These constants are also defined in \fIsipp.h\fR.
+
+.IP \fIColor\fR
+A struct with three members, \fIred\fR, \fIgrn\fR and
+\fIblu\fR.  Each member of the struct is a \fIdouble\fR which should be in
+the range [0,1].
+
+.IP \fIVector\fR
+A struct with three members, \fIx\fR, \fIy\fR and
+\fIz\fR which are all \fIdoubles\fR. 
+
+.IP \fITransf_mat\fR
+\fITransf_mat\fR is a standard 4 x 4 homogenous transformation matrix.
+Actually it is stored as a 4 x 3 matrix to save memory, since the
+rightmost column is only needed in the viewing calculation.
+.sp
+The members of a \fITransf_mat\fR should never be accessed directly, but
+rather through the abstract functions described in the \fBFUNCTIONS\fR
+section. See also geometric(3X).
+
+.IP \fISurface\fR\ and\ \fIObject\fR
+\fISurface\fR and \fIObject\fR are both opaque types used by SIPP. A
+predefined \fIObject\fR called \fIsipp_world\fR is used as starting point of
+the rendering process. All objects that should be included in the rendering
+must be in the object hierarchy under \fIsipp_world\fR.
+
+.IP \fISurf_desc\fR
+A \fISurf_desc\fR is a surface description, used by the built-in shader to
+store properties about a surface. The definition of \fISurf_desc\fR is as
+follows: 
+.br
+\fItypedef\ struct {\fR
+.br
+\fI    double\  ambient;\fR\       /* Fraction of color visible in ambient light */
+.br
+\fI    double\  specular;\fR\      /* Fraction of colour specularly reflected */
+.br
+\fI    double\  c3;\fR\            /* "Shininess" 0 = shiny,  1 = dull */
+.br
+\fI    Color\   color;\fR\         /* Colour of the surface */
+.br
+\fI    Color\   opacity;\fR\       /* Opacity of the surface */
+.br
+\fI}\ Surf_desc;\fR
+
+.IP \fISurf_desc_hdr\fR
+Header used on surface descriptions when an application needs more advanced
+memory menegement.
+.br
+\fItypedef\ struct {\fR
+.br
+\fI    int\ \ \ \ ref_count;\fR\       /* Count of references */
+.br
+\fI    void\ (*free_func)();\fR\   /* Function to call to release memory */
+.br
+\fI    void\ \ *client_data;\fR\     /* Generic pointer to user data */
+.br
+\fI}\ Surf_desc_hdr;\fR
+
+.IP \fILightsource\fR
+This structure holds information about a lightsource. Two members in the
+struct, \fIcolor\fR and \fInext\fR are of interest to users writing their own
+shaders. \fIcolor\fR is of type \fIColor\fR and spcifies the color of the
+light emitted from the lightsource. \fInext\fR is a pointer to another
+\fILightsource\fR struct and points to the next defined lightsource in the
+scene, or \fINULL\fR if there are no more lightsources.
+
+.IP \fICamera\fR
+A structure holding a virtual camera. SIPP provides a predefined
+\fICamera\fR and a pointer to it called \fIsipp_camera\fR. This
+camera is the default viewpoint used when rendering a scene.
+
+.SH FUNCTIONS
+
+The rest of this manual contains a brief description of the avaliable
+functions in SIPP. For a full description of how to use the functions,
+see \fBUser's Guide to SIPP\fR.
+
+.SH Initializations
+
+.IP \fIvoid\ sipp_init()\fR
+Initialize the library and set up default values.
+
+.IP \fIvoid\ sipp_background(red,\ green,\ blue)\fR
+.br
+\fIdouble\ red;\fR
+.br
+\fIdouble\ green;\fR
+.br
+\fIdouble\ blue;\fR
+.sp
+Set the background color of the image.
+
+.IP \fIvoid\ sipp_show_backfaces(flag)\fR
+.br
+\fIbool\ flag;\fR
+.sp
+Specify if backfacing polygons should be culled or not.
+
+.IP \fIvoid\ sipp_shadows(flag,\ dmap_size)\fR
+.br
+\fIbool\ flag;\fR
+.br
+\fIint\ dmap_size;\fR
+.sp
+Turn shadow casting on or off and specify size of depth maps.
+
+.IP \fIvoid\ sipp_render_direction(direction)\fR
+.br
+\fIbool\ direction;\fR
+.sp
+Decide if rendering of the scanlines should take place bottom-to-top or
+top-to-bottom. Allowed values on \fIdirection\fR are \fITOP_TO_BOTTOM\fR and
+\fIBOTTOM_TO_TOP\fR.
+
+.IP \fIvoid\ sipp_set_update_callback(proc,\ client_data,\ period)\fR
+.br
+\fIvoid\ (*proc)();\fR
+.br
+\fIvoid\ \ *client_data;\fR
+.br
+\fIint\ \ \ *period;\fR
+.sp
+Specify a callback function and the period between calls to it during
+rendering.
+
+.IP \fIvoid\ sipp_user_refcount(flag)\fR
+.br
+\fIbool\ \ flag;\fR
+.sp
+Select if users references should be counted in surfaces and objects. This is
+for users who need more advanced memory management.
+
+.IP \fIbool\ sipp_surface_desc_headers(flag)\fR
+.br
+\fIbool\ \ flag;\fR
+.sp
+Tell SIPP that surface descriptions from now on are specified with headers of
+type \fISurf_desc_hdr\fR. The function returns the old value of the flag. This
+is for users who need more advanced memory management.
+
+.SH Object creation
+.sp
+.IP \fIvoid\ vertex_push(x,\ y,\ z)\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.sp
+Push a vertex onto the internal vertex stack.
+
+.IP \fIvoid\ vertex_tx_push(x,\ y,\ z,\ u,\ v,\ w)\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.br
+\fIdouble\ u,\ v,\ w;\fR
+.sp
+Push a vertex and it's texture coordinates onto the vertex stack.
+
+.IP \fIvoid\ vertex_n_push(x,\ y,\ z,\ nx,\ ny,\ nz)\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.br
+\fIdouble\ nx,\ ny,\ nz;\fR
+.sp
+Push a vertex with a specified normal vector onto the vertex stack.
+
+.IP \fIvoid\ vertex_tx_n_push(x,\ y,\ z,\ u,\ v,\ w,\ nx,\ ny,\ nz)\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.br
+\fIdouble\ u,\ v,\ w;\fR
+.br
+\fIdouble\ nx,\ ny,\ nz;\fR
+.sp
+Push a vertex with texture coordinates and a specified normal vector onto the
+vertex stack.
+
+.IP \fIvoid\ polygon_push()\fR
+Create a polygon from the vertices on the vertex stack and push it
+onto the polygon stack. 
+
+.IP \fISurface\ *surface_basic_create(ambient,\ red,\ grn,\ blu,\ specular,\ c3,\ opred,\ opgrn,\ opblu)\fR
+.br
+\fIdouble\ ambient;\fR
+.br
+\fIdouble\ red,\ grn,\ blu;\fR
+.br
+\fIdouble\ specular;\fR
+.br
+\fIdouble\ c3;\fR
+.br
+\fIdouble\ opred,\ opgrn,\ opblu;\fR
+.sp
+Create a surface from the polygons on the polygon stack. The surface will be
+shaded by the internal shader, \fIbasic_shader()\fR, using the parameters as
+values in a \fISurf_desc\fR struct.
+
+.IP \fISurface\ *surface_create(surf_desc,\ shader)\fR
+.br
+\fIvoid\ *surf_desc;\fR
+.br
+\fIShader\ *shader;\fR
+.sp
+Create a surface from the polygons on the polygon stack. The surface will be
+shaded by \fIshader\fR using the surface description \fIsurf_desc\fR.
+
+.IP \fIvoid\ surface_unref(surface)\fR
+.br
+\fISurface\ *surface;\fR
+.sp
+Delete a previously created surface.
+
+.IP \fIvoid\ surface_basic_shader(surface,\ ambient,\ red,\ grn,\ blu,\ specular,\ c3,\ opred,\ opgrn,\ opblu)\fR
+.br
+\fISurface\ *surface;\fR
+.br
+\fIdouble\  ambient;\fR
+.br
+\fIdouble\  red,\ grn,\ blu;\fR
+.br
+\fIdouble\  specular;\fR
+.br
+\fIdouble\  c3;\fR
+.br
+\fIdouble\ opred,\ opgrn,\ opblu;\fR
+.sp
+Set \fIsurface\fR to be shaded by the basic shader and use the other
+parameters as values in the \fISurf_desc\fR struct.
+
+.IP \fIvoid\ surface_set_shader(surface,\ surf_desc,\ shader)\fR
+.br
+\fISurface\ *surface;\fR
+.br
+\fIvoid\    *surf_desc;\fR
+.br
+\fIShader\  *shader;\fR
+.sp
+Set the surface \fIsurface\fR to be shaded with the shading function
+\fIshader\fR using the surface description \fIsurf_desc\fR.
+
+.IP \fIObject\ *object_create()\fR
+Create an empty object. 
+
+.IP \fIvoid\ object_unref(obj)\fR
+.br
+\fIObject\ *obj;\fR
+.sp
+Delete an object, i.e. the memory used by \fIobj\fR and all its subobjects and
+surfaces are recursively freed. This function used to be called
+\fIobject_delete()\fR and that function is also avaliable for compatibility,
+it will however be removed in future versions.
+
+.IP \fIvoid\ object_add_surface(obj,\ surf)\fR
+.br
+\fIObject\  *obj;\fR
+.br
+\fISurface\ *surf;\fR
+.sp
+Add the surface \fIsurf\fR to the object \fIobj\fR.
+
+.IP \fIbool\ object_sub_surface(obj,\ surf)\fR
+.br
+\fIObject\  *obj;\fR
+.br
+\fISurface\ *surf;\fR
+.sp
+Remove the surface \fIsurf\fR from the object \fIobj\fR. Returns \fIFALSE\fR
+if the surface was not found in the object.
+
+.IP \fIvoid\ object_add_subobj(obj,\ subobj)\fR
+.br
+\fIObject\ *obj;\fR
+.br
+\fIObject\ *subobj;\fR
+.sp
+Add the subobject \fIsubobj\fR to the object \fIobj\fR.
+
+.IP \fIbool\ object_sub_subobj(obj,\ subobj)\fR
+.br
+\fIObject\ *obj;\fR
+.br
+\fIObject\ *subobj;\fR
+.sp
+Remove the subobject \fIsubobj\fR from the object \fIobj\fR. Returns
+\fIFALSE\fR if the subobject was not found in the object.
+
+.IP \fIObject\ *object_instance(obj)\fR
+.br
+\fIObject\ *obj;\fR
+.sp
+Create a new instance of a previously defined object. The lists of
+surfaces and subobjects in \fIobj\fR are not copied, only a new
+reference with its own transformation matrix is created. 
+
+.IP \fIObject\ *object_dup(obj)\fR
+.br
+\fIObject\ *obj;\fR
+.sp
+Copy recursively an object and its subobjects. The
+surfaces in the object tree are not copied, only new references to them
+are made.
+
+.IP \fIObject\ *object_deep_dup(obj)\fR
+.br
+\fIObject\ *obj;\fR
+.sp
+Copy the entire tree for the object \fIobj\fR, including subobjects
+and all surfaces, polygons and vertices.
+
+
+.SH Object transformations
+
+.IP \fITransf_mat\ *object_get_transf(obj,\ matrix)\fR
+.br
+\fIObject\     *obj;\fR
+.br
+\fITransf_mat\ *matrix;\fR
+.sp
+Return the transformation matrix currently stored in the object \fIobj\fR. If
+\fImatrix\fR is not NULL, the transformation matrix will be copied to that
+location and a pointer to it (identical to \fImatrix\fR) is returned. If
+\fImatrix\fR is NULL a new matrix will be allocated, the transformation matrix
+copied into it and a pointer to the new matrix is returned.
+.br
+
+.IP \fIvoid\ object_set_transf(obj,\ matrix)\fR
+.br
+\fIObject\     *obj;\fR
+.br
+\fITransf_mat\ *matrix;\fR
+.sp
+Set the transformation matrix of the object \fIobj\fR to \fImatrix\fR.
+.br
+
+.IP \fIvoid\ object_clear_transf(obj)\fR
+.br
+\fIObject\     *obj;\fR
+.sp
+Set the transformation matrix of the object \fIobj\fR to the unit matrix.
+.br
+
+.IP \fIvoid\ object_rot_x(obj,\ ang)\fR
+.br
+\fIObject\  *obj;\fR
+.br
+\fIdouble\  ang;\fR
+.sp
+Rotate the object \fIobj\fR the angle \fIang\fR about the X axis.
+\fIang\fR is expressed in radians.
+
+.IP \fIvoid\ object_rot_y(obj,\ ang)\fR
+.br
+\fIObject\  *obj;\fR
+.br
+\fIdouble\  ang;\fR
+.sp
+Rotate the object \fIobj\fR the angle \fIang\fR about the Y axis.
+\fIang\fR is expressed in radians.
+
+.IP \fIvoid\ object_rot_z(obj,\ ang)\fR
+.br
+\fIObject\  *obj;\fR
+.br
+\fIdouble\  ang;\fR
+.sp
+Rotate the object \fIobj\fR the angle \fIang\fR about the Z axis.
+\fIang\fR is expressed in radians.
+
+.IP \fIvoid\ object_rot(obj,\ point,\ vec,\ ang)\fR
+.br
+\fIObject\ *obj;\fR
+.br
+\fIVector\ *point;\fR
+.br
+\fIVector\ *vec;\fR
+.br
+\fIdouble\ ang;\fR
+.sp
+Rotate the object \fIobj\fR the angle \fIang\fR about the line given by the
+point \fIpoint\fR and the vector \fIvec\fR. \fIang\fR is expressed in radians.
+
+.IP \fIvoid\ object_scale(obj,\ xscale,\ yscale,\ zscale)\fR
+.br
+\fIObject\ *obj;\fR
+.br
+\fIdouble\ xscale,\ yscale,\ zscale;\fR
+.sp
+Scale the object \fIobj\fR with the scaling factors \fIxscale,\
+yscale\fR and \fIzscale\fR in the main directions respectively.
+
+.IP \fIvoid\ object_move(obj,\ dx,\ dy,\ dz)\fR
+.br
+\fIObject\ *obj;\fR
+.br
+\fIdouble\ dx,\ dy,\ dz;\fR
+.sp
+Move (translate) the object \fIobj\ dx,\ dy\fR and \fIdz\fR in the
+three main directions, respectively.
+
+.IP \fIvoid\ object_transform(obj,\ matrix)\fR
+.br
+\fIObject\     *obj;\fR
+.br
+\fITransf_mat\ *matrix;\fR
+.sp
+Post multiply the matrix \fImatrix\fR into the transformation matrix
+of the object \fIobj\fR.
+
+
+.SH Lights
+
+.IP \fILightsource\ *lightsource_create(x,\ y,\ z,\ red,\ green,\ blue,\ type)\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.br
+\fIdouble\ red,\ green,\ blue;\fR
+.br
+\fIint\ type;\fR
+.sp
+Create a new lightsource.The type specified in \fItype\fR should be either
+\fILIGHT_DIRECTION\fR or \fILIGHT_POINT\fR.
+
+.IP \fILightsource\ *spotlight_create(x1,\ y1,\ z1,\ x2,\ y2,\ z2,\ opening,\ red,\ green,\ blue,\ type,\ shadow)
+.br
+\fIdouble\ x1,\ y1,\ z1;\fR
+.br
+\fIdouble\ x2,\ y2,\ z2;\fR
+.br
+\fIdouble\ opening;
+.br
+\fIdouble\ red,\ green,\ blue;\fR
+.br
+\fIint\ type;\fR
+.br
+\fIbool\ shadow;\fR
+.sp
+Create a new spotlight. \fItype\fR should be either \fISPOT_SHARP\fR or
+\fISPOT_SOFT\fR.
+
+.IP \fIvoid\ light_destruct(light)\fR
+.br
+\fILightsource\ *light;\fR
+.sp
+Release the memory used by a lightsource or a spotlight.
+
+.IP \fIvoid\ lightsource_put(lightsrc,\ x,\ y,\ z);\fR
+.br
+\fILightsource\ *lightsrc;\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.sp
+Specify a new position or direction to a lightsource.
+
+.IP \fIvoid\ spotlight_pos(spot,\ x,\ y,\ z);\fR
+.br
+\fILightsource\ *spot;\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.sp
+Specify a new position for a spotlight.
+
+.IP \fIvoid\ spotlight_at(spot,\ x,\ y,\ z);\fR
+.br
+\fILightsource\ *spot;\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.sp
+Specify a new point that a spotlight is pointing at.
+
+.IP \fIvoid\ spotlight_opening(spot,\ opening);\fR
+.br
+\fILightsource\ *spot;\fR
+.br
+\fIdouble\ opening;\fR
+.sp
+Specify a new opening angle for a spotlight.
+
+.IP \fIvoid\ spotlight_shadows(spot,\ flag);\fR
+.br
+\fILightsource\ *spot;\fR
+.br
+\fIbool\ flag;\fR
+.sp
+Turn shadow casting on or off for a spotlight.
+
+.IP \fIvoid\ light_color(light,\ red,\ green,\ blue);\fR
+.br
+\fILightsource\ *light;\fR
+.br
+\fIdouble\ red,\ green,\ blue;\fR
+.sp
+Change the color of the light emitted from a lightsource or a spotlight.
+
+.IP \fIvoid\ light_active(light,\ flag);\fR
+.br
+\fILightsource\ *light;\fR
+.br
+\fIbool\ flag;\fR
+.sp
+Turn a lightsource or a spotlight on or off.
+
+.IP \fIdouble\ light_eval(light,\ position,\ light_vector);\fR
+.br
+\fILightsource\ *light;\fR
+.br
+\fIVector\ *position;\fR
+.br
+\fIVector\ *light_vector;\fR
+.sp
+Evaluate how much light from a lightsource or a spotlight that reaches a point
+and calculate a vector from the light to the light.
+
+.SH Cameras
+
+.IP \fICamera\ *camera_create()\fR
+.sp
+Create a new virtual camera.
+
+.IP \fIvoid\ camera_destruct(camera)\fR
+.br
+\fICamera\ *camera;\fR
+.sp
+Release the memory used by a virtual camera.
+
+.IP \fIvoid\ camera_position(camera,\ x,\ y,\ z)\fR
+.br
+\fICamera\ *camera;\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.sp
+Define the position of a camera.
+
+.IP \fIvoid\ camera_look_at(camera,\ x,\ y,\ z)\fR
+.br
+\fICamera\ *camera;\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.sp
+Define the point a camera is looking at.
+
+.IP \fIvoid\ camera_up(camera,\ x,\ y,\ z)\fR
+.br
+\fICamera\ *camera;\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.sp
+Define the up vector of the camera.
+
+.IP \fIvoid\ camera_focal(camera,\ ratio)\fR
+.br
+\fICamera\ *camera;\fR
+.br
+\fIdouble\ ratio;\fR
+.sp
+Define the focal ratio of a camera.
+
+.IP \fIcamera_params(camera,\ x,\ y,\ z,\ to_x,\ to_y,\ to_z,\ up_x,\ up_y,\ up_z,\ focal_ratio)\fR
+.br
+\fICamera\ *camera;\fR
+.br
+\fIdouble\ x,\ y,\ z;\fR
+.br
+\fIdouble\ to_x,\ to_y,\ to_z;\fR
+.br
+\fIdouble\ up_x,\ up_y,\ up_z;\fR
+.br
+\fIdouble\ focal_ratio;\fR
+.sp
+Set all parameters of a camera in one call.
+
+.SH Rendering
+
+.IP \fIvoid\ render_image_file(width,\ height,\ file,\ mode,\ oversampling)\fR
+.br
+\fIint\    width, height;\fR
+.br
+\fIFILE\ *file;\fR
+.br
+\fIint\    mode;\fR
+.br
+\fIint\    oversampling;\fR
+.sp
+Render an image of the current scene into a file. \fImode\fR should be one of
+\fIPHONG,\ GOURAUD,\ FLAT\fR or \fILINE\fR.
+
+.IP \fIvoid\ render_field_file(width,\ height,\ file,\ mode,\ oversampling,\ field)\fR
+.br
+\fIint\    width, height;\fR
+.br
+\fIFILE\ *file;\fR
+.br
+\fIint\    mode;\fR
+.br
+\fIint\    oversampling;\fR
+.br
+\fIint\    field;\fR
+.sp
+Render the current scene as a field (half frame) into a file. \fImode\fR
+should be one of \fIPHONG,\ GOURAUD,\ FLAT\fR or \fILINE\fR and \fIfield\fR
+should be either \fIODD\fR or \fIEVEN\fR.
+
+.IP \fIvoid\ render_image_func(width,\ height,\ pix_func,\ data,\ mode,\ oversampling)\fR
+.br
+\fIint\    width, height;\fR
+.br
+\fIvoid\ (*pix_func)();\fR
+.br
+\fIvoid\ *data;\fR
+.br
+\fIint\    mode;\fR
+.br
+\fIint\    oversampling;\fR
+.sp
+Render an image of the current scene into any device. \fImode\fR should be one
+of \fIPHONG,\ GOURAUD,\ FLAT\fR or \fILINE\fR.
+
+
+.IP \fIvoid\ render_field_func(width,\ height,\ pix_func,\ data,\ mode,\ oversampling,\ field)\fR
+.br
+\fIint\    width, height;\fR
+.br
+\fIvoid\ (*pix_func)();\fR
+.br
+\fIvoid\ *data;\fR
+.br
+\fIint\    mode;\fR
+.br
+\fIint\    oversampling;\fR
+.br
+\fIint\    field;\fR
+.sp
+Render the current scene as a field (half frame) into any device. \fImode\fR
+should be one of \fIPHONG,\ GOURAUD,\ FLAT\fR or \fILINE\fR and \fIfield\fR
+should be either \fIODD\fR or \fIEVEN\fR.
+
+.IP \fIvoid\ sipp_render_terminate()\fR
+.sp
+Abort (hopefully gracefully) an ongoing rendering. This is designed to be
+called from the callback function.
+
+.SH Shadowmaps
+
+.IP \fIvoid\ shadowmaps_create(size);\fR
+.br
+\fIint\ size;\fR
+.sp
+Render the depthmaps for the current scene and the currently active
+lightsources.
+
+.IP \fIvoid\ shadowmaps_destruct();\fR
+.sp
+Delete all active depthmaps.
+
+.SH The basic shader
+
+.IP \fIvoid\ basic_shader(world,\ normal,\ texture,\ view_vec,\ lights,\ surface,\ color,\ opacity)\fR
+.br
+\fIVector\ *world;\fR
+.br
+\fIVector\ *normal;\fR
+.br
+\fIVector\ *texture;\fR
+.br
+\fIVector\ *view_vec;\fR
+.br
+\fILightsource *lights;\fR
+.br
+\fISurf_desc *surface;\fR
+.br
+\fIColor\ *color;\fR
+.br
+\fIColor\ *opacity;\fR
+.sp
+The basic shader function that is provided with the library.
+
+
+.SH SEE ALSO
+shaders(3X) - a number of shaders for SIPP.
+.br
+geometric(3X) - Vector and matrix functions for SIPP.
+.br
+primitives(3X) - a collection of geometric primitives for SIPP.
+.br
+sipp_pixmap(3X) - pixmap handling code for SIPP.
+.br
+sipp_bitmap(3X) - bitmap handling code for SIPP.
+
+.SH AUTHORS
+Jonas Yngvesson\	\	(jonas-y@isy.liu.se)
+.br
+Inge Wallin\		(ingwa@isy.liu.se)
