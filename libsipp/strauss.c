@@ -82,6 +82,7 @@ strauss_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, L
     Vector       qd;           /* Diffuse reflection factor */
     Vector       qs;           /* Specular reflection factor */
     Vector       light_dir;    /* Direction to "current" light */
+    double       light_factor; /* Fraction of light from "current" light */
     Color        col;          /* Resulting color */
     Lightsource *lp;
 
@@ -94,11 +95,13 @@ strauss_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, L
     for (lp = lights; lp != (Lightsource *)0; lp = lp->next) {
 
         /*
-         * NOTE: the return value (shadowing and spotlight attenuation)
-         * is ignored, so this shader does not cast shadows.  Kept as is
-         * to preserve existing output.
+         * light_factor accounts for shadows and spotlight attenuation
+         * (1.0 for an unobstructed directional or point light).
          */
-        (void)light_eval(lp, pos, &light_dir);
+        light_factor = light_eval(lp, pos, &light_dir);
+        if (light_factor <= 0.0001) {
+            continue;
+        }
 
         c_alpha = VecDot(unit_normal, light_dir);
 
@@ -136,7 +139,7 @@ strauss_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, L
 
             }
             
-/*            VecScalMul(qd, lp->intensity, qd);*/
+            VecScalMul(qd, light_factor, qd);
 
             qd.x = lp->color.red * qd.x;
             qd.y = lp->color.grn * qd.y;
