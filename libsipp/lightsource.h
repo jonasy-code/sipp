@@ -50,10 +50,10 @@ extern Lightsource  *lightsrc_stack;  /* Lightsource list. */
 #define lightsource_init()    lightsrc_stack = NULL
 
 extern void
-depthmaps_create _ANSI_ARGS_((void));
+depthmaps_create(void);
 
 extern void
-depthmaps_destruct _ANSI_ARGS_((void));
+depthmaps_destruct(void);
 
 
 #endif /* LIGHTSOURCE_H */

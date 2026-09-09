@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 
 #include <sipp.h>
 #include <primitives.h>
@@ -35,16 +36,9 @@ extern bool noise_ready;
 
 
 void
-hole_shader(pos, normal, texture, view_vec, lights, sd, color, transp)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Surf_desc   *sd;
-    Color       *color;
-    Color       *transp;
+hole_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *sd_, Color *color, Color *transp)
 {
+    Surf_desc *sd = (Surf_desc *)sd_;
     Vector     tmp;
 
     if (!noise_ready) {
@@ -72,16 +66,9 @@ hole_shader(pos, normal, texture, view_vec, lights, sd, color, transp)
  * A shader to produce a checkered floor.
  */
 static void
-floor_shader(pos, normal, texture, view_vec, lights, fd, color, transp)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Floor_desc  *fd;
-    Color       *color;
-    Color       *transp;
+floor_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *fd_, Color *color, Color *transp)
 {
+    Floor_desc *fd = (Floor_desc *)fd_;
     Surf_desc  * col;
     int          intu;
     int          intv;
@@ -106,9 +93,8 @@ floor_shader(pos, normal, texture, view_vec, lights, fd, color, transp)
 
 extern char *optarg;
 
-main(argc, argv)
-    int argc;
-    char **argv;
+int
+main(int argc, char **argv)
 {
     Object  *teapot;
     Object  *bottom;

@@ -1,5 +1,4 @@
-Object *sipp_superquadric(a1,a2,a3,n,e,alpha)
-double a1,a2,a3,n,e,alpha;
+Object *sipp_superquadric(double a1, double a2, double a3, double n, double e, double alpha)
 {
    int ue = 16, ve = 16;
    int u,v; double uphi = 2*M_PI/ue, vphi = 2*M_PI/ve;

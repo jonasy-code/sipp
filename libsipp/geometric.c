@@ -49,8 +49,7 @@ Transf_mat   ident_matrix = {{        /* Unit tranfs. matrix */
  */
 
 Transf_mat *
-transf_mat_create(initmat)
-    Transf_mat  * initmat;
+transf_mat_create(Transf_mat * initmat)
 {
     Transf_mat  * mat;
 
@@ -65,8 +64,7 @@ transf_mat_create(initmat)
 
 
 void
-transf_mat_destruct(mat)
-    Transf_mat  * mat;
+transf_mat_destruct(Transf_mat * mat)
 {
     sfree(mat);
 }
@@ -80,8 +78,7 @@ transf_mat_destruct(mat)
  * Normalize a vector.
  */
 void
-vecnorm(vec)
-    Vector  *vec;
+vecnorm(Vector *vec)
 {
     double   len;
 
@@ -107,11 +104,7 @@ vecnorm(vec)
  */
 
 void
-mat_translate(mat,  dx,  dy,  dz)
-    Transf_mat  * mat;
-    double        dx;
-    double        dy; 
-    double        dz;
+mat_translate(Transf_mat * mat, double dx, double dy, double dz)
 {
     mat->mat[3][0] += dx;
     mat->mat[3][1] += dy;
@@ -132,9 +125,7 @@ mat_translate(mat,  dx,  dy,  dz)
  */
 
 void
-mat_rotate_x(mat, ang)
-    Transf_mat  * mat;
-    double        ang;
+mat_rotate_x(Transf_mat * mat, double ang)
 {
     double   cosang;
     double   sinang;
@@ -171,9 +162,7 @@ mat_rotate_x(mat, ang)
  */
 
 void
-mat_rotate_y(mat, ang)
-    Transf_mat  * mat;
-    double        ang;
+mat_rotate_y(Transf_mat * mat, double ang)
 {
     double   cosang;
     double   sinang;
@@ -210,9 +199,7 @@ mat_rotate_y(mat, ang)
  */
 
 void
-mat_rotate_z(mat, ang)
-    Transf_mat  * mat;
-    double        ang;
+mat_rotate_z(Transf_mat * mat, double ang)
 {
     double   cosang;
     double   sinang;
@@ -245,11 +232,7 @@ mat_rotate_z(mat, ang)
  */
 
 void
-mat_rotate(mat, point, vector, ang)
-    Transf_mat  * mat;
-    Vector      * point;
-    Vector      * vector;
-    double        ang;
+mat_rotate(Transf_mat * mat, Vector * point, Vector * vector, double ang)
 {
     double   ang2;
     double   ang3;
@@ -279,11 +262,7 @@ mat_rotate(mat, point, vector, ang)
  */
 
 void
-mat_scale(mat, xscale, yscale, zscale)
-    Transf_mat  * mat;
-    double        xscale;
-    double        yscale;
-    double        zscale;
+mat_scale(Transf_mat * mat, double xscale, double yscale, double zscale)
 {
     int   i;
 
@@ -304,10 +283,7 @@ mat_scale(mat, xscale, yscale, zscale)
  */
 
 void
-mat_mirror_plane(mat, point, norm)
-    Transf_mat  * mat;
-    Vector      * point;
-    Vector      * norm;
+mat_mirror_plane(Transf_mat * mat, Vector * point, Vector * norm)
 {
     Transf_mat   tmp;
     double   factor;
@@ -353,10 +329,7 @@ mat_mirror_plane(mat, point, norm)
  */
 
 void
-mat_mul(res, a, b)
-    Transf_mat  * res;
-    Transf_mat  * a;
-    Transf_mat  * b;
+mat_mul(Transf_mat * res, Transf_mat * a, Transf_mat * b)
 {
     Transf_mat   tmp;
     int      i;
@@ -393,10 +366,7 @@ mat_mul(res, a, b)
  */
 
 void
-point_transform(res, vec, mat)
-    Vector      * res;
-    Vector      * vec;
-    Transf_mat  * mat;
+point_transform(Vector * res, Vector * vec, Transf_mat * mat)
 {
     res->x = mat->mat[0][0] * vec->x + mat->mat[1][0] * vec->y 
         + mat->mat[2][0] * vec->z + mat->mat[3][0];

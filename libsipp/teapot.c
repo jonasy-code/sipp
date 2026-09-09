@@ -157,11 +157,7 @@ static int teapot_handle_i[] = {
 
 
 Object *
-sipp_teapot_body(resolution, surface, shader, texture)
-    int          resolution;
-    void       * surface;
-    Shader     * shader;
-    int          texture;
+sipp_teapot_body(int resolution, void * surface, Shader * shader, int texture)
 {
     return sipp_bezier_rotcurve(sizeof(teapot_body) / sizeof(Vector), 
                                teapot_body, 
@@ -171,11 +167,7 @@ sipp_teapot_body(resolution, surface, shader, texture)
 }
 
 Object *
-sipp_teapot_lid(resolution, surface, shader, texture)
-    int          resolution;
-    void       * surface;
-    Shader     * shader;
-    int          texture;
+sipp_teapot_lid(int resolution, void * surface, Shader * shader, int texture)
 {
     return sipp_bezier_rotcurve(sizeof(teapot_lid) / sizeof(Vector), 
                                teapot_lid, 
@@ -185,11 +177,7 @@ sipp_teapot_lid(resolution, surface, shader, texture)
 }
 
 Object *
-sipp_teapot_handle(resolution, surface, shader, texture)
-    int          resolution;
-    void       * surface;
-    Shader     * shader;
-    int          texture;
+sipp_teapot_handle(int resolution, void * surface, Shader * shader, int texture)
 {
     return sipp_bezier_patches(sizeof(teapot_handle) / sizeof(Vector), 
                                teapot_handle, 
@@ -199,11 +187,7 @@ sipp_teapot_handle(resolution, surface, shader, texture)
 }
 
 Object *
-sipp_teapot_spout(resolution, surface, shader, texture)
-    int          resolution;
-    void       * surface;
-    Shader     * shader;
-    int          texture;
+sipp_teapot_spout(int resolution, void * surface, Shader * shader, int texture)
 {
     return sipp_bezier_patches(sizeof(teapot_spout) / sizeof(Vector), 
                                teapot_spout, 
@@ -215,11 +199,7 @@ sipp_teapot_spout(resolution, surface, shader, texture)
 
 
 Object *
-sipp_teapot(resolution, surface, shader, texture)
-    int          resolution;
-    void       * surface;
-    Shader     * shader;
-    int          texture;
+sipp_teapot(int resolution, void * surface, Shader * shader, int texture)
 {
     Object *teapot;
 

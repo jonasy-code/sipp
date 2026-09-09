@@ -31,16 +31,9 @@
 extern bool noise_ready;
 
 void
-bozo_shader(pos, normal, texture, view_vec, lights, bd, color, opacity)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Bozo_desc   *bd;
-    Color       *color;
-    Color       *opacity;
+bozo_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *bd_, Color *color, Color *opacity)
 {
+    Bozo_desc    *bd = (Bozo_desc *)bd_;
     Vector     tmp;
     Surf_desc  surface;
     double     noiseval;

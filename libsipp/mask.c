@@ -25,16 +25,9 @@
 #include <shaders.h>
 
 void
-mask_shader(pos, normal, texture, view_vec, lights, md, color, opacity)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Mask_desc   *md;
-    Color       *color;
-    Color       *opacity;
+mask_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *md_, Color *color, Color *opacity)
 {
+    Mask_desc    *md = (Mask_desc *)md_;
     if (md->masker(md->mask_data, texture)) {
         md->t_shader(pos, normal, texture, view_vec, lights, md->t_surface, 
                      color, opacity); 

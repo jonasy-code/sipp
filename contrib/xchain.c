@@ -15,9 +15,7 @@
 
 extern char *optarg;
 
-main(argc, argv)
-    int    argc;
-    char **argv;
+main(int argc, char **argv)
 {
     Object  *torus;
     Object  *torus_pair;

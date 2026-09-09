@@ -23,7 +23,8 @@
 
 #include <stdio.h>
 #include <ctype.h>
-#include <malloc.h>
+#include <stdlib.h>
+#include <stdint.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -53,8 +54,7 @@ static int divN[256], modN[256];
 /* ------------------------------------------------------------------------- */
 
 static int
-dither_value(x, y, size)
-    int x,y,size;
+dither_value(int x, int y, int size)
 {
    int d;
 
@@ -74,11 +74,10 @@ dither_value(x, y, size)
 /* ------------------------------------------------------------------------- */
 
 static void
-myplot(size, x, y, r, g, b)
-    int           size;
-    int           x, y;
-    unsigned char r, g, b;
+myplot(void *data, int x, int y, unsigned char r, unsigned char g, unsigned char b)
 {
+    int size = (int)(intptr_t)data;
+
     if (cmap) {
         if (truecolor) {
             XSetForeground(disp, gc, color_tab[DMAP(r,x,y) * 36
@@ -101,9 +100,7 @@ myplot(size, x, y, r, g, b)
 
 
 static void
-myline(data, x1, y1, x2, y2)
-    void *data;
-    int   x1,y1,x2,y2;
+myline(void *data, int x1, int y1, int x2, int y2)
 {
     if (update) {
         XDrawLine(disp, win, gc, x1, y1, x2, y2);
@@ -113,15 +110,15 @@ myline(data, x1, y1, x2, y2)
 
 
 static void
-myrender(w, h, mode, over)
-    int w, h, mode, over;
+myrender(int w, int h, int mode, int over)
 {
     int size = (mode == LINE) ? 1 : (cmap ? 1 : 2);
 
     width = w / size;
     height = h / size;
-    render_image_func(width, height, (mode == LINE) ? myline : myplot, 
-                      size, mode, over);
+    render_image_func(width, height, 
+                      (mode == LINE) ? (Pixel_func *)myline : myplot, 
+                      (void *)(intptr_t)size, mode, over);
     if (!update) {
         XClearWindow(disp, win);
     }
@@ -130,8 +127,7 @@ myrender(w, h, mode, over)
 
 
 static void
-myrender2(w, h, mode, over)
-    int w, h, mode, over;
+myrender2(int w, int h, int mode, int over)
 {
     int size = width;
 
@@ -143,7 +139,8 @@ myrender2(w, h, mode, over)
     while(1) {
         width = w / size;
         height = h / size;
-        render_image_func(width, height, myplot, size, mode, over);
+        render_image_func(width, height, myplot, (void *)(intptr_t)size,
+                          mode, over);
         if (!cmap && (size / 2 == 1)) {
             break;
         }
@@ -160,8 +157,7 @@ myrender2(w, h, mode, over)
 
 
 static void
-myrender3(w, h, mode, over)
-    int w, h, mode, over;
+myrender3(int w, int h, int mode, int over)
 {
     int          size = 16;
     int          i, j, n; 
@@ -174,7 +170,8 @@ myrender3(w, h, mode, over)
     width = w / size;
     height = h / size;
     pm = sipp_pixmap_create(width, height);
-    render_image_func(width, height, sipp_pixmap_set_pixel, pm, mode, over);
+    render_image_func(width, height, (Pixel_func *)sipp_pixmap_set_pixel,
+                      pm, mode, over);
     for (i = 0; i < width; i++) {
         for(j = 0; j < height; j++);
     }
@@ -184,8 +181,7 @@ myrender3(w, h, mode, over)
 /* ------------------------------------------------------------------------- */
 
 Pixmap 
-render_ximage(width, height, mode, over, rtype, dbuffer, tcolor)
-    int width, height, mode, over, rtype, dbuffer, tcolor;
+render_ximage(int width, int height, int mode, int over, int rtype, int dbuffer, int tcolor)
 {
     if (!win) {
         disp = XOpenDisplay("");

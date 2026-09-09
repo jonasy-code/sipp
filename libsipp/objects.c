@@ -22,6 +22,8 @@
  **/
 
 #include <stdio.h>
+#include <math.h>
+#include <string.h>
 
 #include <objects.h>
 #include <sipp.h>
@@ -30,7 +32,8 @@
 
 Object              *sipp_world;      /* The world that is rendered */
 
-static Vertex       *vertex_tree;     /* Vertex tree for current object. */
+static Vertex       *vertex_list;     /* Vertices of the surface being built */
+static Vertex       *first_vert;      /* First vertex pushed in this surface */
 static Vertex_ref   *vertex_stack;    /* Vertex stack for current polygon. */
 static int           nvertices;       /* Number of vertices on the stack */
 static Vertex_ref   *vstack_bottom;   /* Last entry in vertex stack. */
@@ -63,14 +66,17 @@ static bool          user_refcount;   /* True if users pointer to objects  */
  * Prototypes of internal functions.
  */
 static Vertex *
-vertex_lookup _ANSI_ARGS_((Vector  *pos,
+vertex_lookup(Vector  *pos,
                            Vector  *texture,
                            Vector  *normal,
-                           Vertex **p,
-                           bool     use_norm));
+                           bool     use_norm);
 
 static void
-push_vertex _ANSI_ARGS_((double  x, 
+vhash_rebuild(unsigned  new_size,
+                           double    new_cell_size);
+
+static void
+push_vertex(double  x, 
                          double  y,
                          double  z,
                          double  u,
@@ -79,128 +85,278 @@ push_vertex _ANSI_ARGS_((double  x,
                          double  nx,
                          double  ny,
                          double  nz,
-                         bool    use_norm));
+                         bool    use_norm);
 
 static Vertex *
-copy_vertices _ANSI_ARGS_((Vertex *vp));
+copy_vertices(Vertex *vp);
 
 static Polygon *
-copy_polygons _ANSI_ARGS_((Polygon *pp,
-                           Surface *surface));
+copy_polygons(Polygon *pp,
+                           Surface *surface);
 
 static Surface *
-surface_copy _ANSI_ARGS_((Surface  *surface));
+surface_copy(Surface  *surface);
 
 static void
-delete_vertices _ANSI_ARGS_((Vertex **vtree));
+delete_vertices(Vertex **vtree);
 
 static Object *
-object_copy _ANSI_ARGS_((Object *object,
+object_copy(Object *object,
                          bool    copy_surfaces,
-                         bool    copy_sub_objs));
+                         bool    copy_sub_objs);
 
 
 /*
- * Search for a vertex in a vertex tree. Vertices are asumed
- * to be equal if they differ less than dist_limit in all directions.
+ * Spatial hash table used to find already existing vertices while a
+ * surface is being built.
  *
- * If the vertex is not found, install it in the tree.
+ * Space is divided into cubic cells of side cell_size, and every vertex
+ * is entered into the bucket of the cell containing it.  Two vertices are
+ * considered equal if all their components differ by at most dist_limit,
+ * so a vertex equal to the one we are looking for can only be in the same
+ * cell or, if we are within dist_limit of a cell wall, in a neighbouring
+ * one.  The cells are much larger than dist_limit (VHASH_CELL_FACTOR
+ * times), so almost every lookup probes a single bucket.
+ *
+ * dist_limit is only known once two different vertices have been pushed
+ * (see push_vertex()).  cell_size follows dist_limit, and the table is
+ * rehashed when it changes; that happens only while it holds a vertex or
+ * two, so it is cheap.
+ */
+#define VHASH_INIT_SIZE     1024        /* Initial number of buckets */
+#define VHASH_CELL_FACTOR   1024.0      /* cell_size / dist_limit */
+
+static Vertex  **vhash;               /* Bucket heads */
+static unsigned  vhash_size;          /* Number of buckets, a power of two */
+static unsigned  vhash_count;         /* Number of vertices in the table */
+static double    cell_size;           /* Side of one hash cell */
+
+
+/*
+ * Integer cell coordinate (as a double, so it can never overflow) of a
+ * scalar coordinate.
+ */
+static double
+cell_coord(double v)
+{
+    double c;
+
+    c = floor(v / cell_size);
+    if (c == 0.0) {
+        c = 0.0;                     /* Fold -0.0 into +0.0 */
+    }
+    return c;
+}
+
+
+/*
+ * Hash a cell into a bucket index.
+ *
+ * The inputs are the IEEE bit patterns of three small integer-valued
+ * doubles, so most of their bits are an identical exponent field; the
+ * xor-shift/multiply tail at the end exists to fold the few varying
+ * bits down into the low bits that the mask keeps.  The multipliers are
+ * well-known hashing constants (any three distinct odd numbers would do
+ * about as well; measured bucket occupancy on real meshes matches the
+ * Poisson ideal):
+ *   0x9E3779B97F4A7C15  2^64 / golden ratio, rounded to odd.  Knuth's
+ *                       multiplicative hashing constant (TAOCP vol. 3,
+ *                       6.4), also used in Fibonacci hashing and
+ *                       boost::hash_combine.
+ *   0xC2B2AE3D27D4EB4F  XXH_PRIME64_2 from Yann Collet's xxHash64.
+ *   0x165667B19E3779F9  XXH_PRIME64_3 from xxHash64.
+ * Correctness never depends on the hash: buckets are chained, and every
+ * lookup applies the full tolerance test to each candidate.
+ */
+static unsigned
+cell_hash(double cx, double cy, double cz)
+{
+    unsigned long long hx, hy, hz, h;
+
+    memcpy(&hx, &cx, sizeof(hx));
+    memcpy(&hy, &cy, sizeof(hy));
+    memcpy(&hz, &cz, sizeof(hz));
+
+    h  = hx * 0x9E3779B97F4A7C15ULL;
+    h ^= hy * 0xC2B2AE3D27D4EB4FULL;
+    h ^= hz * 0x165667B19E3779F9ULL;
+    h ^= h >> 32;
+    h *= 0x9E3779B97F4A7C15ULL;
+    h ^= h >> 29;
+
+    return (unsigned)(h & (vhash_size - 1));
+}
+
+
+/*
+ * Insert a vertex into the bucket for its cell.
+ */
+static void
+vhash_insert(Vertex *v)
+{
+    unsigned h;
+
+    h = cell_hash(cell_coord(v->pos.x), 
+                  cell_coord(v->pos.y), 
+                  cell_coord(v->pos.z));
+    v->hnext = vhash[h];
+    vhash[h] = v;
+}
+
+
+/*
+ * (Re)create the bucket array with NEW_SIZE buckets and NEW_CELL_SIZE
+ * as cell size, and enter all vertices in vertex_list into it.
+ */
+static void
+vhash_rebuild(unsigned new_size, double new_cell_size)
+{
+    Vertex *v;
+
+    if (vhash != NULL && new_size != vhash_size) {
+        sfree(vhash);
+        vhash = NULL;
+    }
+    if (vhash == NULL) {
+        vhash = (Vertex **)scalloc(new_size, sizeof(Vertex *));
+        vhash_size = new_size;
+    } else {
+        memset(vhash, 0, vhash_size * sizeof(Vertex *));
+    }
+    cell_size = new_cell_size;
+
+    for (v = vertex_list; v != NULL; v = v->next) {
+        vhash_insert(v);
+    }
+}
+
+
+/*
+ * Forget all vertices in the table (they now belong to a surface).
+ */
+static void
+vhash_clear(void)
+{
+    if (vhash != NULL) {
+        memset(vhash, 0, vhash_size * sizeof(Vertex *));
+    }
+    vhash_count = 0;
+}
+
+
+/*
+ * Are the given coordinates "equal" to those of vertex V?
+ * This is the same test as the old vertex tree performed.
+ */
+static bool
+vertex_match(Vertex *v, Vector *pos, Vector *texture, Vector *normal, bool use_norm)
+{
+    if (fabs(pos->x - v->pos.x) > dist_limit
+        || fabs(pos->y - v->pos.y) > dist_limit
+        || fabs(pos->z - v->pos.z) > dist_limit) {
+        return FALSE;
+    }
+    if (fabs(texture->x - v->texture.x) > dist_limit
+        || fabs(texture->y - v->texture.y) > dist_limit
+        || fabs(texture->z - v->texture.z) > dist_limit) {
+        return FALSE;
+    }
+    if (use_norm || v->fixed_normal) {
+        if (fabs(normal->x - v->normal.x) > dist_limit
+            || fabs(normal->y - v->normal.y) > dist_limit
+            || fabs(normal->z - v->normal.z) > dist_limit) {
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
+
+/*
+ * Search for a vertex among those pushed so far in the current surface.
+ * Vertices are assumed to be equal if they differ less than dist_limit
+ * in all directions.
+ *
+ * If the vertex is not found, create it and install it in the vertex
+ * list and the hash table.
  */
 static Vertex *
-vertex_lookup(pos, texture, normal, p, use_norm)
-    Vector  *pos;
-    Vector  *texture;
-    Vector  *normal;
-    Vertex **p;
-    bool     use_norm;
+vertex_lookup(Vector *pos, Vector *texture, Vector *normal, bool use_norm)
 {
-    Vector dist;
+    Vertex   *v;
+    double    cx, cy, cz;
+    double    want_cell;
+    int       xlo, xhi, ylo, yhi, zlo, zhi;
+    int       dx, dy, dz;
+    unsigned  h;
 
-    if (*p == NULL) {
-        *p = (Vertex *)smalloc(sizeof(Vertex));
-        (*p)->pos = *pos;
-        (*p)->texture = *texture;
-        if (use_norm) {
-            (*p)->normal = *normal;
-            (*p)->fixed_normal = TRUE;
-        } else {
-            MakeVector((*p)->normal, 0.0, 0.0, 0.0);
-            (*p)->fixed_normal = FALSE;
-        }
-#ifdef FFD
-        (*p)->ffd_vertex = NULL;
-#endif 
-        (*p)->big = NULL;
-        (*p)->sml = NULL;
-        return *p;
-    } else {
-        VecSub(dist, *pos, (*p)->pos);
-        if (dist.x > dist_limit) {
-            return (vertex_lookup(pos, texture, normal, 
-                                  &((*p)->big), use_norm));
-        } else if (dist.x < -dist_limit) {
-            return (vertex_lookup(pos, texture, normal, 
-                                  &((*p)->sml), use_norm));
-        } else if (dist.y > dist_limit) {
-            return (vertex_lookup(pos, texture, normal, 
-                                  &((*p)->big), use_norm));
-        } else if (dist.y < -dist_limit) {
-            return (vertex_lookup(pos, texture, normal, 
-                                  &((*p)->sml), use_norm));
-        } else if (dist.z > dist_limit) {
-            return (vertex_lookup(pos, texture, normal, 
-                                  &((*p)->big), use_norm));
-        } else if (dist.z < -dist_limit) {
-            return (vertex_lookup(pos, texture, normal, 
-                                  &((*p)->sml), use_norm));
-        } else {
-            VecSub(dist, *texture, (*p)->texture);
-            if (dist.x > dist_limit) {
-                return (vertex_lookup(pos, texture, normal, 
-                                      &((*p)->big), use_norm));
-            } else if (dist.x < -dist_limit) {
-                return (vertex_lookup(pos, texture, normal, 
-                                      &((*p)->sml), use_norm));
-            } else if (dist.y > dist_limit) {
-                return (vertex_lookup(pos, texture, normal, 
-                                      &((*p)->big), use_norm));
-            } else if (dist.y < -dist_limit) {
-                return (vertex_lookup(pos, texture, normal, 
-                                      &((*p)->sml), use_norm));
-            } else if (dist.z > dist_limit) {
-                return (vertex_lookup(pos, texture, normal, 
-                                      &((*p)->big), use_norm));
-            } else if (dist.z < -dist_limit) {
-                return (vertex_lookup(pos, texture, normal, 
-                                      &((*p)->sml), use_norm));
-            } else if (use_norm || (*p)->fixed_normal) {
-                VecSub(dist, *normal, (*p)->normal);
-                if (dist.x > dist_limit) {
-                    return (vertex_lookup(pos, texture, normal, 
-                                          &((*p)->big), use_norm));
-                } else if (dist.x < -dist_limit) {
-                    return (vertex_lookup(pos, texture, normal, 
-                                          &((*p)->sml), use_norm));
-                } else if (dist.y > dist_limit) {
-                    return (vertex_lookup(pos, texture, normal, 
-                                          &((*p)->big), use_norm));
-                } else if (dist.y < -dist_limit) {
-                    return (vertex_lookup(pos, texture, normal, 
-                                          &((*p)->sml), use_norm));
-                } else if (dist.z > dist_limit) {
-                    return (vertex_lookup(pos, texture, normal, 
-                                          &((*p)->big), use_norm));
-                } else if (dist.z < -dist_limit) {
-                    return (vertex_lookup(pos, texture, normal, 
-                                          &((*p)->sml), use_norm));
-                } else {
-                    return *p;
+    /*
+     * Keep the cell size in step with dist_limit.  Before dist_limit
+     * is known (the very first vertex ever) any positive size will do.
+     */
+    want_cell = ((dist_limit > 0.0) ? dist_limit : 1e-10) * VHASH_CELL_FACTOR;
+    if (vhash == NULL || want_cell != cell_size) {
+        vhash_rebuild((vhash == NULL) ? VHASH_INIT_SIZE : vhash_size,
+                      want_cell);
+    }
+
+    cx = cell_coord(pos->x);
+    cy = cell_coord(pos->y);
+    cz = cell_coord(pos->z);
+
+    /*
+     * Which neighbouring cells could contain a vertex within dist_limit
+     * of pos?  Usually none.
+     */
+    xlo = (cell_coord(pos->x - dist_limit) < cx) ? -1 : 0;
+    xhi = (cell_coord(pos->x + dist_limit) > cx) ?  1 : 0;
+    ylo = (cell_coord(pos->y - dist_limit) < cy) ? -1 : 0;
+    yhi = (cell_coord(pos->y + dist_limit) > cy) ?  1 : 0;
+    zlo = (cell_coord(pos->z - dist_limit) < cz) ? -1 : 0;
+    zhi = (cell_coord(pos->z + dist_limit) > cz) ?  1 : 0;
+
+    for (dx = xlo; dx <= xhi; dx++) {
+        for (dy = ylo; dy <= yhi; dy++) {
+            for (dz = zlo; dz <= zhi; dz++) {
+                h = cell_hash(cx + dx, cy + dy, cz + dz);
+                for (v = vhash[h]; v != NULL; v = v->hnext) {
+                    if (vertex_match(v, pos, texture, normal, use_norm)) {
+                        return v;
+                    }
                 }
-            } else {
-                return *p;
             }
         }
     }
+
+    /*
+     * Not found: create a new vertex.
+     */
+    v = (Vertex *)smalloc(sizeof(Vertex));
+    v->pos = *pos;
+    v->texture = *texture;
+    if (use_norm) {
+        v->normal = *normal;
+        v->fixed_normal = TRUE;
+    } else {
+        MakeVector(v->normal, 0.0, 0.0, 0.0);
+        v->fixed_normal = FALSE;
+    }
+#ifdef FFD
+    v->ffd_vertex = NULL;
+#endif 
+    v->next = vertex_list;
+    vertex_list = v;
+    if (first_vert == NULL) {
+        first_vert = v;
+    }
+
+    if (++vhash_count > vhash_size) {
+        vhash_rebuild(vhash_size * 2, cell_size);   /* re-inserts v too */
+    } else {
+        vhash_insert(v);
+    }
+
+    return v;
 }
 
 
@@ -209,9 +365,7 @@ vertex_lookup(pos, texture, normal, p, use_norm)
  * Push a vertex on the vertex stack.
  */
 static void
-push_vertex(x, y, z, u, v, w, nx, ny, nz, use_norm)
-    double  x, y, z, u, v, w, nx, ny, nz;
-    bool    use_norm;
+push_vertex(double x, double y, double z, double u, double v, double w, double nx, double ny, double nz, bool use_norm)
 {
     Vector      pos;
     Vector      texture;
@@ -222,6 +376,8 @@ push_vertex(x, y, z, u, v, w, nx, ny, nz, use_norm)
     MakeVector(texture, u, v, w);
     if (use_norm) {
         MakeVector(normal, nx, ny, nz);
+    } else {
+        MakeVector(normal, 0.0, 0.0, 0.0);
     }
 
    /* 
@@ -235,9 +391,9 @@ push_vertex(x, y, z, u, v, w, nx, ny, nz, use_norm)
     if (!first_vertex) {
         first_vertex++;
     } else if (first_vertex == 1) {
-        dist_limit = sqrt((x - vertex_tree->pos.x) * (x - vertex_tree->pos.x)
-                        + (y - vertex_tree->pos.y) * (y - vertex_tree->pos.y)
-                        + (z - vertex_tree->pos.z) * (z - vertex_tree->pos.z))
+        dist_limit = sqrt((x - first_vert->pos.x) * (x - first_vert->pos.x)
+                        + (y - first_vert->pos.y) * (y - first_vert->pos.y)
+                        + (z - first_vert->pos.z) * (z - first_vert->pos.z))
                    * 1e-10;                      /* Magic!!! */
         if (dist_limit != 0.0)
             first_vertex++;
@@ -251,8 +407,7 @@ push_vertex(x, y, z, u, v, w, nx, ny, nz, use_norm)
         vstack_bottom->next = vref;
     }
     vstack_bottom = vref;
-    vref->vertex = vertex_lookup(&pos, &texture, &normal, 
-                                 &vertex_tree, use_norm);
+    vref->vertex = vertex_lookup(&pos, &texture, &normal, use_norm);
     vref->next = NULL;
     nvertices++;
 }
@@ -263,8 +418,7 @@ push_vertex(x, y, z, u, v, w, nx, ny, nz, use_norm)
  * Push a vertex on the vertex stack (without texture coordinates).
  */
 void
-vertex_push(x, y, z)
-    double  x, y, z;
+vertex_push(double x, double y, double z)
 {
     push_vertex(x, y, z, (double)0.0, (double)0.0, (double)0.0, 
                 (double)0.0, (double)0.0, (double)0.0, FALSE);
@@ -276,8 +430,7 @@ vertex_push(x, y, z)
  * Push a vertex with texture coordinates on the vertex stack.
  */
 void
-vertex_tx_push(x, y, z, u, v, w)
-    double  x, y, z, u, v, w;
+vertex_tx_push(double x, double y, double z, double u, double v, double w)
 {
     push_vertex(x, y, z, u, v, w, 
                 (double)0.0, (double)0.0, (double)0.0, FALSE);
@@ -289,8 +442,7 @@ vertex_tx_push(x, y, z, u, v, w)
  * Push a vertex with specified normal on the vertex stack.
  */
 void
-vertex_n_push(x, y, z, nx, ny, nz)
-    double  x, y, z, nx, ny, nz;
+vertex_n_push(double x, double y, double z, double nx, double ny, double nz)
 {
     push_vertex(x, y, z, (double)0.0, (double)0.0, (double)0.0, 
                 nx, ny, nz, TRUE);
@@ -302,8 +454,7 @@ vertex_n_push(x, y, z, nx, ny, nz)
  * Push a vertex with specified normal on the vertex stack.
  */
 void
-vertex_tx_n_push(x, y, z, u, v, w, nx, ny, nz)
-    double  x, y, z, u, v, w, nx, ny, nz;
+vertex_tx_n_push(double x, double y, double z, double u, double v, double w, double nx, double ny, double nz)
 {
     push_vertex(x, y, z, u, v, w, nx, ny, nz, TRUE);
 }
@@ -314,7 +465,7 @@ vertex_tx_n_push(x, y, z, u, v, w, nx, ny, nz)
  * Push a polygon on the polygon stack. Empty the vertex stack afterwards.
  */
 void
-polygon_push()
+polygon_push(void)
 {
     Polygon    *polyref;
     Vertex_ref *vref;
@@ -344,8 +495,7 @@ polygon_push()
  * the free proc if its no longer referenced.
  */
 void
-surface_desc_unref(surf_desc_hdr)
-    Surf_desc_hdr *surf_desc_hdr;
+surface_desc_unref(Surf_desc_hdr *surf_desc_hdr)
 {
     if (--surf_desc_hdr->ref_count <= 0) {
         if (surf_desc_hdr->ref_count < 0) {
@@ -365,17 +515,13 @@ surface_desc_unref(surf_desc_hdr)
  * Empty the polygon stack afterwards.
  */
 Surface *
-surface_create(surf_desc, shader)
-    void   *surf_desc;
-    Shader *shader;
+surface_create(void *surf_desc, Shader *shader)
 {
     Surface *surfref;
-    Polygon *polyref;
-    int      i;
     
     if (poly_stack != NULL) {
         surfref = (Surface *)smalloc(sizeof(Surface));
-        surfref->vertices = vertex_tree;
+        surfref->vertices = vertex_list;
         surfref->polygons = poly_stack;
         if (surface_desc_hdrs) {
             surfref->surf_desc_hdr = surf_desc;
@@ -396,7 +542,9 @@ surface_create(surf_desc, shader)
         } else {
             surfref->ref_count = 0;
         }
-        vertex_tree = NULL;
+        vertex_list = NULL;
+        first_vert = NULL;
+        vhash_clear();
         poly_stack = NULL;
         first_vertex = 0;
         return surfref;
@@ -410,13 +558,7 @@ surface_create(surf_desc, shader)
  * Create a surface to be shaded with the simple shader.
  */
 Surface *
-surface_basic_create(ambient, red, grn, blu, specular, c3, 
-		     opred, opgrn, opblu)
-    double   ambient;
-    double   red, grn, blu;
-    double   specular;
-    double   c3;
-    double   opred, opgrn, opblu;
+surface_basic_create(double ambient, double red, double grn, double blu, double specular, double c3, double opred, double opgrn, double opblu)
 {
     Surf_desc_hdr *surf_desc_hdr;
     Surf_desc     *surf_desc;
@@ -429,7 +571,7 @@ surface_basic_create(ambient, red, grn, blu, specular, c3,
     } else {
         surf_desc_hdr->ref_count = 0;
     }
-    surf_desc_hdr->free_func = (void (*)())free;
+    surf_desc_hdr->free_func = free;
     surf_desc_hdr->client_data = NULL;
 
     surf_desc = SIPP_SURFP_HDR(Surf_desc, surf_desc_hdr);
@@ -457,10 +599,7 @@ surface_basic_create(ambient, red, grn, blu, specular, c3,
  * using the surface description SURF_DESC.
  */
 void
-surface_set_shader(surface, surf_desc, shader)
-    Surface *surface;
-    void    *surf_desc;
-    Shader  *shader;
+surface_set_shader(Surface *surface, void *surf_desc, Shader *shader)
 {
     
     if (surface != NULL) {
@@ -485,14 +624,7 @@ surface_set_shader(surface, surf_desc, shader)
  * Set SURFACE to be shaded with the simple shader.
  */
 void
-surface_basic_shader(surface, ambient, red, grn, blu, specular, c3, 
-		     opred, opgrn, opblu)
-    Surface   *surface;
-    double     ambient;
-    double     red, grn, blu;
-    double     specular;
-    double     c3;
-    double     opred, opgrn, opblu;
+surface_basic_shader(Surface *surface, double ambient, double red, double grn, double blu, double specular, double c3, double opred, double opgrn, double opblu)
 {
     Surf_desc_hdr *surf_desc_hdr;
     Surf_desc     *surf_desc;
@@ -500,7 +632,7 @@ surface_basic_shader(surface, ambient, red, grn, blu, specular, c3,
 
     surf_desc_hdr = SIPP_SURF_HDR_ALLOC(Surf_desc);
     surf_desc_hdr->ref_count = 0;
-    surf_desc_hdr->free_func = (void (*)())free;
+    surf_desc_hdr->free_func = free;
     surf_desc_hdr->client_data = NULL;
 
     surf_desc = SIPP_SURFP_HDR(Surf_desc, surf_desc_hdr);
@@ -523,10 +655,7 @@ surface_basic_shader(surface, ambient, red, grn, blu, specular, c3,
 
 #ifdef FFD
 void
-surface_set_ffd(surface, ffd_func, ffd_data)
-    Surface  *surface;
-    FFD_func *ffd_func;
-    void     *ffd_data;
+surface_set_ffd(Surface *surface, FFD_func *ffd_func, void *ffd_data)
 {
     if (surface != NULL) {
         if (surface->ffd_desc_hdr != NULL) {
@@ -547,21 +676,33 @@ surface_set_ffd(surface, ffd_func, ffd_data)
 
 
 /*
- * Copy a vertex tree.
+ * Copy a vertex list.  The copy of each vertex is remembered in the
+ * HNEXT field of the original (which is unused once a surface exists),
+ * so that copy_polygons() can translate vertex references.
  */
 static Vertex *
-copy_vertices(vp)
-    Vertex *vp;
+copy_vertices(Vertex *vp)
 {
-    Vertex *tmp;
+    Vertex *head, *tail, *tmp;
 
-    if (vp == NULL)
-        return NULL;
-    tmp = (Vertex *)smalloc(sizeof(Vertex));
-    *tmp = *vp;
-    tmp->big = copy_vertices(vp->big);
-    tmp->sml = copy_vertices(vp->sml);
-    return tmp;
+    head = tail = NULL;
+    for (; vp != NULL; vp = vp->next) {
+        tmp = (Vertex *)smalloc(sizeof(Vertex));
+        *tmp = *vp;
+        tmp->next = NULL;
+        tmp->hnext = NULL;
+#ifdef FFD
+        tmp->ffd_vertex = NULL;      /* Allocated on demand when rendering */
+#endif 
+        vp->hnext = tmp;
+        if (tail == NULL) {
+            head = tmp;
+        } else {
+            tail->next = tmp;
+        }
+        tail = tmp;
+    }
+    return head;
 }
 
 
@@ -570,12 +711,12 @@ copy_vertices(vp)
  * Copy a list of polygons.
  */
 static Polygon *
-copy_polygons(pp, surface)
-    Polygon *pp;
-    Surface *surface;
+copy_polygons(Polygon *pp, Surface *surface)
 {
     Polygon *tmp;
     int      i;
+
+    (void)surface;
 
     if (pp == NULL)
         return NULL;
@@ -583,11 +724,8 @@ copy_polygons(pp, surface)
     tmp->nvertices = pp->nvertices;
     tmp->vertex = (Vertex **)smalloc(tmp->nvertices * sizeof(Vertex *));
     for (i = 0; i < tmp->nvertices; i++) {
-        tmp->vertex[i] = vertex_lookup(&pp->vertex[i]->pos, 
-                                       &pp->vertex[i]->texture,
-                                       &pp->vertex[i]->normal,
-                                       &surface->vertices,
-                                       pp->vertex[i]->fixed_normal);
+        /* copy_vertices() left the copy of each vertex in hnext. */
+        tmp->vertex[i] = pp->vertex[i]->hnext;
     }
     tmp->next = copy_polygons(pp->next, surface);
     return tmp;
@@ -601,8 +739,7 @@ copy_polygons(pp, surface)
  * original surfaces. Same goes for the ffd (if any).
  */
 static Surface *
-surface_copy(surface)
-    Surface  *surface;
+surface_copy(Surface *surface)
 {
     Surface  *newsurf;
 
@@ -629,18 +766,23 @@ surface_copy(surface)
 
 
 /*
- * Delete a vertex tree.
+ * Delete a vertex list.
  */
 static void
-delete_vertices(vtree)
-    Vertex **vtree;
+delete_vertices(Vertex **vlist)
 {
-    if (*vtree != NULL) {
-        delete_vertices(&((*vtree)->big));
-        delete_vertices(&((*vtree)->sml));
-        sfree(*vtree);
-        *vtree = NULL;
+    Vertex *v, *next;
+
+    for (v = *vlist; v != NULL; v = next) {
+        next = v->next;
+#ifdef FFD
+        if (v->ffd_vertex != NULL) {
+            sfree(v->ffd_vertex);
+        }
+#endif 
+        sfree(v);
     }
+    *vlist = NULL;
 }
 
 
@@ -649,8 +791,7 @@ delete_vertices(vtree)
  * Delete a surface.
  */
 void
-surface_unref(surface)
-    Surface *surface;
+surface_unref(Surface *surface)
 {
     Polygon    *polyref1, *polyref2;
 
@@ -688,7 +829,7 @@ surface_unref(surface)
  * Create an empty object. 
  */
 Object *
-object_create()
+object_create(void)
 {
     Object *obj;
 
@@ -720,10 +861,7 @@ object_create()
  * incremented here.
  */
 static Object *
-object_copy(object, copy_surfaces, copy_sub_objs)
-    Object *object;
-    bool    copy_surfaces;
-    bool    copy_sub_objs;
+object_copy(Object *object, bool copy_surfaces, bool copy_sub_objs)
 {
     Object *newobj;
     int     idx;
@@ -784,8 +922,7 @@ object_copy(object, copy_surfaces, copy_sub_objs)
  * same as in the original.
  */
 Object *
-object_instance(object)
-    Object *object;
+object_instance(Object *object)
 {
     /*
      * Don't copy surfaces or subobjects.
@@ -803,8 +940,7 @@ object_instance(object)
  * will be duplicated.
  */
 Object *
-object_dup(object)
-    Object *object;
+object_dup(Object *object)
 {
     /*
      * Copy subobjects but not surfaces.
@@ -820,8 +956,7 @@ object_dup(object)
  * will be duplicated.
  */
 Object *
-object_deep_dup(object)
-    Object *object;
+object_deep_dup(Object *object)
 {
     /*
      * Copy surfaces and subobjects.
@@ -837,10 +972,9 @@ object_deep_dup(object)
  * the recursion continues and the memory used is freed.
  * Don't allow deletion of the world.
  */
-void object_delete(o)Object *o;{object_unref(o);} /* Backward compatibility */
+void object_delete(Object *o) { object_unref(o); }  /* Backward compatibility */
 void
-object_unref(object)
-    Object *object;
+object_unref(Object *object)
 {
     int idx;
 
@@ -877,8 +1011,7 @@ object_unref(object)
  * be used. Returns FALSE if subobj is not in object.
  */
 bool
-object_sub_subobj(object, subobj)
-    Object *object, *subobj;
+object_sub_subobj(Object *object, Object *subobj)
 {
     int idx;
 
@@ -904,8 +1037,7 @@ object_sub_subobj(object, subobj)
  * Add SUBOBJ as a subobject in OBJECT. 
  */
 void
-object_add_subobj(object, subobj)
-    Object *object, *subobj;
+object_add_subobj(Object *object, Object *subobj)
 {
     if (object == NULL || subobj == NULL) {
         return;
@@ -935,9 +1067,7 @@ object_add_subobj(object, subobj)
  * Returns FALSE if SURFACE is not in OBJECT.
  */
 bool
-object_sub_surface(object, surface)
-    Object   *object;
-    Surface  *surface;
+object_sub_surface(Object *object, Surface *surface)
 {
     int idx;
 
@@ -965,9 +1095,7 @@ object_sub_surface(object, surface)
  * to OBJECT. 
  */
 void
-object_add_surface(object, surface)
-    Object  *object;
-    Surface *surface;
+object_add_surface(Object *object, Surface *surface)
 {
     if (object == NULL || surface == NULL) {
         return;
@@ -998,8 +1126,7 @@ object_add_surface(object, surface)
  * for different surfaces.  Returns the old value of the flag.
  */
 bool
-sipp_surface_desc_headers(flag)
-    bool flag;
+sipp_surface_desc_headers(bool flag)
 {
     bool old = surface_desc_hdrs;
 
@@ -1010,8 +1137,7 @@ sipp_surface_desc_headers(flag)
 
 #ifdef FFD
 bool
-sipp_ffd_desc_headers(flag)
-    bool flag;
+sipp_ffd_desc_headers(bool flag)
 {
     bool old = ffd_desc_hdrs;
 
@@ -1022,8 +1148,7 @@ sipp_ffd_desc_headers(flag)
 
 
 bool
-sipp_user_refcount(flag)
-    bool flag;
+sipp_user_refcount(bool flag)
 {
     bool old = user_refcount;
 
@@ -1037,9 +1162,11 @@ sipp_user_refcount(flag)
  * Initialize the data structures.
  */
 void
-objects_init()
+objects_init(void)
 {
-    vertex_tree    = NULL;
+    vertex_list    = NULL;
+    first_vert     = NULL;
+    vhash_clear();
     vertex_stack   = NULL;
     nvertices      = 0;
     first_vertex   = 0;

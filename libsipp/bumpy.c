@@ -33,19 +33,11 @@ extern bool noise_ready;
 
 
 void
-bumpy_shader(pos, normal, texture, view_vec, lights, bd, color, opacity)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Bumpy_desc  *bd;
-    Color       *color;
-    Color       *opacity;
+bumpy_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *bd_, Color *color, Color *opacity)
 {
+    Bumpy_desc   *bd = (Bumpy_desc *)bd_;
     Vector     tmp;
     Vector     norm;
-    double     len;
     double     no;
 
     if (!noise_ready) {

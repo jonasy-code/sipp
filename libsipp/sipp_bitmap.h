@@ -26,7 +26,7 @@
 #include <sys/types.h>
 
 /* The generic line drawer usable for any bitmap type. */
-typedef void   (*Bitmap_line_func)();
+typedef void   (*Bitmap_line_func)(void *bm, int x1, int y1, int x2, int y2);
 
 
 /* The SIPP bitmap and its associated functions. */
@@ -35,27 +35,27 @@ typedef struct{
     int       width;
     int       height;
     int       width_bytes;
-    u_char   *buffer;
+    unsigned char   *buffer;
 } Sipp_bitmap;
 
 
 EXTERN Sipp_bitmap *
-sipp_bitmap_create _ANSI_ARGS_((int   width,
-                                int   height));
+sipp_bitmap_create(int   width,
+                                int   height);
 
 EXTERN void
-sipp_bitmap_destruct _ANSI_ARGS_((Sipp_bitmap  *bm));
+sipp_bitmap_destruct(Sipp_bitmap  *bm);
 
 EXTERN void
-sipp_bitmap_line _ANSI_ARGS_((Sipp_bitmap  *bm,
+sipp_bitmap_line(Sipp_bitmap  *bm,
                               int           x1,
                               int           y1,
                               int           x2,
-                              int           y2));
+                              int           y2);
 
 EXTERN void
-sipp_bitmap_write _ANSI_ARGS_((FILE         *file,
-                               Sipp_bitmap  *bm));
+sipp_bitmap_write(FILE         *file,
+                               Sipp_bitmap  *bm);
 
 
 #endif /* BITMAP_H */

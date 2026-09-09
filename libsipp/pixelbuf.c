@@ -59,15 +59,14 @@ static int          first_free;      /* First free Pixel_info in the buffer */
  * Prototypes of internal functions.
  */
 static int
-pixel_alloc _ANSI_ARGS_((void));
+pixel_alloc(void);
 
 
 /*
  * Initialize the pixel buffer.
  */
 void
-pixels_setup(init_size)
-    int init_size;
+pixels_setup(int init_size)
 {
     if (pixbuf != 0) {
         sfree(pixbuf);        /* Just in case */
@@ -84,7 +83,7 @@ pixels_setup(init_size)
  * Free memory used by pixel_buffer.
  */
 void
-pixels_free()
+pixels_free(void)
 {
     sfree(pixbuf);
     pixbuf = 0;
@@ -95,7 +94,7 @@ pixels_free()
  * Renitialize the free_list.
  */
 void
-pixels_reinit()
+pixels_reinit(void)
 {
     first_free = 0;
 }
@@ -106,7 +105,7 @@ pixels_reinit()
  * Realloc a larger pixbuf if needed.
  */
 static int
-pixel_alloc()
+pixel_alloc(void)
 {
     if (first_free == pixbuf_size) {
         pixbuf_size += size_delta;
@@ -125,16 +124,7 @@ pixel_alloc()
  * insert it into PIXEL.
  */
 int
-pixel_insert(pixel, worldstep, texturestep, normalstep, 
-             depth, hden, offset, edge)
-    int      pixel;
-    Vector  *worldstep;
-    Vector  *texturestep;
-    Vector  *normalstep;
-    double   depth;
-    double   hden;
-    double   offset;
-    Edge    *edge;
+pixel_insert(int pixel, Vector *worldstep, Vector *texturestep, Vector *normalstep, double depth, double hden, double offset, Edge *edge)
 {
     int  pixref1;
     int  pixref2;
@@ -175,10 +165,7 @@ pixel_insert(pixel, worldstep, texturestep, normalstep,
  * background color.
  */
 void
-pixel_collect(pixel, result, render_mode)
-    int     pixel;
-    Color  *result;
-    int     render_mode;
+pixel_collect(int pixel, Color *result, int render_mode)
 {
     Color    frac;
     Color    opacity_sum;

@@ -1,4 +1,5 @@
-#ifdef	__GNUC__
+#if defined(__GNUC__) || defined(__clang__)
+#    undef  alloca
 #    define alloca(x) __builtin_alloca (x)
 #else
 #if defined(HAVE_NO_ALLOCA) || defined(HAVE_NO_ALLOCA_H)

@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include <sipp.h>
 #include <shaders.h>
@@ -38,9 +39,8 @@ Granite_desc column_surf = {
 
 extern char *optarg;
 
-main(argc, argv)
-    int argc;
-    char **argv;
+int
+main(int argc, char **argv)
 {
     Object  *column;
     Object  *teapot;

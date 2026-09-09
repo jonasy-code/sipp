@@ -27,7 +27,7 @@ bool noise_ready = FALSE;
 static double pts[NUMPTS];
 
 static double
-iadjust _ANSI_ARGS_((double f));
+iadjust(double f);
 
 /*
  * Doubles might have values that is too large to be
@@ -38,8 +38,7 @@ iadjust _ANSI_ARGS_((double f));
  * NOTE: 32 bit integers is assumed.
  */
 static double
-iadjust(f)
-    double f;
+iadjust(double f)
 {
     while ((f > 2147483647.0) || (f < -2147483648.0)) {
         if (f > 2147483647.0) {         /* 2**31 - 1 */
@@ -57,7 +56,7 @@ iadjust(f)
  * Initialize the array of random numbers.
  * RANDOM() is defined in sipp.h
  */
-void noise_init()
+void noise_init(void)
 {
     int i;
    
@@ -68,8 +67,7 @@ void noise_init()
 
 
 
-double noise(v)
-Vector *v;
+double noise(Vector *v)
 {
    Vector p;
    int xi, yi, zi;
@@ -166,8 +164,7 @@ Vector *v;
 
 
 
-Vector Dnoise(p)
-Vector *p;
+Vector Dnoise(Vector *p)
 {
    Vector v;
    int xi, yi, zi;
@@ -288,9 +285,7 @@ Vector *p;
 
 
 
-double turbulence(p, octaves)
-    Vector *p;
-    int     octaves;
+double turbulence(Vector *p, int octaves)
 {
     Vector tmp;
     double scale = 1.0;

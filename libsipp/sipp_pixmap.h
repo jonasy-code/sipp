@@ -27,7 +27,7 @@
 #include <sys/types.h>
 
 /* The generic pixel setter usable for any pixmap type. */
-typedef void   (*Pixmap_set_pixel_func)();
+typedef void   (*Pixmap_set_pixel_func)(void *pm, int x, int y, unsigned char red, unsigned char grn, unsigned char blu);
 
 
 /* The SIPP pixmap and its associated functions. */
@@ -35,28 +35,28 @@ typedef void   (*Pixmap_set_pixel_func)();
 typedef struct {
     int       width;
     int       height;
-    u_char  * buffer;
+    unsigned char  * buffer;
 } Sipp_pixmap;
 
 
 EXTERN Sipp_pixmap *
-sipp_pixmap_create _ANSI_ARGS_((int   width,
-                                int   height));
+sipp_pixmap_create(int   width,
+                                int   height);
 
 EXTERN void
-sipp_pixmap_destruct _ANSI_ARGS_((Sipp_pixmap  *pm));
+sipp_pixmap_destruct(Sipp_pixmap  *pm);
 
 EXTERN void
-sipp_pixmap_set_pixel _ANSI_ARGS_((Sipp_pixmap  *pm,
+sipp_pixmap_set_pixel(Sipp_pixmap  *pm,
                                    int           x,
                                    int           y,
-                                   u_char        red,
-                                   u_char        grn,
-                                   u_char        blu));
+                                   unsigned char        red,
+                                   unsigned char        grn,
+                                   unsigned char        blu);
 
 EXTERN void
-sipp_pixmap_write _ANSI_ARGS_((FILE         *file,
-                               Sipp_pixmap  *pm));
+sipp_pixmap_write(FILE         *file,
+                               Sipp_pixmap  *pm);
 
 
 #endif /* SIPP_PIXMAP_H */

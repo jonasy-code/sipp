@@ -139,7 +139,7 @@ typedef struct {
     Shader *f_shader;           /* Shader to call if mask(x, y) == 0 */
     void   *f_surface;          /* Surface description for bg_shader */
     void   *mask_data;          /* Pointer to data for masking function */
-    bool  (*masker)();          /* Function that tests a pixel value */
+    bool  (*masker)(void *mask_data, Vector *texture); /* Tests a pixel value */
 } Mask_desc;
 
 
@@ -162,94 +162,94 @@ typedef struct {
  * Declarations of the actual shading functions.
  */
 extern void
-phong_shader _ANSI_ARGS_((Vector      *pos,
+phong_shader(Vector      *pos,
                           Vector      *normal,
                           Vector      *texture,
                           Vector      *view_vec,
                           Lightsource *lights,
-                          Phong_desc  *pd,
+                          void *pd,          /* Phong_desc * */
                           Color       *color,
-                          Color       *opacity));
+                          Color       *opacity);
 
 extern void
-strauss_shader _ANSI_ARGS_((Vector        *pos,
+strauss_shader(Vector        *pos,
                             Vector        *normal,
                             Vector        *texture,
                             Vector        *view_vec,
                             Lightsource   *lights,
-                            Strauss_desc  *sd,
+                            void *sd,          /* Strauss_desc * */
                             Color         *color,
-                            Color         *opacity));
+                            Color         *opacity);
 
 extern void
-marble_shader _ANSI_ARGS_((Vector      *pos,
+marble_shader(Vector      *pos,
                            Vector      *normal,
                            Vector      *texture,
                            Vector      *view_vec,
                            Lightsource *lights,
-                           Marble_desc *md,
+                           void *md,          /* Marble_desc * */
                            Color       *color,
-                           Color       *opacity));
+                           Color       *opacity);
 
 extern void
-granite_shader _ANSI_ARGS_((Vector        *pos,
+granite_shader(Vector        *pos,
                             Vector        *normal,
                             Vector        *texture,
                             Vector        *view_vec,
                             Lightsource   *lights,
-                            Granite_desc  *gd,
+                            void *gd,          /* Granite_desc * */
                             Color         *color,
-                            Color         *opacity));
+                            Color         *opacity);
 
 extern void
-bozo_shader _ANSI_ARGS_((Vector      *pos,
+bozo_shader(Vector      *pos,
                          Vector      *normal,
                          Vector      *texture,
                          Vector      *view_vec,
                          Lightsource *lights,
-                         Bozo_desc   *bd,
+                         void *bd,          /* Bozo_desc * */
                          Color       *color,
-                         Color       *opacity));
+                         Color       *opacity);
 
 extern void
-mask_shader _ANSI_ARGS_((Vector      *pos,
+mask_shader(Vector      *pos,
                          Vector      *normal,
                          Vector      *texture,
                          Vector      *view_vec,
                          Lightsource *lights,
-                         Mask_desc   *md,
+                         void *md,          /* Mask_desc * */
                          Color       *color,
-                         Color       *opacity));
+                         Color       *opacity);
 
 extern void
-bumpy_shader _ANSI_ARGS_((Vector      *pos,
+bumpy_shader(Vector      *pos,
                           Vector      *normal,
                           Vector      *texture,
                           Vector      *view_vec,
                           Lightsource *lights,
-                          Bumpy_desc  *bd,
+                          void *bd,          /* Bumpy_desc * */
                           Color       *color,
-                          Color       *opacity));
+                          Color       *opacity);
 
 extern void
-planet_shader _ANSI_ARGS_((Vector      *pos,
+planet_shader(Vector      *pos,
                            Vector      *normal,
                            Vector      *texture,
                            Vector      *view_vec,
                            Lightsource *lights,
-                           Surf_desc   *sd,
+                           void *sd,          /* Surf_desc * */
                            Color       *color,
-                           Color       *opacity));
+                           Color       *opacity);
 
 extern void
-wood_shader _ANSI_ARGS_((Vector      *pos,
+wood_shader(Vector      *pos,
                          Vector      *normal,
                          Vector      *texture,
                          Vector      *view_vec,
                          Lightsource *lights,
-                         Wood_desc   *wd,
+                         void *wd,          /* Wood_desc * */
                          Color       *color,
-                         Color       *opacity));
+                         Color       *opacity);
 
 
 #endif /* _SHADERS_H */

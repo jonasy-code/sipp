@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <math.h>
 
 #include <sipp.h>
@@ -19,9 +20,8 @@ Wood_desc wood_surf = {
 
 extern char *optarg;
 
-main(argc, argv)
-    int    argc;
-    char **argv;
+int
+main(int argc, char **argv)
 {
     FILE    *fp ;
 

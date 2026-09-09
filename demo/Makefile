@@ -4,16 +4,16 @@
 
 # These values are used if not overruled from the command line
 #CC = cc
-CC = gcc -traditional
-CFLAGS = -pipe -O2 -I../libsipp
+CC = gcc
+CFLAGS = -pipe -O2 -I../libsipp -std=gnu99 -Wall -Wstrict-prototypes -Wold-style-definition
 #CFLAGS = -pipe -g -I../libsipp
 
 SHELL = /bin/sh
 RM = rm -f
 
-SRCS = torustest.c conetest.c ellipsoid.c prismtest.c chain.c scroll.c\
+SRCS = torustest.c conetest.c ellipsoid.c prismtest.c chain.c scroll.c geombench.c\
 	teapot.c structure.c planettest.c isy90.c strausstest.c woodtest.c
-PROGRAMS = torustest conetest ellipsoid prismtest chain scroll\
+PROGRAMS = torustest conetest ellipsoid prismtest chain scroll geombench\
 	teapot structure planettest isy90 strausstest woodtest
 
 
@@ -41,7 +41,7 @@ programs: ../libsipp/libsipp.a $(PROGRAMS)
 
 teapot: teapot.o ../libsipp/libsipp.a
 	$(CC) -o teapot teapot.o ../libsipp/libsipp.a -lm $(LIBS)
-	
+
 chain: chain.o ../libsipp/libsipp.a
 	$(CC) -o chain chain.o ../libsipp/libsipp.a -lm $(LIBS)
 
@@ -74,6 +74,9 @@ woodtest: woodtest.o ../libsipp/libsipp.a
 
 scroll: scroll.o ../libsipp/libsipp.a
 	$(CC) -o scroll scroll.o ../libsipp/libsipp.a -lm $(LIBS)
+
+geombench: geombench.o ../libsipp/libsipp.a
+	$(CC) -o geombench geombench.o ../libsipp/libsipp.a -lm $(LIBS)
 
 
 # ================================================================

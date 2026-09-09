@@ -31,52 +31,56 @@
 
 Tokenval     tokenval;
 extern FILE *yyin;
+extern int   yylex (void);
 
 /*
  * Prototypes of internal functions.
  */
 static void
-vertex_read _ANSI_ARGS_((Bez_Object *obj));
+vertex_read(Bez_Object *obj);
 
 static void
-curve_read _ANSI_ARGS_((Bez_Object *obj));
+curve_read(Bez_Object *obj);
 
 static void
-patch_read _ANSI_ARGS_((Bez_Object *obj));
+patch_read(Bez_Object *obj);
 
 static Bez_Object *
-bezier_read _ANSI_ARGS_((FILE *file));
+bezier_read(FILE *file);
+
+static Surface *
+bezier_patches(Bez_Object *obj, int res, void *surface, Shader *shader, int texture);
 
 static double
-C _ANSI_ARGS_((int i));
+C(int i);
 
 static double 
-bblend _ANSI_ARGS_((int    i,
-                    double u));
+bblend(int    i,
+                    double u);
 
 static void
-bez_curve_eval _ANSI_ARGS_((Vector     *vertex,
+bez_curve_eval(Vector     *vertex,
                             Bez_Curve  *curve,
                             double      u,
                             double     *x,
                             double     *y,
-                            double     *z));
+                            double     *z);
 
 static void
-bez_patch_eval _ANSI_ARGS_((Vector     *vertex,
+bez_patch_eval(Vector     *vertex,
                             Bez_Patch  *patch,
                             double      u,
                             double      v,
                             double     *x,
                             double     *y,
-                            double     *z));
+                            double     *z);
 
 static Surface *
-bezier_rot_curves _ANSI_ARGS_((Bez_Object *obj,
+bezier_rot_curves(Bez_Object *obj,
                                int         res,
                                void       *surface,
                                Shader     *shader,
-                               int         texture));
+                               int         texture);
 
 
 /*================================================================*/
@@ -91,8 +95,7 @@ bezier_rot_curves _ANSI_ARGS_((Bez_Object *obj,
  * install it in the bezier structure.
  */
 static void
-vertex_read(obj)
-    Bez_Object *obj;
+vertex_read(Bez_Object *obj)
 {
     int token;
     int i, j;
@@ -131,6 +134,7 @@ vertex_read(obj)
                 } else {
                     obj->vertex[i].x = (double)tokenval.intval;
                 }
+                break;
 
               case 1:
                 if (token == FLOAT) {
@@ -138,6 +142,7 @@ vertex_read(obj)
                 } else {
                     obj->vertex[i].y = (double)tokenval.intval;
                 }
+                break;
 
               case 2:
                 if (token == FLOAT) {
@@ -166,8 +171,7 @@ vertex_read(obj)
  * it in the bezier structure.
  */
 static void
-curve_read(obj)
-    Bez_Object *obj;
+curve_read(Bez_Object *obj)
 {
     int         token;
     int         i, j;
@@ -220,8 +224,7 @@ curve_read(obj)
  * it in the bezier structure.
  */
 static void
-patch_read(obj)
-    Bez_Object *obj;
+patch_read(Bez_Object *obj)
 {
     int         token;
     int         i, j, k;
@@ -276,8 +279,7 @@ patch_read(obj)
  * description. Build a bezier object from the data.
  */
 static Bez_Object *
-bezier_read(file)
-    FILE *file;
+bezier_read(FILE *file)
 {
     int token;
     Bez_Object *obj;
@@ -307,7 +309,7 @@ bezier_read(file)
             goto errout;
         }
     } else {
-        fprintf(stderr, "Corrupt bezier description file: %s\n", file);
+        fprintf(stderr, "Corrupt bezier description file.\n");
         return NULL;
     }
 
@@ -334,8 +336,7 @@ bezier_read(file)
 /*================================================================*/
 
 static double
-C(i)
-    int i;
+C(int i)
 {
     int j, a;
 
@@ -352,9 +353,7 @@ C(i)
 
 
 static double 
-bblend(i, u)
-    int    i;
-    double u;
+bblend(int i, double u)
 {
     int j;
     double v;
@@ -381,11 +380,7 @@ bblend(i, u)
  * 0 and 1 that determines how far "into" the curve we are.
  */
 static void
-bez_curve_eval(vertex, curve, u, x, y, z)
-    Vector     *vertex;
-    Bez_Curve  *curve;
-    double      u;
-    double     *x, *y, *z;
+bez_curve_eval(Vector *vertex, Bez_Curve *curve, double u, double *x, double *y, double *z)
 {
     int    i;
     double b;
@@ -409,11 +404,7 @@ bez_curve_eval(vertex, curve, u, x, y, z)
  * between 0 and 1 that determines where on the patch we are.
  */
 static void
-bez_patch_eval(vertex, patch, v, u, x, y, z)
-    Vector     *vertex;
-    Bez_Patch  *patch;
-    double      u, v;
-    double     *x, *y, *z;
+bez_patch_eval(Vector *vertex, Bez_Patch *patch, double v, double u, double *x, double *y, double *z)
 {
     int i, j;
     double b;
@@ -448,13 +439,8 @@ bez_patch_eval(vertex, patch, v, u, x, y, z)
  * and create a SIPP surface out of them. The patches will be 
  * tesselated into RESxRES polygons (rectangles).
  */
-Surface *
-bezier_patches(obj, res, surface, shader, texture)
-    Bez_Object *obj;
-    int         res;
-    void       *surface;
-    Shader     *shader;
-    int         texture;
+static Surface *
+bezier_patches(Bez_Object *obj, int res, void *surface, Shader *shader, int texture)
 {
     double  x, y, z;
     double  u, v;
@@ -518,15 +504,9 @@ bezier_patches(obj, res, surface, shader, texture)
  * patch should cover of a rotational body.)
  */
 static Surface *
-bezier_rot_curves(obj, res, surface, shader, texture)
-    Bez_Object *obj;
-    int         res;
-    void       *surface;
-    Shader     *shader;
-    int         texture;
+bezier_rot_curves(Bez_Object *obj, int res, void *surface, Shader *shader, int texture)
 {
     double  x[4], y[4], z[4];
-    double  xtmp;
     double  u;
     double  v;
     double  step;
@@ -593,12 +573,7 @@ bezier_rot_curves(obj, res, surface, shader, texture)
  * polygons and return a pointer to a SIPP object.
  */
 Object *
-sipp_bezier_file(file, res, surface, shader, texture)
-    FILE    *file;
-    int      res;
-    void    *surface;
-    Shader  *shader;
-    int      texture;
+sipp_bezier_file(FILE *file, int res, void *surface, Shader *shader, int texture)
 {
     Object     *obj;
     Bez_Object *bez_obj;
@@ -636,16 +611,7 @@ sipp_bezier_file(file, res, surface, shader, texture)
  * one or more bezier patches.
  */
 Object *
-sipp_bezier_patches(nvert, vertex, npatch, cp_index, res, surface, shader,
-                    texture )
-    int     nvert;
-    Vector *vertex;
-    int     npatch;
-    int    *cp_index;
-    int     res;
-    void   *surface;
-    Shader *shader;
-    int     texture;
+sipp_bezier_patches(int nvert, Vector *vertex, int npatch, int *cp_index, int res, void *surface, Shader *shader, int texture)
 {
     Object     *obj;
     Bez_Object  bez_obj;
@@ -689,16 +655,7 @@ sipp_bezier_patches(nvert, vertex, npatch, cp_index, res, surface, shader,
  * create rotational bodies.
  */
 Object *
-sipp_bezier_rotcurve(nvert, vertex, ncurve, cp_index, res, surface, shader,
-                     texture) 
-    int     nvert;
-    Vector *vertex;
-    int     ncurve;
-    int    *cp_index;
-    int     res;
-    void   *surface;
-    Shader *shader;
-    int     texture;
+sipp_bezier_rotcurve(int nvert, Vector *vertex, int ncurve, int *cp_index, int res, void *surface, Shader *shader, int texture)
 {
     Object     *obj;
     Bez_Object  bez_obj;

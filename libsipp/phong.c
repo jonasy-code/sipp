@@ -28,16 +28,9 @@
 
 
 void
-phong_shader(pos, normal, texture, view_vec, lights, pd, color, opacity)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Phong_desc  *pd;
-    Color       *color;
-    Color       *opacity;
+phong_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *pd_, Color *color, Color *opacity)
 {
+    Phong_desc   *pd = (Phong_desc *)pd_;
     Vector       unit_norm;
     Vector       light_dir;
     Vector       specular;

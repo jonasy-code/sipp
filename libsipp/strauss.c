@@ -66,16 +66,9 @@
 
 
 void
-strauss_shader(pos, normal, texture, view_vec, lights, sd, color, opacity)
-    Vector        *pos;
-    Vector        *normal;
-    Vector        *texture;
-    Vector        *view_vec;
-    Lightsource   *lights;
-    Strauss_desc  *sd;
-    Color         *color;
-    Color         *opacity;
+strauss_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *sd_, Color *color, Color *opacity)
 {
+    Strauss_desc *sd = (Strauss_desc *)sd_;
     Vector       unit_normal;  /* Normalized surface normal */
     Vector       highlight;    /* Highlight vector */
     double       c_alpha;      /* cos(angle between normal and lightvector) */
@@ -89,7 +82,6 @@ strauss_shader(pos, normal, texture, view_vec, lights, sd, color, opacity)
     Vector       qd;           /* Diffuse reflection factor */
     Vector       qs;           /* Specular reflection factor */
     Vector       light_dir;    /* Direction to "current" light */
-    double       light_factor; /* Fraction of light from "current" light */
     Color        col;          /* Resulting color */
     Lightsource *lp;
 
@@ -101,7 +93,12 @@ strauss_shader(pos, normal, texture, view_vec, lights, sd, color, opacity)
 
     for (lp = lights; lp != (Lightsource *)0; lp = lp->next) {
 
-        light_factor = light_eval(lp, pos, &light_dir);
+        /*
+         * NOTE: the return value (shadowing and spotlight attenuation)
+         * is ignored, so this shader does not cast shadows.  Kept as is
+         * to preserve existing output.
+         */
+        (void)light_eval(lp, pos, &light_dir);
 
         c_alpha = VecDot(unit_normal, light_dir);
 

@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
 #include <math.h>
 
 #include <sipp.h>
@@ -65,9 +66,8 @@ Surf_desc bg_surf = {
 
 extern char *optarg;
 
-main(argc, argv)
-    int    argc;
-    char **argv;
+int
+main(int argc, char **argv)
 {
     Object *nmd;     /* Non metallic, dull sphere */
     Object *nms;     /* Non metallic, shiny sphere */

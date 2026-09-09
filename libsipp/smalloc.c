@@ -20,13 +20,15 @@
  ** smalloc.c - "Safe" malloc and calloc.
  **/
 
-#include <malloc.h>
+#include <stdlib.h>
 #include <stdio.h>
+
+#include <sipp.h>
+#include <smalloc.h>
 
 
 void *
-smalloc(size)
-    int size;
+smalloc(int size)
 {
     char *p;
 
@@ -41,9 +43,7 @@ smalloc(size)
 
 
 void *
-scalloc(size, itemsize)
-    int size;
-    int itemsize;
+scalloc(int size, int itemsize)
 {
     char *p;
 
@@ -58,9 +58,7 @@ scalloc(size, itemsize)
 
 
 void *
-srealloc(ptr, size)
-    void *ptr;
-    int   size;
+srealloc(void *ptr, int size)
 {
     char *p;
  

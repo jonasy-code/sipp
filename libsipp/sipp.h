@@ -25,25 +25,14 @@
 #define _SIPP_H
 
 /*
- * Definitions that allow this header file to be used either with or
- * without ANSI C features like function prototypes.
+ * SIPP is written in standard C (C99 or later).  The macros below are
+ * kept so that user code written against older releases keeps compiling.
  */
-
-#undef _ANSI_ARGS_
-#undef CONST
-#if ((defined(__STDC__) || defined(SABER)) && !defined(NO_PROTOTYPE)) || defined(__cplusplus)
-#   define _USING_PROTOTYPES_ 1
-#   define _ANSI_ARGS_(x)	x
-#   define CONST const
-#   ifdef __cplusplus
-#       define VARARGS (...)
-#   else
-#       define VARARGS ()
-#   endif
-#else
-#   define _ANSI_ARGS_(x)	()
-#   define CONST
-#endif
+#undef  _ANSI_ARGS_
+#define _ANSI_ARGS_(x)  x
+#define _USING_PROTOTYPES_ 1
+#undef  CONST
+#define CONST const
 
 #undef EXTERN
 #ifdef __cplusplus
@@ -53,6 +42,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <geometric.h>
 
 /*
@@ -64,7 +54,14 @@
 #define M_PI 3.1415926535897932384626
 #endif
 
-typedef int bool;
+/*
+ * bool, true and false are keywords from C23 on; before that they come
+ * from <stdbool.h>.  TRUE and FALSE are kept for existing code.
+ */
+#if !defined(__cplusplus) && \
+    !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
+#include <stdbool.h>
+#endif
 #ifndef FALSE
 #define FALSE  0
 #define TRUE   1
@@ -82,9 +79,8 @@ typedef int bool;
 
 /*
  * The macro RANDOM() should return a random number
- * in the range [-1, 1].
+ * in the range [-1, 1].  drand48() is declared in <stdlib.h>.
  */
-extern double drand48();
 #define RANDOM()  (2.0 * drand48() - 1.0)
 
 
@@ -125,28 +121,23 @@ extern double drand48();
 #define SPOT_SOFT    3
 
 
-/*
- * Interface to shader functions.  Can't have ANSI prototype due to different
- * types being passed in.
- */
-typedef void Shader();
 
 
 /*
  * FFD function interface.
  */
 #ifdef FFD
-typedef void FFD_func _ANSI_ARGS_((void    *ffd_data,
+typedef void FFD_func (void    *ffd_data,
                                    Vector  *pos,
                                    Vector  *texture,
                                    Vector  *ffd_pos,
-                                   Vector  *ffd_texture));
+                                   Vector  *ffd_texture);
 #endif
 
 /*
  * Update function interface.
  */
-typedef void Update_func _ANSI_ARGS_((void  *client_data));
+typedef void Update_func (void  *client_data);
 
 
 /*
@@ -158,6 +149,42 @@ typedef struct {
     double   grn;
     double   blu;
 } Color;
+
+
+/*
+ * Interface to shader functions.  SURFACE is the surface description the
+ * shader was installed with (see surface_create()); each shader casts it
+ * to its own descriptor type.
+ */
+struct lightsource_t;
+typedef void Shader(Vector               *pos,
+                    Vector               *normal,
+                    Vector               *texture,
+                    Vector               *view_vec,
+                    struct lightsource_t *lights,
+                    void                 *surface,
+                    Color                *color,
+                    Color                *opacity);
+
+/*
+ * Interface to the user supplied output functions of render_image_func()
+ * and render_field_func().  A Pixel_func receives one pixel of a shaded
+ * image.  In LINE mode a Line_func is used instead, receiving one line
+ * segment in image coordinates; pass it as (Pixel_func *) to the
+ * rendering function.
+ */
+typedef void Pixel_func(void          *data,
+                        int            x,
+                        int            y,
+                        unsigned char  red,
+                        unsigned char  grn,
+                        unsigned char  blu);
+
+typedef void Line_func(void *data,
+                       int   x1,
+                       int   y1,
+                       int   x2,
+                       int   y2);
 
 
 /*
@@ -195,8 +222,12 @@ typedef struct {
 #endif 
 
 /*
- * Structure storing the vertices in surfaces. The vertices for a
- * surface are stored in a binary tree sorted first on x, then y and last z.
+ * Structure storing the vertices in surfaces. The vertices of a surface
+ * are kept in a singly linked list (through NEXT).  While a surface is
+ * being built, vertices are also entered into a spatial hash table so
+ * that shared vertices can be found quickly; HNEXT links the vertices
+ * within one hash bucket and has no meaning once the surface is created
+ * (objects.c reuses it as scratch space when copying a surface).
  */
 typedef struct vertex_t {
     Vector            pos;    /* vertex position */
@@ -206,7 +237,8 @@ typedef struct vertex_t {
 #ifdef FFD
     FFD_Vertex       *ffd_vertex;
 #endif 
-    struct vertex_t  *big, *sml;  /* pointers to children in the tree */
+    struct vertex_t  *next;   /* next vertex in the surface */
+    struct vertex_t  *hnext;  /* next vertex in the same hash bucket */
 } Vertex;
 
 
@@ -234,7 +266,7 @@ typedef struct polygon_t {
  */
 typedef struct {
     int         ref_count;       /* # of references surface description */
-    void      (*free_func) ();   /* function to call when no more refs   */
+    void      (*free_func)(void *); /* called with the header when no more refs */
     void       *client_data;     /* arbitrary data for free_func to use  */
 } Surf_desc_hdr;
 
@@ -257,7 +289,7 @@ typedef struct {
  *  surface description and a pointer to a shader function.
  */
 typedef struct surface_t {
-    Vertex           *vertices;          /* vertex tree */
+    Vertex           *vertices;          /* list of vertices */
     Polygon          *polygons;          /* polygon list */
     Surf_desc_hdr    *surf_desc_hdr;     /* header for surface if not NULL */
     void             *surface;           /* surface description */
@@ -338,64 +370,64 @@ extern Camera  *sipp_camera;
 
 /* Global initialization and configuration functions. */
 EXTERN void
-sipp_init _ANSI_ARGS_((void));
+sipp_init(void);
 
 EXTERN void
-sipp_show_backfaces _ANSI_ARGS_((bool flag_));
+sipp_show_backfaces(bool flag_);
 
 EXTERN void
-sipp_render_direction _ANSI_ARGS_((bool direction));
+sipp_render_direction(bool direction);
 
 EXTERN void
-sipp_background _ANSI_ARGS_((double red,
+sipp_background(double red,
                              double grn,
-                             double blu));
+                             double blu);
 
 EXTERN void
-sipp_set_update_callback _ANSI_ARGS_((Update_func *func,
+sipp_set_update_callback(Update_func *func,
                                       void        *client_data,
-                                      int          period));
+                                      int          period);
 
 EXTERN void
-sipp_shadows _ANSI_ARGS_((bool flag,
-                          int  size));
+sipp_shadows(bool flag,
+                          int  size);
 
 EXTERN bool
-sipp_user_refcount _ANSI_ARGS_((bool flag));
+sipp_user_refcount(bool flag);
 
 EXTERN bool
-sipp_surface_desc_headers _ANSI_ARGS_((bool flag));
+sipp_surface_desc_headers(bool flag);
 
 #ifdef FFD
 EXTERN bool
-sipp_ffd_desc_headers _ANSI_ARGS_((bool flag));
+sipp_ffd_desc_headers(bool flag);
 #endif 
 
 /* Functions for handling surfaces and objects. */
 
 EXTERN void
-vertex_push _ANSI_ARGS_((double  x,
+vertex_push(double  x,
                          double  y,
-                         double  z));
+                         double  z);
 
 EXTERN void
-vertex_tx_push _ANSI_ARGS_((double  x,
+vertex_tx_push(double  x,
                             double  y,
                             double  z,
                             double  u,
                             double  v,
-                            double  w));
+                            double  w);
 
 EXTERN void
-vertex_n_push _ANSI_ARGS_((double  x,
+vertex_n_push(double  x,
                            double  y,
                            double  z,
                            double nx,
                            double ny,
-                           double nz));
+                           double nz);
 
 EXTERN void
-vertex_tx_n_push _ANSI_ARGS_((double   x,
+vertex_tx_n_push(double   x,
                               double   y,
                               double   z,
                               double   u,
@@ -403,23 +435,23 @@ vertex_tx_n_push _ANSI_ARGS_((double   x,
                               double   w,
                               double  nx,
                               double  ny,
-                              double  nz));
+                              double  nz);
 
 EXTERN void
-polygon_push _ANSI_ARGS_((void));
+polygon_push(void);
 
 EXTERN Surface
-*surface_create _ANSI_ARGS_((void   *surf_desc,
-                             Shader *shader));
+*surface_create (void   *surf_desc,
+                             Shader *shader);
 
 EXTERN void
-surface_unref _ANSI_ARGS_((Surface *surface));
+surface_unref(Surface *surface);
 
 EXTERN void
-surface_desc_unref _ANSI_ARGS_((Surf_desc_hdr *surf_desc_hdr));
+surface_desc_unref(Surf_desc_hdr *surf_desc_hdr);
 
 EXTERN Surface *
-surface_basic_create _ANSI_ARGS_((double   ambient,
+surface_basic_create(double   ambient,
                                   double   red,
                                   double   grn,
                                   double   blu,
@@ -427,22 +459,22 @@ surface_basic_create _ANSI_ARGS_((double   ambient,
                                   double   c3,
                                   double   opred,
                                   double   opgrn,
-                                  double   opblu));
+                                  double   opblu);
 
 EXTERN void
-surface_set_shader _ANSI_ARGS_((Surface *surface,
+surface_set_shader(Surface *surface,
                                 void    *surf_desc,
-                                Shader  *shader));
+                                Shader  *shader);
 
 #ifdef FFD
 EXTERN void
-surface_set_ffd _ANSI_ARGS_((Surface  *surface,
+surface_set_ffd(Surface  *surface,
                              FFD_func *ffd_func,
-                             void     *ffd_data));
+                             void     *ffd_data);
 #endif 
 
 EXTERN void
-surface_basic_shader _ANSI_ARGS_((Surface   *surface,
+surface_basic_shader(Surface   *surface,
                                   double     ambient,
                                   double     red,
                                   double     grn,
@@ -451,99 +483,99 @@ surface_basic_shader _ANSI_ARGS_((Surface   *surface,
                                   double     c3,
                                   double     opred,
                                   double     opgrn,
-                                  double     opblu));
+                                  double     opblu);
 
 EXTERN Object *
-object_create _ANSI_ARGS_((void));
+object_create(void);
 
 EXTERN Object *
-object_instance _ANSI_ARGS_((Object *object));
+object_instance(Object *object);
 
 EXTERN Object *
-object_dup _ANSI_ARGS_((Object *object));
+object_dup(Object *object);
 
 EXTERN Object *
-object_deep_dup _ANSI_ARGS_((Object *object));
+object_deep_dup(Object *object);
 
 EXTERN void
-object_unref _ANSI_ARGS_((Object *object));
+object_unref(Object *object);
 
 EXTERN void
-object_add_surface _ANSI_ARGS_((Object  *object,
-                                Surface *surface));
+object_add_surface(Object  *object,
+                                Surface *surface);
 
 EXTERN bool
-object_sub_surface _ANSI_ARGS_((Object   *object,
-                                Surface  *surface));
+object_sub_surface(Object   *object,
+                                Surface  *surface);
 
 EXTERN void
-object_add_subobj _ANSI_ARGS_((Object *object,
-                               Object *subobj));
+object_add_subobj(Object *object,
+                               Object *subobj);
 
 EXTERN bool
-object_sub_subobj _ANSI_ARGS_((Object *object,
-                               Object *subobj));
+object_sub_subobj(Object *object,
+                               Object *subobj);
 
 /* Functions for handling transforming objects. */
 
 EXTERN void
-object_set_transf _ANSI_ARGS_((Object     *obj,
-                               Transf_mat *matrix));
+object_set_transf(Object     *obj,
+                               Transf_mat *matrix);
 
 EXTERN Transf_mat *
-object_get_transf _ANSI_ARGS_((Object     *obj,
-                               Transf_mat *matrix));
+object_get_transf(Object     *obj,
+                               Transf_mat *matrix);
 
 EXTERN void
-object_clear_transf _ANSI_ARGS_((Object *obj));
+object_clear_transf(Object *obj);
 
 EXTERN void
-object_transform _ANSI_ARGS_((Object     *obj,
-                              Transf_mat *matrix));
+object_transform(Object     *obj,
+                              Transf_mat *matrix);
 
 EXTERN void
-object_rot_x _ANSI_ARGS_((Object *obj,
-                          double  ang));
+object_rot_x(Object *obj,
+                          double  ang);
 
 EXTERN void
-object_rot_y _ANSI_ARGS_((Object *obj,
-                          double  ang));
+object_rot_y(Object *obj,
+                          double  ang);
 
 EXTERN void
-object_rot_z _ANSI_ARGS_((Object *obj,
-                          double  ang));
+object_rot_z(Object *obj,
+                          double  ang);
 
 EXTERN void
-object_rot _ANSI_ARGS_((Object *obj,
+object_rot(Object *obj,
                         Vector *point,
                         Vector *vec,
-                        double  ang));
+                        double  ang);
 
 EXTERN void
-object_scale _ANSI_ARGS_((Object *obj,
+object_scale(Object *obj,
                           double  xscale, 
                           double  yscale,
-                          double  zscale));
+                          double  zscale);
 
 EXTERN void
-object_move _ANSI_ARGS_((Object *obj,
+object_move(Object *obj,
                          double  dx,
                          double  dy,
-                         double  dz));
+                         double  dz);
 
 /* Functions for handling lightsources and spotlights. */
 
 EXTERN Lightsource *
-lightsource_create _ANSI_ARGS_((double  x,
+lightsource_create(double  x,
                                 double  y,
                                 double  z,
                                 double  red,
                                 double  grn,
                                 double  blu,
-                                int     type));
+                                int     type);
 
 EXTERN Lightsource *
-spotlight_create _ANSI_ARGS_((double  x,
+spotlight_create(double  x,
                               double  y,
                               double  z,
                               double  to_x,
@@ -554,84 +586,84 @@ spotlight_create _ANSI_ARGS_((double  x,
                               double  grn,
                               double  blu,
                               int     type,
-                              bool    shadows));
+                              bool    shadows);
 
 EXTERN void
-light_destruct _ANSI_ARGS_((Lightsource   *light));
+light_destruct(Lightsource   *light);
 
 EXTERN void
-lightsource_put _ANSI_ARGS_((Lightsource *lp,
+lightsource_put(Lightsource *lp,
                              double       x,
                              double       y, 
-                             double       z));
+                             double       z);
 
 EXTERN void
-spotlight_pos _ANSI_ARGS_((Lightsource *lp,
+spotlight_pos(Lightsource *lp,
                            double       x,
                            double       y,
-                           double       z));
+                           double       z);
 
 EXTERN void
-spotlight_at _ANSI_ARGS_((Lightsource *lp,
+spotlight_at(Lightsource *lp,
                           double       x,
                           double       y,
-                          double       z));
+                          double       z);
 
 EXTERN void
-spotlight_opening _ANSI_ARGS_((Lightsource *lp,
-                               double       fov));
+spotlight_opening(Lightsource *lp,
+                               double       fov);
 
 EXTERN void
-spotlight_shadows _ANSI_ARGS_((Lightsource *lp,
-                               bool         flag));
+spotlight_shadows(Lightsource *lp,
+                               bool         flag);
 
 EXTERN void
-light_color _ANSI_ARGS_((Lightsource *lp,
+light_color(Lightsource *lp,
                          double       red, 
                          double       grn,
-                         double       blu));
+                         double       blu);
 
 EXTERN void
-light_active _ANSI_ARGS_((Lightsource *lp,
-                          bool         flag));
+light_active(Lightsource *lp,
+                          bool         flag);
 
 EXTERN double
-light_eval _ANSI_ARGS_((Lightsource *lp,
+light_eval(Lightsource *lp,
                         Vector      *pos,
-                        Vector      *vec));
+                        Vector      *vec);
 
 /* Functions for handling the viewpoint and virtual cameras. */
 
 EXTERN Camera *
-camera_create _ANSI_ARGS_((void));
+camera_create(void);
 
 EXTERN void
-camera_destruct _ANSI_ARGS_((Camera *cp));
+camera_destruct(Camera *cp);
 
 EXTERN void
-camera_position _ANSI_ARGS_((Camera *cp,
+camera_position(Camera *cp,
                              double  x,
                              double  y,
-                             double  z));
+                             double  z);
 
 EXTERN void
-camera_look_at _ANSI_ARGS_((Camera *cp,
+camera_look_at(Camera *cp,
                             double  x,
                             double  y,
-                            double  z));
+                            double  z);
 
 EXTERN void
-camera_up _ANSI_ARGS_((Camera *cp,
+camera_up(Camera *cp,
                        double  x,
                        double  y,
-                       double   z));
+                       double   z);
 
 EXTERN void
-camera_focal _ANSI_ARGS_((Camera *cp,
-                          double  focal));
+camera_focal(Camera *cp,
+                          double  focal);
 
 EXTERN void
-camera_params _ANSI_ARGS_((Camera *cp,
+camera_params(Camera *cp,
                            double  x0,
                            double  y0,
                            double  z0,
@@ -641,64 +673,64 @@ camera_params _ANSI_ARGS_((Camera *cp,
                            double  ux,
                            double  uy,
                            double  uz,
-                           double  ratio));
+                           double  ratio);
 
 EXTERN void
-camera_use _ANSI_ARGS_((Camera *cp));
+camera_use(Camera *cp);
 
 /* Functions to render an image. */
 
 EXTERN void
-render_image_file _ANSI_ARGS_((int   xres, 
+render_image_file(int   xres, 
                                int   yres,
                                FILE *im_file,
                                int   render_mode,
-                               int   oversampling));
+                               int   oversampling);
 
 EXTERN void
-render_image_func _ANSI_ARGS_((int      xres, 
+render_image_func(int      xres, 
                                int      yres,
-                               void   (*pixel_func)(),
+                               Pixel_func *pixel_func,
                                void    *data,
                                int      render_mode,
-                               int      oversampling));
+                               int      oversampling);
 
 EXTERN void
-render_field_file _ANSI_ARGS_((int   xres,
+render_field_file(int   xres,
                                int   yres,
                                FILE *im_file,
                                int   render_mode,
                                int   oversampling,
-                               int   field));
+                               int   field);
 
 EXTERN void
-render_field_func _ANSI_ARGS_((int      xres, 
+render_field_func(int      xres, 
                                int      yres,
-                               void   (*pixel_func)(),
+                               Pixel_func *pixel_func,
                                void    *data,
                                int      render_mode,
                                int      oversampling,
-                               int      field));
+                               int      field);
 
 EXTERN void
-sipp_render_terminate _ANSI_ARGS_((void));
+sipp_render_terminate(void);
 
 EXTERN void
-shadowmaps_create _ANSI_ARGS_((int size));
+shadowmaps_create(int size);
 
 EXTERN void
-shadowmaps_destruct _ANSI_ARGS_((void));
+shadowmaps_destruct(void);
 
 /* The basic shader. */
 EXTERN void
-basic_shader _ANSI_ARGS_((Vector      *pos,
+basic_shader(Vector      *pos,
                           Vector      *normal,
                           Vector      *texture,
                           Vector      *view_vec,
                           Lightsource *lights,
-                          Surf_desc   *sd,
+                          void        *sd,        /* Surf_desc * */
                           Color       *color,
-                          Color       *opacity));
+                          Color       *opacity);
 
 /*
  * The following functions & macros are provided for backward compatibility.
@@ -706,7 +738,7 @@ basic_shader _ANSI_ARGS_((Vector      *pos,
  * so we don't encourage use of them.
  */
 EXTERN void
-object_delete _ANSI_ARGS_((Object *o));
+object_delete(Object *o);
 
 #define object_install(obj)    object_add_subobj(sipp_world, obj);
 #define object_uninstall(obj)  object_sub_subobj(sipp_world, obj);

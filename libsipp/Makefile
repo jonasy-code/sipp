@@ -6,23 +6,23 @@ VERSION = 3.1
 
 #These values are default if they are not overridden from the command line:
 CC = gcc -pipe
-CFLAGS = -O2 -I.
+CFLAGS = -O2 -I. -std=gnu99 -Wall -Wextra -Wno-unused-parameter -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes
 #CFLAGS = -g -I.
 
 SHELL = /bin/sh
 RM = rm -f
 
-IHDRS = bezier.h lightsource.h noise.h objects.h rendering.h smalloc.h \
+IHDRS = arena.h bezier.h lightsource.h noise.h objects.h rendering.h smalloc.h \
         viewpoint.h pixelbuf.h
 EHDRS = sipp.h geometric.h shaders.h primitives.h sipp_pixmap.h sipp_bitmap.h
 HDRS = $(IHDRS) $(EHDRS)
-SRCS =  rendering.c geometric.c lightsource.c objects.c smalloc.c \
+SRCS =  rendering.c geometric.c lightsource.c objects.c smalloc.c arena.c \
         transforms.c viewpoint.c pixelbuf.c \
 	basic_shader.c mask.c marble.c granite.c noise.c bozo.c bumpy.c \
 	planet.c wood.c phong.c strauss.c\
 	prism.c cone.c ellipsoid.c torus.c bezier.c bezier_lex.l \
         sipp_pixmap.c sipp_bitmap.c teapot.c
-OBJS = rendering.o geometric.o lightsource.o objects.o smalloc.o \
+OBJS = rendering.o geometric.o lightsource.o objects.o smalloc.o arena.o \
        transforms.o viewpoint.o basic_shader.o marble.o granite.o mask.o\
        bozo.o bumpy.o planet.o noise.o bezier.o bezier_lex.o pixelbuf.o\
        torus.o cone.o ellipsoid.o prism.o sipp_pixmap.o sipp_bitmap.o\
@@ -61,7 +61,7 @@ clean:
 	$(RM) *.o *~ TAGS bezier_lex.c libsipp.a
 	-$(RM) libsipp.so
 
-rendering.o:         sipp.h rendering.h lightsource.h geometric.h smalloc.h\
+rendering.o:         sipp.h rendering.h lightsource.h geometric.h smalloc.h arena.h\
                      objects.h sipp_bitmap.h viewpoint.h patchlevel.h\
                      xalloca.h pixelbuf.h
 geometric.o:         geometric.h sipp.h smalloc.h
@@ -93,3 +93,4 @@ teapot.o:            sipp.h primitives.h
 sipp_pixmap.o:       sipp_pixmap.h sipp.h smalloc.h
 sipp_bitmap.o:       sipp_bitmap.h sipp.h smalloc.h
 xalloca.o:           xalloca.h
+arena.o:             arena.h sipp.h smalloc.h

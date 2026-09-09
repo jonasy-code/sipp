@@ -138,58 +138,58 @@ extern Transf_mat   ident_matrix;
 /* Function declarations for the functions in geometric.c */
 
 EXTERN void
-vecnorm _ANSI_ARGS_((Vector  *vec));
+vecnorm(Vector  *vec);
 
 EXTERN Transf_mat *
-transf_mat_create _ANSI_ARGS_((Transf_mat  *initmat));
+transf_mat_create(Transf_mat  *initmat);
 
 EXTERN void
-transf_mat_destruct _ANSI_ARGS_((Transf_mat  *mat));
+transf_mat_destruct(Transf_mat  *mat);
 
 EXTERN void
-mat_translate _ANSI_ARGS_((Transf_mat  *mat,
+mat_translate(Transf_mat  *mat,
                            double       dx,
                            double       dy, 
-                           double       dz));
+                           double       dz);
 
 EXTERN void
-mat_rotate_x _ANSI_ARGS_((Transf_mat  *mat,
-                          double       ang));
+mat_rotate_x(Transf_mat  *mat,
+                          double       ang);
 
 EXTERN void
-mat_rotate_y _ANSI_ARGS_((Transf_mat  *mat,
-                          double       ang));
+mat_rotate_y(Transf_mat  *mat,
+                          double       ang);
 
 EXTERN void
-mat_rotate_z _ANSI_ARGS_((Transf_mat  *mat,
-                          double       ang));
+mat_rotate_z(Transf_mat  *mat,
+                          double       ang);
 
 EXTERN void
-mat_rotate _ANSI_ARGS_((Transf_mat  *mat,
+mat_rotate(Transf_mat  *mat,
                         Vector      *point,
                         Vector      *vector,
-                        double       ang));
+                        double       ang);
 
 EXTERN void
-mat_scale _ANSI_ARGS_((Transf_mat  *mat,
+mat_scale(Transf_mat  *mat,
                        double       xscale,
                        double       yscale,
-                       double       zscale));
+                       double       zscale);
 
 EXTERN void
-mat_mirror_plane _ANSI_ARGS_((Transf_mat  *mat,
+mat_mirror_plane(Transf_mat  *mat,
                               Vector      *point,
-                              Vector      *norm));
+                              Vector      *norm);
 
 EXTERN void
-mat_mul _ANSI_ARGS_((Transf_mat  *res,
+mat_mul(Transf_mat  *res,
                      Transf_mat  *a,
-                     Transf_mat  *b));
+                     Transf_mat  *b);
 
 EXTERN void
-point_transform _ANSI_ARGS_((Vector      *res,
+point_transform(Vector      *res,
                              Vector      *vec,
-                             Transf_mat  *mat));
+                             Transf_mat  *mat);
 
 
 #endif  /* _GEOMETRIC_H_ */

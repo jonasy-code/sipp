@@ -23,20 +23,20 @@
 #ifndef SMALLOC_H
 #define SMALLOC_H
 
-#include <malloc.h>
+#include <stdlib.h>
 
 #define sfree(x) free(x)
 
 extern void *
-smalloc _ANSI_ARGS_((int size));
+smalloc(int size);
 
 extern void *
-scalloc _ANSI_ARGS_((int size,
-                     int itemsize));
+scalloc(int size,
+                     int itemsize);
 
 extern void *
-srealloc _ANSI_ARGS_((void *ptr,
-                      int   size));
+srealloc(void *ptr,
+                      int   size);
 
 
 #endif /* SMALLOC_H */

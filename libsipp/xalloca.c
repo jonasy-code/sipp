@@ -52,8 +52,7 @@ extern void	free();
 /* **************************************************************** */
 
 static char *
-xmalloc (size)
-     int size;
+xmalloc(int size)
 {
     char *temp = (char *)malloc (size);
     
@@ -92,7 +91,7 @@ static int	stack_dir;		/* 1 or -1 once known */
 #define	STACK_DIR	stack_dir
 
 static void
-find_stack_direction (/* void */)
+find_stack_direction(/* void */)
 {
   static char	*addr = NULL;	/* address of first
 				   `dummy', once known */
@@ -148,7 +147,7 @@ typedef union hdr
 static header *last_alloca_header = NULL; /* -> last alloca header */
 
 pointer
-alloca (size)			/* returns pointer to storage */
+alloca(size)			/* returns pointer to storage */
      unsigned	size;		/* # bytes to allocate */
 {
   auto char	probe;		/* probes stack depth: */

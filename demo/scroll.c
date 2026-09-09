@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <math.h>
 
 #include <sipp.h>
@@ -19,28 +20,51 @@ Surf_desc scroll_surf = {
 unsigned char scrolltexture[360][113];
 int scroll_ready = 0;
 void
-scroll_shader(pos, normal, texture, view_vec, lights, foo, color, opacity)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Surf_desc   *foo;
-    Color       *color;
-    Color       *opacity;
+scroll_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *foo, Color *color, Color *opacity)
 {
     Surf_desc   sd;
     FILE       *texture_file;
     int         x, y;
 
     if (!scroll_ready) {
+        int  c;
+
         texture_file = fopen("sipp.bm", "r");
-        fscanf(texture_file, "P4\n%d %d\n", &x, &y);
-        if (x != 900 || y != 360) {
-            puts("FOO!");
+        if (texture_file == NULL) {
+            fprintf(stderr, "scroll: cannot open texture file sipp.bm\n");
             exit(1);
         }
-        fread(scrolltexture, 1, 113*360, texture_file);
+        x = y = 0;
+        if (fscanf(texture_file, "P4") == EOF) {
+            fprintf(stderr, "scroll: sipp.bm is not a P4 pbm file\n");
+            exit(1);
+        }
+        /* Skip whitespace and any '#' comment lines before the size. */
+        for (;;) {
+            c = fgetc(texture_file);
+            if (c == '#') {
+                while (c != '\n' && c != EOF) {
+                    c = fgetc(texture_file);
+                }
+            } else if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+                ungetc(c, texture_file);
+                break;
+            }
+        }
+        if (fscanf(texture_file, "%d %d", &x, &y) != 2) {
+            fprintf(stderr, "scroll: cannot read bitmap size from sipp.bm\n");
+            exit(1);
+        }
+        fgetc(texture_file);               /* single whitespace before data */
+        if (x != 900 || y != 360) {
+            fprintf(stderr, "scroll: expected a 900x360 bitmap, got %dx%d\n",
+                    x, y);
+            exit(1);
+        }
+        if (fread(scrolltexture, 1, 113*360, texture_file) != 113*360) {
+            fprintf(stderr, "scroll: sipp.bm is truncated\n");
+            exit(1);
+        }
         fclose(texture_file);
         scroll_ready = 1;
     }
@@ -64,9 +88,7 @@ scroll_shader(pos, normal, texture, view_vec, lights, foo, color, opacity)
  * FFD which twists the ends of the scroll "paper"
  */
 void
-scroll_twist(dummy, world, txt, new_world, new_txt)
-    char *dummy;
-    Vector *world, *txt, *new_world, *new_txt;
+scroll_twist(void *dummy, Vector *world, Vector *txt, Vector *new_world, Vector *new_txt)
 {
     double rad;
     double ang;
@@ -92,9 +114,8 @@ scroll_twist(dummy, world, txt, new_world, new_txt)
 
 extern char *optarg;
 
-main(argc, argv)
-    int argc;
-    char **argv;
+int
+main(int argc, char **argv)
 {
     Object  *scroll;
     Surface *scrollsurf;

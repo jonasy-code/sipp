@@ -36,16 +36,14 @@
  */
 
 Sipp_pixmap *
-sipp_pixmap_create(width, height)
-    int   width;
-    int   height;
+sipp_pixmap_create(int width, int height)
 {
     Sipp_pixmap  * pm;
 
     pm = (Sipp_pixmap *) smalloc(sizeof(Sipp_pixmap));
     pm->width = width;
     pm->height = height;
-    pm->buffer = (u_char *) scalloc(3 * width * height, sizeof(u_char));
+    pm->buffer = (unsigned char *) scalloc(3 * width * height, sizeof(unsigned char));
 
     return pm;
 }
@@ -57,8 +55,7 @@ sipp_pixmap_create(width, height)
  */
 
 void
-sipp_pixmap_destruct(pm)
-    Sipp_pixmap  * pm;
+sipp_pixmap_destruct(Sipp_pixmap * pm)
 {
     if (pm != NULL) {
         if (pm->buffer != NULL) {
@@ -77,15 +74,9 @@ sipp_pixmap_destruct(pm)
  */
 
 void
-sipp_pixmap_set_pixel(pm, x, y, red, grn, blu)
-    Sipp_pixmap  * pm;
-    int            x;
-    int            y;
-    u_char         red;
-    u_char         grn;
-    u_char         blu;
+sipp_pixmap_set_pixel(Sipp_pixmap * pm, int x, int y, unsigned char red, unsigned char grn, unsigned char blu)
 {
-    u_char  * cp;
+    unsigned char  * cp;
 
     if (x < 0 || y < 0 || x >= pm->width || y >= pm->height) {
         fprintf(stderr, 
@@ -106,11 +97,9 @@ sipp_pixmap_set_pixel(pm, x, y, red, grn, blu)
  */
 
 void
-sipp_pixmap_write(file, pm)
-    FILE         * file;
-    Sipp_pixmap  * pm;
+sipp_pixmap_write(FILE * file, Sipp_pixmap * pm)
 {
-    u_char  * byte;
+    unsigned char  * byte;
     int       nbytes;
     int       i;
 

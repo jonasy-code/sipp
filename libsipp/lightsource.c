@@ -22,7 +22,6 @@
 
 #include <stdio.h>
 #include <math.h>
-#include <values.h>
 
 #ifndef MAXFLOAT
 #   define MAXFLOAT ((float)3.40282346638528860e+38)
@@ -41,18 +40,15 @@ static int    rand_index = 0;
 static double rand_no[256];
 
 static double
-shadow_sample _ANSI_ARGS_((Shadow_info *sh,
-                           Vector      *pos));
+shadow_sample(Shadow_info *sh,
+                           Vector      *pos);
 
 
 /*
  * Create a new lightsource in the scene.
  */
 Lightsource *
-lightsource_create(x, y, z, red, grn, blu, type)
-    double  x, y, z;
-    double  red, grn, blu;
-    int     type;
+lightsource_create(double x, double y, double z, double red, double grn, double blu, int type)
 {
     Lightsource    *lp;
     Dir_light_info *ip;
@@ -88,9 +84,7 @@ lightsource_create(x, y, z, red, grn, blu, type)
  * lightsource it's direction is changed.
  */
 void
-lightsource_put(lp, x, y, z)
-    Lightsource *lp;
-    double       x, y, z;
+lightsource_put(Lightsource *lp, double x, double y, double z)
 {
     if (lp->type != LIGHT_DIRECTION && lp->type != LIGHT_POINT) {
         return;
@@ -107,17 +101,10 @@ lightsource_put(lp, x, y, z)
  * Define a new spotlight in the scene.
  */
 Lightsource *
-spotlight_create(x, y, z, to_x, to_y, to_z, fov, red, grn, blu, type, shadows)
-    double  x, y, z;
-    double  to_x, to_y, to_z;
-    double  fov;
-    double  red, grn, blu;
-    int     type;
-    bool    shadows;
+spotlight_create(double x, double y, double z, double to_x, double to_y, double to_z, double fov, double red, double grn, double blu, int type, bool shadows)
 {
     Lightsource     *lp;
     Spot_light_info *sp;
-    Vector           tmp;
 
     if (type != SPOT_SHARP && type != SPOT_SOFT) {
         return NULL;
@@ -154,8 +141,7 @@ spotlight_create(x, y, z, to_x, to_y, to_z, fov, red, grn, blu, type, shadows)
  * resources attached to it.
  */
 void
-light_destruct(light)
-    Lightsource   *light;
+light_destruct(Lightsource *light)
 {
     Lightsource  * lght;
 
@@ -180,9 +166,7 @@ light_destruct(light)
  * Change the position of a spotlight.
  */
 void 
-spotlight_pos(lp, x, y, z)
-    Lightsource *lp;
-    double       x, y, z;
+spotlight_pos(Lightsource *lp, double x, double y, double z)
 {
     Spot_light_info *sp;
 
@@ -201,9 +185,7 @@ spotlight_pos(lp, x, y, z)
  * Change the point a spotlight is shining at.
  */
 void 
-spotlight_at(lp, x, y, z)
-    Lightsource *lp;
-    double       x, y, z;
+spotlight_at(Lightsource *lp, double x, double y, double z)
 {
     Spot_light_info *sp;
 
@@ -222,9 +204,7 @@ spotlight_at(lp, x, y, z)
  * Change the opening angle of a spotlight.
  */
 void 
-spotlight_opening(lp, fov)
-    Lightsource *lp;
-    double       fov;
+spotlight_opening(Lightsource *lp, double fov)
 {
     if (lp->type != SPOT_SOFT && lp->type != SPOT_SHARP) {
         return;
@@ -238,9 +218,7 @@ spotlight_opening(lp, fov)
  * Turn on or off shadow generation from a spotlight.
  */
 void 
-spotlight_shadows(lp, flag)
-    Lightsource *lp;
-    bool         flag;
+spotlight_shadows(Lightsource *lp, bool flag)
 {
     if (lp->type != SPOT_SOFT && lp->type != SPOT_SHARP) {
         return;
@@ -253,9 +231,7 @@ spotlight_shadows(lp, flag)
 /*
  * Set the color of the light from a lightsource or a spotlight.
  */
-void light_color(lp, red, grn, blu)
-    Lightsource *lp;
-    double       red, grn, blu;
+void light_color(Lightsource *lp, double red, double grn, double blu)
 {
     lp->color.red = red;
     lp->color.grn = grn;
@@ -267,9 +243,7 @@ void light_color(lp, red, grn, blu)
  * Turn a lightsource or spotlight on or off.
  */
 void 
-light_active(lp, flag)
-    Lightsource *lp;
-    bool         flag;
+light_active(Lightsource *lp, bool flag)
 {
     lp->active = flag;
 }
@@ -282,10 +256,7 @@ light_active(lp, flag)
  * In VEC we return a vector pointing from POS to LP.
  */
 double
-light_eval(lp, pos, vec)
-    Lightsource *lp;
-    Vector      *pos;
-    Vector      *vec;
+light_eval(Lightsource *lp, Vector *pos, Vector *vec)
 {
     double fov_factor;
 
@@ -344,6 +315,9 @@ light_eval(lp, pos, vec)
             return 1.0;
         }
     }
+
+    /* Unknown lightsource type; should never happen. */
+    return 0.0;
 }
 
 
@@ -353,9 +327,7 @@ light_eval(lp, pos, vec)
  */
 #define BOXRES  0.002
 static double
-shadow_sample(sh, pos)
-    Shadow_info *sh;
-    Vector      *pos;
+shadow_sample(Shadow_info *sh, Vector *pos)
 {
     Vector   lp_view;
     int      lit;
@@ -423,7 +395,7 @@ shadow_sample(sh, pos)
  * that have their shadow generation activated.
  */
 void
-depthmaps_create()
+depthmaps_create(void)
 {
     Lightsource *lp;
     int          i;
@@ -451,7 +423,7 @@ depthmaps_create()
  * Release the memory used by the depthmaps.
  */
 void
-depthmaps_destruct()
+depthmaps_destruct(void)
 {
     Lightsource *lp;
 

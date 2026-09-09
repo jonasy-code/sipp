@@ -39,19 +39,16 @@ static Vector *tx2;
  * Prototypes of internal functions.
  */
 static void
-arr_rot _ANSI_ARGS_((int    len,
+arr_rot(int    len,
                      double angle,
-                     int    texture));
+                     int    texture);
 
 static void
-push_band _ANSI_ARGS_((int    len));
+push_band(int    len);
 
 
 static void
-arr_rot(len, angle, texture)
-    int    len;
-    double angle;
-    int    texture;
+arr_rot(int len, double angle, int texture)
 {
     int    i;
     double sa, ca;
@@ -95,8 +92,7 @@ arr_rot(len, angle, texture)
 
 
 static void
-push_band(len)
-    int    len;
+push_band(int len)
 {
     int i, j;
 
@@ -117,14 +113,7 @@ push_band(len)
 
 
 Object *
-sipp_torus(bigradius, smallradius, res1, res2, surface, shader, texture)
-    double  bigradius;      /* Radius of the ring */
-    double  smallradius;    /* Radius of the "tube" */
-    int     res1;           /* Number of polygons around the ring */
-    int     res2;           /* Number of polygons around the tube */
-    void   *surface;
-    Shader *shader;
-    int     texture;
+sipp_torus(double bigradius, double smallradius, int res1, int res2, void *surface, Shader *shader, int texture)
 {
     Object *torus;
     double  angle;

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <math.h>
 
 #include <sipp.h>
@@ -29,9 +30,8 @@ Bumpy_desc bumpy_surf = {
 
 extern char *optarg;
 
-main(argc, argv)
-    int    argc;
-    char **argv;
+int
+main(int argc, char **argv)
 {
     Object  *sphere;
     Object  *cyl;

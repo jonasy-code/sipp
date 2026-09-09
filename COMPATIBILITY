@@ -1,3 +1,37 @@
+
+========================================================================
+Changes in the modernized (C99/C23) source
+========================================================================
+
+The library is now written in standard C and requires a C99 (or later)
+compiler.  It also compiles as C23.  The following source-level changes
+may affect existing programs:
+
+* Shader functions have a fixed prototype (typedef Shader in sipp.h).
+  The surface description is passed as "void *".  A user shader that
+  declared it as e.g. "Surf_desc *sd" must now declare "void *sd_" and
+  cast:   Surf_desc *sd = (Surf_desc *)sd_;
+  The same applies to FFD functions (void *ffd_data) and to the masker
+  function of the mask shader.
+
+* The output function of render_image_func()/render_field_func() is a
+  Pixel_func (see sipp.h).  In LINE mode pass a Line_func cast to
+  (Pixel_func *).  The data argument is a "void *"; do not pass
+  integers through it without a cast via intptr_t.
+
+* "bool" now comes from <stdbool.h> (or is a keyword in C23) instead
+  of being a typedef for int.  TRUE and FALSE are still defined.
+
+* "u_char" in the pixmap and bitmap interfaces is now "unsigned char"
+  (the same type; only the spelling changed).
+
+* The _ANSI_ARGS_ macro is still defined (as a no-op) so that old
+  declarations keep compiling, but it is no longer used.
+
+* The Vertex structure is a linked list (fields "next" and "hnext")
+  instead of a binary tree ("big" and "sml").  Only code that walked
+  the vertex tree directly is affected.
+
                    Compatibility Guide for SIPP 3.1
                    ================================
 

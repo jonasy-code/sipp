@@ -66,6 +66,9 @@ typedef struct edges_3d {
     int              polygon;     /* Id of the polygon the edge belongs to */
     Surface         *surface;     /* Surface that the edge belongs to */
     struct edges_3d *next;        /* Next edge on this scanline */
+    struct edges_3d *prev;        /* Previous edge in the active list */
+    struct edges_3d *sibling;     /* Ring of all edges of the same polygon */
+    bool             active;      /* Edge is currently in the active list */
 } Edge;
 
 

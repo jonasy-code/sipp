@@ -10,16 +10,16 @@
 extern bool     noise_ready;
 
 extern void
-noise_init _ANSI_ARGS_((void));
+noise_init(void);
 
 extern double
-noise _ANSI_ARGS_((Vector *v));
+noise(Vector *v);
 
 extern double
-turbulence _ANSI_ARGS_((Vector *p,
-                        int     octaves));
+turbulence(Vector *p,
+                        int     octaves);
 
 extern Vector
-Dnoise _ANSI_ARGS_((Vector *p));
+Dnoise(Vector *p);
 
 #endif /* _NOISE_H */

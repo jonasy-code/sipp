@@ -30,28 +30,28 @@
 extern Color     sipp_bgcol;
 
 extern void
-pixels_setup _ANSI_ARGS_((int init_size));
+pixels_setup(int init_size);
 
 extern void
-pixels_free _ANSI_ARGS_((void));
+pixels_free(void);
 
 extern void
-pixels_reinit _ANSI_ARGS_((void));
+pixels_reinit(void);
 
 extern int
-pixel_insert _ANSI_ARGS_((int      pixel,
+pixel_insert(int      pixel,
                           Vector  *worldstep,
                           Vector  *texturestep,
                           Vector  *normalstep,
                           double   depth,
                           double   hden,
                           double   offset,
-                          Edge    *edge));
+                          Edge    *edge);
 
 extern void
-pixel_collect _ANSI_ARGS_((int     pixel,
+pixel_collect(int     pixel,
                            Color  *result,
-                           int     render_mode));
+                           int     render_mode);
 
 
 #endif 

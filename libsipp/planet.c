@@ -4,6 +4,7 @@
 #include <sipp.h>
 #include <geometric.h>
 #include <noise.h>
+#include <shaders.h>
 
 
 /* A reasonably nice brown color */
@@ -21,11 +22,8 @@ static Color  cloud = {1.0, 1.0, 1.0};
  * 
  * Thanks to Jon Buller       jonb@vector.dallas.tx.us
  */
-double
-turb(size, scale_factor, loc)
-    int size;
-    double scale_factor;
-    Vector loc;
+static double
+turb(int size, double scale_factor, Vector loc)
 {
     double cur_scale, result;
     int cur;
@@ -50,16 +48,9 @@ turb(size, scale_factor, loc)
 extern bool noise_ready;
 
 void
-planet_shader(pos, normal, texture, view_vec, lights, sd, color, opacity)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Surf_desc   *sd;
-    Color       *color;
-    Color       *opacity;
+planet_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *sd_, Color *color, Color *opacity)
 {
+    Surf_desc    *sd = (Surf_desc *)sd_;
     Vector  tmp;
     double  amt;
 

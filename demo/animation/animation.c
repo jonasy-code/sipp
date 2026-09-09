@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <math.h>
 
 #include <sipp.h>
@@ -45,15 +46,7 @@ Floor_desc floor_surf = {
  * A shader to produce a checkered floor.
  */
 static void
-floor_shader(pos, normal, texture, view_vec, lights, fd, color, transp)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Floor_desc  *fd;
-    Color       *color;
-    Color       *transp;
+floor_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, Floor_desc *fd, Color *color, Color *transp)
 {
     Surf_desc  * col;
     int          intu;
@@ -77,9 +70,8 @@ floor_shader(pos, normal, texture, view_vec, lights, fd, color, transp)
 
 
 
-main(argc, argv)
-    int     argc;
-    char  **argv;
+int
+main(int argc, char **argv)
 {
     Object  *teapot;		/* The teapot and its bottom */
     Object  *bottom;

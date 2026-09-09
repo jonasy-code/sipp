@@ -28,14 +28,7 @@
 
 
 Object *
-sipp_ellipsoid(x_rad, y_rad, z_rad, res, surface, shader, texture)
-    double  x_rad;
-    double  y_rad;
-    double  z_rad;
-    int     res;
-    void   *surface;
-    Shader *shader;
-    int     texture;
+sipp_ellipsoid(double x_rad, double y_rad, double z_rad, int res, void *surface, Shader *shader, int texture)
 {
     int      i, j;
     double   factor;
@@ -47,7 +40,7 @@ sipp_ellipsoid(x_rad, y_rad, z_rad, res, surface, shader, texture)
     double  *x_arr;
     double  *y_arr;
     double  *u_arr;
-    double  *v1, *v2;
+    double  *v1 = NULL, *v2 = NULL;
     Object  *ellipsoid;
     bool     old_user_refs;
     
@@ -256,12 +249,7 @@ sipp_ellipsoid(x_rad, y_rad, z_rad, res, surface, shader, texture)
 
 
 Object *
-sipp_sphere(radius, res, surface, shader, texture)
-    double  radius;
-    int     res;
-    void   *surface;
-    Shader *shader;
-    int     texture;
+sipp_sphere(double radius, int res, void *surface, Shader *shader, int texture)
 {
     return sipp_ellipsoid(radius, radius, radius, res, surface, shader,
                           texture);

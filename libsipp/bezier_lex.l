@@ -24,12 +24,11 @@
 #include "sipp.h"
 #include "bezier.h"
 
-extern int     atoi();
-extern double  atof();
 
 extern Tokenval  tokenval;
 extern FILE     *bezier_file;
 %}
+%option noyywrap nounput noinput
 %%
 
 "bezier_patches:"       {return PATCHES;}
@@ -56,7 +55,7 @@ extern FILE     *bezier_file;
 
 #ifndef FLEX_SCANNER
 int
-yywrap()
+yywrap(void)
 {
     return 1;
 }

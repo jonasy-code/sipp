@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <math.h>
 
 #include <sipp.h>
@@ -9,9 +10,8 @@
 
 extern char *optarg;
 
-main(argc, argv)
-    int    argc;
-    char **argv;
+int
+main(int argc, char **argv)
 {
     FILE      *fp ;
     Object    *cone;

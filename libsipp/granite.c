@@ -34,10 +34,7 @@ extern bool noise_ready;
 
 
 static void 
-granite (p, color, gd)
-    Vector *p;
-    Color *color;
-    Granite_desc *gd;
+granite(Vector *p, Color *color, Granite_desc *gd)
 {
     int i;
     Vector v;
@@ -61,16 +58,9 @@ granite (p, color, gd)
 
 
 void
-granite_shader(pos, normal, texture, view_vec, lights, gd, color, opacity)
-    Vector        *pos;
-    Vector        *normal;
-    Vector        *texture;
-    Vector        *view_vec;
-    Lightsource   *lights;
-    Granite_desc  *gd;
-    Color         *color;
-    Color         *opacity;
+granite_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *gd_, Color *color, Color *opacity)
 {
+    Granite_desc *gd = (Granite_desc *)gd_;
     Vector     tmp;
     Surf_desc  surface;
 

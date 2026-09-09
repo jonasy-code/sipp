@@ -1,5 +1,4 @@
-Object *sipp_snail(cycle,stretch,r)
-double cycle,stretch,r;
+Object *sipp_snail(double cycle, double stretch, double r)
 {
    Object *p = object_create();
    int u,v, un = 16, vn = 16;
@@ -37,15 +36,13 @@ double cycle,stretch,r;
    return(p);
 }
 
-static double Sgn(x) 
-double x; 
-{ 
+static double Sgn(double x)
+{
    if(x<0.) return(-1.); 
    return(1.); 
 }
 
-static double Pow(x,y) 
-double x,y; 
-{ 
+static double Pow(double x, double y)
+{
    return(pow(x<0?-x:x,y)); 
 }

@@ -19,24 +19,17 @@
 
 
 Object *
-sipp_cone(radius_bot, radius_top, length, res, surface, shader, texture)
-    double    radius_bot;
-    double    radius_top;
-    double    length;
-    int	      res;
-    void    * surface;
-    Shader  * shader;
-    int       texture;
+sipp_cone(double radius_bot, double radius_top, double length, int res, void * surface, Shader * shader, int texture)
 {
     Object  * cone;
     double  * xb;
     double  * yb;
     double  * ub;
     double  * vb;
-    double  * xt;
-    double  * yt;
-    double  * ut;
-    double  * vt;
+    double  * xt = NULL;
+    double  * yt = NULL;
+    double  * ut = NULL;
+    double  * vt = NULL;
     double    frac;
     double    half_length;
     int       bot_exists;
@@ -250,13 +243,7 @@ sipp_cone(radius_bot, radius_top, length, res, surface, shader, texture)
 
 
 Object *
-sipp_cylinder(radius, length, res, surface, shader, texture)
-    double    radius;
-    double    length;
-    int       res;
-    void     *surface;
-    Shader   *shader;
-    int       texture;
+sipp_cylinder(double radius, double length, int res, void *surface, Shader *shader, int texture)
 {
     Object   *cylinder;
 

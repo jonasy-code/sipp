@@ -22,17 +22,11 @@
 
 
 Object *
-sipp_prism(num_points, points, length, surface, shader, texture)
-    int	      num_points;
-    Vector  * points;
-    double    length;
-    void    * surface;
-    Shader  * shader;
-    int       texture;
+sipp_prism(int num_points, Vector * points, double length, void * surface, Shader * shader, int texture)
 {
     Object  * prism;
-    double  * u;
-    double  * v;
+    double  * u = NULL;
+    double  * v = NULL;
     int	      i;
     int	      j;
 
@@ -64,8 +58,9 @@ sipp_prism(num_points, points, length, surface, shader, texture)
                     / M_PI + 0.5);
         }
         v[i] = v[0];
+        /* Fall through */
 
-      case CYLINDRICAL:    /* Fall trough */
+      case CYLINDRICAL:
         u = (double *)alloca((num_points + 1) * sizeof(double));
         u[0] = atan2(points[0].y, points[0].x);
         for (i = 1; i < num_points; i++) {
@@ -180,13 +175,7 @@ sipp_prism(num_points, points, length, surface, shader, texture)
  * A square block. Generated as a prism.
  */
 Object *
-sipp_block(xsize, ysize, zsize, surface, shader, texture)
-    double    xsize;
-    double    ysize;
-    double    zsize;
-    void    * surface;
-    Shader  * shader;
-    int       texture;
+sipp_block(double xsize, double ysize, double zsize, void * surface, Shader * shader, int texture)
 {
     Vector coor[4];
 
@@ -207,11 +196,7 @@ sipp_block(xsize, ysize, zsize, surface, shader, texture)
  * A cube.
  */
 Object *
-sipp_cube(size, surface, shader, texture)
-    double    size;
-    void    * surface;
-    Shader  * shader;
-    int       texture;
+sipp_cube(double size, void * surface, Shader * shader, int texture)
 {
     return sipp_block(size, size, size, surface, shader, texture);
 }

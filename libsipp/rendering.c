@@ -27,7 +27,6 @@
 #endif
 
 #include <math.h>
-#include <values.h>
 
 #ifndef MAXFLOAT
 #   define MAXFLOAT ((float)3.40282346638528860e+38)
@@ -36,6 +35,7 @@
 #include <xalloca.h>
 #include <sipp.h>
 #include <smalloc.h>
+#include <arena.h>
 
 #include <lightsource.h>
 #include <geometric.h>
@@ -57,13 +57,29 @@ static bool          auto_shadows;    /* Calculate shadows */
 static Edge        **y_bucket;        /* Y-bucket for edge lists. */
 static FILE         *image_file;      /* File to store image in      */
                                       /* when rendering into a file. */
-static void        (*pixel_set)();    /* Pointer to function for setting  */
-                                      /* a pixel when rendering with user */
-                                      /* defined function.                */
-static void         *im_data;         /* Data to pixel_set() */
+static Pixel_func   *pixel_set;       /* User function receiving pixels   */
+                                      /* when rendering with a function.  */
+static Line_func    *line_set;        /* Likewise for lines in LINE mode. */
+static void         *im_data;         /* Data to pixel_set()/line_set()   */
 
        int           depthmap_size;   /* Size of the depthmaps */
 
+/*
+ * Arenas for the two kinds of short-lived rendering objects.
+ *
+ * edge_arena holds all Edges of one rendering pass (the main image or
+ * one depthmap).  Edges are created during the object tree traversal
+ * and consumed by the scanline sweep; the arena is reset before each
+ * traversal.
+ *
+ * vcoord_arena holds the View_coords of the polygon currently being
+ * transformed and clipped, and is reset for every polygon.
+ */
+#define EDGE_ARENA_BLOCK    (256 * 1024)
+#define VCOORD_ARENA_BLOCK  ( 16 * 1024)
+
+static Arena         edge_arena;
+static Arena         vcoord_arena;
 
 /*
  * Flag that can be set to TRUE to terminate the rendering.
@@ -106,110 +122,134 @@ static Transf_mat      curr_mat;     /* Current transformation matrix */
  * Prototypes of internal functions.
  */
 static void
-calc_normals _ANSI_ARGS_((Polygon *pstart,
-                          Vector   eyepoint));
+calc_normals(Polygon *pstart,
+                          Vector   eyepoint);
 
 static void
-create_edges _ANSI_ARGS_((View_coord *view_vert,
+create_edges(View_coord *view_vert,
                           int         polygon,
                           Surface    *surface,
-                          int         render_mode));
+                          int         render_mode);
 
 static void
-clean_up_y_bucket _ANSI_ARGS_((int size));
+clean_up_y_bucket(int size);
 
 static View_coord *
-interpolate _ANSI_ARGS_((View_coord *v1,
+interpolate(View_coord *v1,
                          View_coord *v2,
-                         double      ratio));
+                         double      ratio);
 
 static void
-reset_normals _ANSI_ARGS_((Vertex *vref));
+reset_normals(Vertex *vref);
 
 static View_coord *
-polygon_clip _ANSI_ARGS_((View_coord *vlist,
+polygon_clip(View_coord *vlist,
                           int         plane,
-                          bool        first_vert));
+                          bool        first_vert);
 
 static void
-transf_vertices _ANSI_ARGS_((Vertex     *vertex[],
+transf_vertices(Vertex     *vertex[],
                              int         nvertices,
                              Surface    *surface,
                              Transf_mat *view_mat,
                              Transf_mat *tr_mat,
                              double      xsiz,
                              double      ysiz,
-                             int         render_mode));
+                             int         render_mode);
 
 #ifdef FFD
 static void
-do_ffd _ANSI_ARGS_((Vertex  *vertex,
-                    Surface *surface));
+do_ffd(Vertex  *vertex,
+                    Surface *surface);
 
 static void
-ffd_vertices _ANSI_ARGS_((Surface  *surface));
+ffd_vertices(Surface  *surface);
 #endif
 
 static void
-render_scanline _ANSI_ARGS_((int      res,
+render_scanline(int      res,
                              int     *scanline,
                              Edge    *edge_list,
-                             int      render_mode));
+                             int      render_mode);
 
-static Edge *
-insert_edge _ANSI_ARGS_((Edge *edge_list,
-                         Edge *edge));
-
-static Edge *
-merge_edge_lists _ANSI_ARGS_((Edge *list1,
-                              Edge *list2));
+/*
+ * The active edge list: the edges crossing the current scanline.
+ * Doubly linked so that edges can be inserted and removed anywhere
+ * in constant time.
+ */
+typedef struct {
+    Edge *head;
+    Edge *tail;
+} Active_list;
 
 static void
-store_line _ANSI_ARGS_((u_char  *buf,
+active_insert(Active_list *al,
+                           Edge        *edge);
+
+static void
+active_merge(Active_list *al,
+                          Edge        *bucket);
+
+static void
+active_retire(Active_list *al);
+
+static void
+store_line(unsigned char  *buf,
                         int      npixels,
                         int      line,
-                        int      storage_mode));
+                        int      storage_mode);
 
 static void
-buffer_clear _ANSI_ARGS_((int    res,
-                          int   *scanline));
+buffer_clear(int    res,
+                          int   *scanline);
 
 static void
-scan_and_render _ANSI_ARGS_((int   xres,
+scan_and_render(int   xres,
                              int   yres,
                              int   storage_mode,
                              int   render_mode,
                              int   oversampl,
-                             int   field));
+                             int   field);
 
 static void
-matrix_push _ANSI_ARGS_((void));
+matrix_push(void);
 
 static void
-matrix_pop _ANSI_ARGS_((void));
+matrix_pop(void);
 
 static void
-traverse_object_tree _ANSI_ARGS_((Object      *object,
+traverse_object_tree(Object      *object,
                                   Transf_mat  *view_mat,
                                   int          xres, 
                                   int          yres,
-                                  int          render_mode));
+                                  int          render_mode);
 
 static void
-render_dmap_line _ANSI_ARGS_((float       *dmap_line,
-                              Edge        *edge_list));
+render_dmap_line(float       *dmap_line,
+                              Edge        *edge_list);
 
 
 static void
-scan_depthmap _ANSI_ARGS_((float      *d_map));
+scan_depthmap(float      *d_map);
 
 static void
-render_main _ANSI_ARGS_((int   xres, 
+render_main(int   xres, 
                          int   yres,
                          int   storage_mode,
                          int   render_mode,
                          int   oversampling,
-                         int   field));
+                         int   field);
+
+
+/*
+ * Line_func adapter for the internal bitmap used when a LINE image is
+ * written to a file.
+ */
+static void
+bitmap_line(void *bm, int x1, int y1, int x2, int y2)
+{
+    sipp_bitmap_line((Sipp_bitmap *)bm, x1, y1, x2, y2);
+}
 
 
 /*
@@ -223,9 +263,7 @@ render_main _ANSI_ARGS_((int   xres,
  * normals of the adjectent plygons.
  */
 static void
-calc_normals(pstart, eyepoint)
-    Polygon *pstart;    /* Head of polygon list */
-    Vector   eyepoint;  /* Viewpoint transformed to local coordinate system */
+calc_normals(Polygon *pstart, Vector eyepoint)
 {
     Polygon    *polyref;
     Vertex    **vlist;
@@ -312,13 +350,10 @@ calc_normals(pstart, eyepoint)
  * edges and sort them into the y-bucket.
  */
 static void
-create_edges(view_vert, polygon, surface, render_mode)
-    View_coord *view_vert;
-    int         polygon;
-    Surface    *surface;
-    int         render_mode;
+create_edges(View_coord *view_vert, int polygon, Surface *surface, int render_mode)
 {
     Edge       *edge;
+    Edge       *first_edge, *last_edge;
     View_coord *view_ref, *last;
     int         nderiv, y1, y2;
     double      deltay;
@@ -330,6 +365,7 @@ create_edges(view_vert, polygon, surface, render_mode)
 
 
     view_ref = last = view_vert;
+    first_edge = last_edge = NULL;
 
     do {
         view_ref = view_ref->next;
@@ -346,13 +382,13 @@ create_edges(view_vert, polygon, surface, render_mode)
          */
         if (render_mode == LINE) {
             if (view_ref->view.y < view_ref->next->view.y) {
-                (*pixel_set)(im_data, 
+                (*line_set)(im_data, 
                              (int)(view_ref->view.x + 0.5), 
                              (int)(view_ref->view.y + 0.5),
                              (int)(view_ref->next->view.x + 0.5), 
                              (int)(view_ref->next->view.y + 0.5));
             } else {
-                (*pixel_set)(im_data, 
+                (*line_set)(im_data, 
                              (int)(view_ref->next->view.x + 0.5), 
                              (int)(view_ref->next->view.y + 0.5), 
                              (int)(view_ref->view.x + 0.5), 
@@ -382,7 +418,7 @@ create_edges(view_vert, polygon, surface, render_mode)
          */
         if (nderiv != 0) {
 
-            edge = (Edge *)smalloc(sizeof(Edge));
+            edge = (Edge *)arena_alloc(&edge_arena, sizeof(Edge));
 
             x1 = view_ref->view.x;
             x2 = view_ref->next->view.x;
@@ -446,31 +482,45 @@ create_edges(view_vert, polygon, surface, render_mode)
             }
             edge->polygon = polygon;
             edge->surface = surface;
+            edge->prev = NULL;
+            edge->active = FALSE;
             edge->next = y_bucket[edge->ystart];
             y_bucket[edge->ystart] = edge;
+
+            /*
+             * Link all edges of this polygon into a ring, so that an
+             * edge can find its polygon's other edges when it becomes
+             * active (see active_insert()).
+             */
+            if (first_edge == NULL) {
+                first_edge = edge;
+            } else {
+                last_edge->sibling = edge;
+            }
+            last_edge = edge;
         }
     } while (view_ref != last);
+
+    if (last_edge != NULL) {
+        last_edge->sibling = first_edge;
+    }
 }
 
 
 
 /*
  * Used to clean up edges in y_bucket when rendering is terminated 
- * prematurely
+ * prematurely. The Edges themselves live in edge_arena and are
+ * reclaimed by the next arena_reset(), so all we need to do is drop
+ * the bucket pointers.
  */
 static void
-clean_up_y_bucket (size)
-    int size;
+clean_up_y_bucket(int size)
 {
     int   y;
-    Edge *edge, *edgefree;
 
     for (y = 0; y < size; y++) {
-        for (edge = y_bucket [y]; edge != NULL;) {
-            edgefree = edge;
-            edge = edgefree->next;
-            sfree(edgefree);
-        }
+      y_bucket[y] = NULL;
     }
 }
 
@@ -481,13 +531,11 @@ clean_up_y_bucket (size)
  * V1 and V2.
  */
 static View_coord *
-interpolate(v1, v2, ratio)
-    View_coord *v1, *v2;
-    double      ratio;
+interpolate(View_coord *v1, View_coord *v2, double ratio)
 {
     View_coord *tmp;
 
-    tmp = (View_coord *)smalloc(sizeof(View_coord));
+    tmp = (View_coord *)arena_alloc(&vcoord_arena, sizeof(View_coord));
 
     tmp->hden = (1.0 - ratio) * v1->hden + ratio * v2->hden;
     VecComb(tmp->view, 1.0 - ratio, v1->view, ratio, v2->view);
@@ -502,18 +550,15 @@ interpolate(v1, v2, ratio)
 
 
 /*
- * Reset the averaged normals in the vertex tree P.
+ * Reset the averaged normals of all vertices in the list VREF.
  */
 static void
-reset_normals(vref)
-    Vertex *vref;
+reset_normals(Vertex *vref)
 {
-    if (vref != NULL) {
+    for (; vref != NULL; vref = vref->next) {
         if (!vref->fixed_normal) {
             MakeVector(vref->normal, 0.0, 0.0, 0.0);
         }
-        reset_normals(vref->big);
-        reset_normals(vref->sml);
     }
 }
 
@@ -531,10 +576,7 @@ reset_normals(vref)
 #define ZMAX 5
 
 static View_coord *
-polygon_clip(vlist, plane, first_vert)
-    View_coord *vlist;
-    int         plane;
-    bool        first_vert;
+polygon_clip(View_coord *vlist, int plane, bool first_vert)
 {
     static View_coord   *first;
     static View_coord   *curr;
@@ -752,7 +794,7 @@ polygon_clip(vlist, plane, first_vert)
         } else {
             out1 = polygon_clip(curr->next, plane, FALSE);
         }
-        sfree(vlist);
+        /* vlist is dropped; its memory is reclaimed with vcoord_arena. */
         return out1;
     }
 }
@@ -765,21 +807,12 @@ polygon_clip(vlist, plane, first_vert)
  * temporary list, create edges in the y_bucket.
  */
 static void
-transf_vertices(vertex, nvertices, surface, view_mat, tr_mat, 
-                xsiz, ysiz, render_mode)
-    Vertex     *vertex[];
-    int         nvertices;
-    Surface    *surface;
-    Transf_mat *view_mat;
-    Transf_mat *tr_mat;
-    double      xsiz, ysiz;
-    int         render_mode;
+transf_vertices(Vertex *vertex[], int nvertices, Surface *surface, Transf_mat *view_mat, Transf_mat *tr_mat, double xsiz, double ysiz, int render_mode)
 {
     static int  polygon = 0;        /* incremented for each call to provide */
                                     /* unique polygon id numbers */
     View_coord *nhead;
     View_coord *view_ref;
-    View_coord *mark;
     Color       color;                    
     Color       opacity;
     double      persp_factor;
@@ -790,9 +823,15 @@ transf_vertices(vertex, nvertices, surface, view_mat, tr_mat,
     nhead = NULL;
     minsize = ((xsiz > ysiz) ? ysiz : xsiz);
 
-    for (i = 0; i < nvertices; i++) {
+    /*
+     * Everything allocated from vcoord_arena belongs to the previous
+     * polygon and is dead by now (create_edges() copies what it needs
+     * into the Edges), so start over.
+     */
+    arena_reset(&vcoord_arena);
 
-        view_ref = (View_coord *)smalloc(sizeof(View_coord));
+    for (i = 0; i < nvertices; i++) {
+        view_ref = (View_coord *)arena_alloc(&vcoord_arena, sizeof(View_coord));
 
         /* Transform the normal (world coordinates) but */
         /* do not include the translation part. */
@@ -962,14 +1001,9 @@ transf_vertices(vertex, nvertices, surface, view_mat, tr_mat,
     create_edges(nhead, polygon++, surface, render_mode);
 
     /*
-     * Free the memory used by the transformed polygon.
+     * The transformed polygon is no longer needed.  Its View_coords
+     * live in vcoord_arena and are reclaimed on the next call.
      */
-    mark = nhead;
-    do {
-        view_ref = nhead;
-        nhead = nhead->next;
-        sfree(view_ref);
-    } while (nhead != mark);
 }
 
 
@@ -981,35 +1015,28 @@ transf_vertices(vertex, nvertices, surface, view_mat, tr_mat,
  * vertices in them.
  */
 static void
-do_ffd(vertex, surface)
-    Vertex  *vertex;
-    Surface *surface;
+do_ffd(Vertex *vertex, Surface *surface)
 {
     FFD_Vertex *fvp;
     
-    if (vertex->ffd_vertex == NULL) {        
-        fvp = (FFD_Vertex *)smalloc(sizeof(FFD_Vertex));
-    } else {
-        fvp = vertex->ffd_vertex;
-    }
+    for (; vertex != NULL; vertex = vertex->next) {
+        if (vertex->ffd_vertex == NULL) {        
+            fvp = (FFD_Vertex *)smalloc(sizeof(FFD_Vertex));
+        } else {
+            fvp = vertex->ffd_vertex;
+        }
 
-    fvp->pos = vertex->pos;
-    fvp->texture = vertex->texture;
+        fvp->pos = vertex->pos;
+        fvp->texture = vertex->texture;
 
-    surface->ffd_func(surface->ffd_data, &vertex->pos, &vertex->texture,
-                      &fvp->pos, &fvp->texture);
-    vertex->ffd_vertex = fvp;
-    if (vertex->big != NULL) {
-        do_ffd(vertex->big, surface);
-    }
-    if (vertex->sml != NULL) {
-        do_ffd(vertex->sml, surface);
+        surface->ffd_func(surface->ffd_data, &vertex->pos, &vertex->texture,
+                          &fvp->pos, &fvp->texture);
+        vertex->ffd_vertex = fvp;
     }
 }
 
 static void
-ffd_vertices(surface)
-    Surface  *surface;
+ffd_vertices(Surface *surface)
 {
     if (surface->vertices != NULL) {
         do_ffd(surface->vertices, surface);
@@ -1025,11 +1052,7 @@ ffd_vertices(surface)
  * normal vector as we go. Store info about each pixel in the pixel buffer.
  */
 static void
-render_scanline(res, scanline, edge_list, render_mode)
-    int      res;
-    int     *scanline;
-    Edge    *edge_list;
-    int      render_mode;
+render_scanline(int res, int *scanline, Edge *edge_list, int render_mode)
 {
     Edge  *startedge, *stopedge;
     Vector worldstep;
@@ -1091,102 +1114,126 @@ render_scanline(res, scanline, edge_list, render_mode)
 
 
 /*
- * Insert an edge into an edge list. Edges belonging to the same
- * polygon must be inserted sorted in x, so that edge pairs are
- * created.
+ * Insert EDGE into the active list.
+ *
+ * The list is organized in groups: all active edges of one polygon are
+ * adjacent, sorted on xstart (and on xstep when they round to the same
+ * pixel), so that render_scanline() can walk the list in pairs.  Groups
+ * are ordered by the time the polygon first became active.
+ *
+ * To find the group without scanning the list from the head, we look
+ * for an active edge among the polygon's siblings (the ring built in
+ * create_edges()); polygons are small, so this is a handful of steps.
+ * From there we back up to the first edge of the group and place EDGE
+ * with exactly the comparisons the original list-scanning version used.
  */
-static Edge *
-insert_edge(edge_list, edge)
-    Edge *edge_list, *edge;
+#define PIXEL_OF(x)   ((int)((x) + 0.5))
+
+static void
+active_insert(Active_list *al, Edge *edge)
 {
-    Edge *edge_ref1;
-    Edge *edge_ref2;
+    Edge *sib;
+    Edge *ref;
 
     /*
-     * If list is empty, just insert the edge.
+     * Find an active sibling, if any.
      */
-    if (edge_list == NULL) {
-	edge->next = NULL;
-        return edge;
-    }
+    for (sib = edge->sibling; sib != edge && !sib->active; sib = sib->sibling)
+        ;
 
-    /*
-     * If the edges to our polygon is first in the list, check
-     * if our edge should be inserted first.
-     */
-    if (edge_list->polygon == edge->polygon) {
-        if (edge_list->xstart > edge->xstart) {
-            edge->next = edge_list;
-            return edge;
-        } else if ((((int)(edge_list->xstart + 0.5))
-                    == ((int)(edge->xstart + 0.5)))
-                   && (edge_list->xstep > edge->xstep)) {
-            edge->next = edge_list;
-            return edge;
+    if (sib == edge) {
+        /*
+         * No other edge of this polygon is active: the polygon
+         * gets a new group at the end of the list.
+         */
+        ref = NULL;
+    } else {
+        /*
+         * Back up to the first edge of the group, then walk forward
+         * to the first edge that should come after EDGE.
+         */
+        ref = sib;
+        while (ref->prev != NULL && ref->prev->polygon == edge->polygon) {
+            ref = ref->prev;
+        }
+        while (ref != NULL 
+               && ref->polygon == edge->polygon
+               && !(ref->xstart > edge->xstart
+                    || (PIXEL_OF(ref->xstart) == PIXEL_OF(edge->xstart)
+                        && ref->xstep > edge->xstep))) {
+            ref = ref->next;
         }
     }
 
     /*
-     * Check if our polygon is in the list at all.
+     * Link EDGE in before REF (or at the tail if REF is NULL).
      */
-    edge_ref1 = edge_list;
-    edge_ref2 = edge_list->next;
-    if (edge_ref1->polygon != edge->polygon) {
-        while (edge_ref2 != NULL && edge_ref2->polygon != edge->polygon) {
-            edge_ref1 = edge_ref2;
-            edge_ref2 = edge_ref2->next;
-        }
-    }
-
-    /*
-     * Insert the edge at the right place,  sorted in x if our 
-     * polygon was found, otherwize last in the list.
-     */
-    while (1) {
-        if (edge_ref2 == NULL) {
-            edge->next = edge_ref2;
-            edge_ref1->next = edge;
-            break;
-        } else if ((edge_ref2->polygon != edge->polygon)
-                   || ((edge_ref2->xstart > edge->xstart)
-                       || ((((int)(edge_ref2->xstart + 0.5)) 
-                            == ((int)(edge->xstart + 0.5)))
-                           && (edge_ref2->xstep > edge->xstep)))) {
-            edge->next = edge_ref2;
-            edge_ref1->next = edge;
-            break;
+    edge->next = ref;
+    if (ref == NULL) {
+        edge->prev = al->tail;
+        if (al->tail != NULL) {
+            al->tail->next = edge;
         } else {
-            edge_ref1 = edge_ref2;
-            edge_ref2 = edge_ref2->next;
+            al->head = edge;
         }
+        al->tail = edge;
+    } else {
+        edge->prev = ref->prev;
+        if (ref->prev != NULL) {
+            ref->prev->next = edge;
+        } else {
+            al->head = edge;
+        }
+        ref->prev = edge;
     }
-
-    return edge_list;
+    edge->active = TRUE;
 }
-        
 
 
 /*
- * Merge two edge lists.
+ * Insert all edges in the y-bucket list BUCKET into the active list,
+ * in bucket order.
  */
-static Edge *
-merge_edge_lists(list1, list2)
-    Edge *list1, *list2;
+static void
+active_merge(Active_list *al, Edge *bucket)
 {
-    Edge *eref1, *eref2, *next;
-    
-    if (list2 == NULL)
-        return list1;
+    Edge *next;
 
-    eref1 = list1;
-    eref2 = list2;
-    do {
-        next = eref2->next;
-        eref1 = insert_edge(eref1, eref2);
-	eref2 = next;
-    } while (eref2 != NULL);
+    while (bucket != NULL) {
+        next = bucket->next;
+        active_insert(al, bucket);
+        bucket = next;
+    }
+}
 
-    return eref1;
+
+/*
+ * Remove all edges that have reached their last scanline from the
+ * active list.  The order of the remaining edges is unchanged.
+ */
+static void
+active_retire(Active_list *al)
+{
+    Edge *edge, *next;
+
+    for (edge = al->head; edge != NULL; edge = next) {
+        next = edge->next;
+        if ((reverse_scan    && edge->ystart >= (edge->ystop - 1)) ||
+            ((!reverse_scan) && edge->ystart <= (edge->ystop + 1))) {
+            if (edge->prev != NULL) {
+                edge->prev->next = edge->next;
+            } else {
+                al->head = edge->next;
+            }
+            if (edge->next != NULL) {
+                edge->next->prev = edge->prev;
+            } else {
+                al->tail = edge->prev;
+            }
+            edge->active = FALSE;
+            /* The Edge itself is reclaimed by the edge_arena reset. */
+        }
+    }
 }
 
 
@@ -1195,17 +1242,13 @@ merge_edge_lists(list1, list2)
  * Store a rendered line on the place indicated by STORAGE_MODE.
  */
 static void
-store_line(buf, npixels, line, storage_mode)
-    u_char  *buf;
-    int      npixels;
-    int      line;
-    int      storage_mode;
+store_line(unsigned char *buf, int npixels, int line, int storage_mode)
 {
     int i, j;
 
     switch (storage_mode) {
       case PPM_FILE:
-        fwrite(buf, sizeof(u_char), npixels * 3, image_file);
+        fwrite(buf, sizeof(unsigned char), npixels * 3, image_file);
         fflush(image_file);
         break;
 
@@ -1222,9 +1265,7 @@ store_line(buf, npixels, line, storage_mode)
 
 
 static void
-buffer_clear(res, scanline)
-    int    res;
-    int   *scanline;
+buffer_clear(int res, int *scanline)
 {
     int         i;
     
@@ -1244,25 +1285,20 @@ buffer_clear(res, scanline)
  * Last we do an average filtering before storing the scanline.
  */
 static void
-scan_and_render(xres, yres, storage_mode, render_mode, oversampl, field)
-    int   xres, yres;
-    int   storage_mode;
-    int   render_mode;
-    int   oversampl;
-    int   field;
+scan_and_render(int xres, int yres, int storage_mode, int render_mode, int oversampl, int field)
 {
-    Edge         *active_list;
-    Edge         *edgep, *edgep2;
+    Active_list   active;
+    Edge         *edgep;
     int          *pixel_line;
     Color       **linebuf;
-    u_char       *line;
+    unsigned char       *line;
     int           curr_line;
     int           scanline;
     int           y, next_edge, y_limit;
     Color         sum;
     int           i, j, k;
     
-    line = (u_char *)smalloc(xres * 3 * sizeof(u_char));
+    line = (unsigned char *)smalloc(xres * 3 * sizeof(unsigned char));
     pixel_line = (int *)scalloc(xres, sizeof(int));
     linebuf  = (Color **)alloca(oversampl * sizeof(Color *));
     for (i = 0; i < oversampl; i++) {
@@ -1306,7 +1342,7 @@ scan_and_render(xres, yres, storage_mode, render_mode, oversampl, field)
         y_limit = -1;
         scanline =  0;
     }
-    active_list = NULL;
+    active.head = active.tail = NULL;
     curr_line = 0;
 
     /*
@@ -1314,7 +1350,7 @@ scan_and_render(xres, yres, storage_mode, render_mode, oversampl, field)
      */
     while (y != y_limit && !abort_render) {
 
-        active_list = merge_edge_lists(active_list, y_bucket[y]);
+        active_merge(&active, y_bucket[y]);
         y_bucket[y] = NULL;
 
         if (reverse_scan) {
@@ -1336,7 +1372,7 @@ scan_and_render(xres, yres, storage_mode, render_mode, oversampl, field)
                  * across the polygons and build the information in the
                  * pixel buffer.
                  */
-                render_scanline(xres, pixel_line, active_list, render_mode); 
+                render_scanline(xres, pixel_line, active.head, render_mode); 
 
                 /*
                  * Now we do a second pass through the pixel buffer. The
@@ -1355,7 +1391,7 @@ scan_and_render(xres, yres, storage_mode, render_mode, oversampl, field)
             }
 
             if (abort_render) {
-                y_bucket[y] = active_list;  /* Save for later cleanup */
+                y_bucket[y] = active.head;  /* Save for later cleanup */
                 break;
             }
 
@@ -1377,13 +1413,13 @@ scan_and_render(xres, yres, storage_mode, render_mode, oversampl, field)
                                 sum.blu += (linebuf[k] + j)->blu;
                             }
                         }
-                        line[i * 3]    = (u_char)(sum.red 
+                        line[i * 3]    = (unsigned char)(sum.red 
                                                   / (oversampl * oversampl) 
                                                   * 255.0 + 0.5);
-                        line[i * 3 + 1] = (u_char)(sum.grn
+                        line[i * 3 + 1] = (unsigned char)(sum.grn
                                                    / (oversampl * oversampl) 
                                                    * 255.0 + 0.5);
-                        line[i * 3 + 2] = (u_char)(sum.blu 
+                        line[i * 3 + 2] = (unsigned char)(sum.blu 
                                                    / (oversampl * oversampl) 
                                                    * 255.0 + 0.5);
                     }
@@ -1396,49 +1432,21 @@ scan_and_render(xres, yres, storage_mode, render_mode, oversampl, field)
                 scanline += reverse_scan ? -1 : 1;
             }
             
-	    if (active_list != NULL) {
-                
-	        edgep2 = active_list;
-	        edgep = active_list->next;
-	        while (edgep != NULL) {
-	            if ((reverse_scan &&
-                         edgep->ystart >= (edgep->ystop - 1)) ||
-                        ((!reverse_scan) &&
-                         edgep->ystart <= (edgep->ystop + 1))) {
-                        edgep2->next = edgep->next;
-		        sfree(edgep);
-	                edgep = edgep2->next;
-		    } else {
-		        edgep2 = edgep;
-		        edgep = edgep->next;
-		    }
-                }
-                
-  	        if ((reverse_scan && 
-                     active_list->ystart >= (active_list->ystop - 1)) ||
-                    ((!reverse_scan) &&
-                     active_list->ystart <= (active_list->ystop + 1))) {
-	            edgep = active_list;
-		    active_list = active_list->next;
-	            sfree(edgep);
-	        }
-                
-	        edgep = active_list;
-	        while (edgep != NULL) {
-	            edgep->ystart += reverse_scan ? 1 : -1;
-		    edgep->xstart += edgep->xstep;
-                    edgep->hden += edgep->hdenstep;
-                    if (render_mode != FLAT) {
-                        VecAdd(edgep->normal, edgep->normal,
-                               edgep->normalstep); 
-                        VecAdd(edgep->texture, edgep->texture,
-                               edgep->texturestep); 
-                        if (render_mode == PHONG) {
-                            VecAdd(edgep->world, edgep->world, 
-                                   edgep->worldstep);
-                        }
+            active_retire(&active);
+
+            for (edgep = active.head; edgep != NULL; edgep = edgep->next) {
+                edgep->ystart += reverse_scan ? 1 : -1;
+                edgep->xstart += edgep->xstep;
+                edgep->hden += edgep->hdenstep;
+                if (render_mode != FLAT) {
+                    VecAdd(edgep->normal, edgep->normal,
+                           edgep->normalstep);
+                    VecAdd(edgep->texture, edgep->texture,
+                           edgep->texturestep);
+                    if (render_mode == PHONG) {
+                        VecAdd(edgep->world, edgep->world,
+                               edgep->worldstep);
                     }
-		    edgep = edgep->next;
 	        }
 	    }
             y += reverse_scan ? 1 : -1;
@@ -1458,7 +1466,7 @@ scan_and_render(xres, yres, storage_mode, render_mode, oversampl, field)
  * Push the current transformation matrix on the matrix stack.
  */
 static void
-matrix_push()
+matrix_push(void)
 {
     struct tm_stack_t *new_tm;
 
@@ -1474,7 +1482,7 @@ matrix_push()
  * it the new current transformation matrix.
  */
 static void
-matrix_pop()
+matrix_pop(void)
 {
     struct tm_stack_t *tmp;
 
@@ -1493,11 +1501,7 @@ matrix_pop()
  * Build the edge lists in y_bucket.
  */
 static void
-traverse_object_tree(object, view_mat, xres, yres, render_mode)
-    Object      *object;
-    Transf_mat  *view_mat;
-    int          xres, yres;
-    int          render_mode;
+traverse_object_tree(Object *object, Transf_mat *view_mat, int xres, int yres, int render_mode)
 {
     Surface     *surfref;
     Polygon     *polyref;
@@ -1613,15 +1617,12 @@ traverse_object_tree(object, view_mat, xres, yres, render_mode)
  * version of render_scanline().
  */
 static void
-render_dmap_line(dmap_line, edge_list)
-    float       *dmap_line;
-    Edge        *edge_list;
+render_dmap_line(float *dmap_line, Edge *edge_list)
 {
     Edge  *startedge, *stopedge;
     double hden, hdenstep;
     float  zfact;
     float  real_z;
-    double ratio;
     int    xstart, xstop;
     int    i;
     
@@ -1664,11 +1665,10 @@ render_dmap_line(dmap_line, edge_list)
  * active list as we go. Call render_dmap_line() for each scanline.
  */
 static void
-scan_depthmap(d_map)
-    float      *d_map;
+scan_depthmap(float *d_map)
 {
-    Edge            *active_list;
-    Edge            *edgep, *edgep2;
+    Active_list      active;
+    Edge            *edgep;
     int              y, next_edge, y_limit;
     
     if (reverse_scan) {
@@ -1678,11 +1678,11 @@ scan_depthmap(d_map)
         y = depthmap_size - 1;
         y_limit = -1;
     }
-    active_list = NULL;
+    active.head = active.tail = NULL;
  
     while (y != y_limit) {
 
-        active_list = merge_edge_lists(active_list, y_bucket[y]);
+        active_merge(&active, y_bucket[y]);
         y_bucket[y] = NULL;
 
         if (reverse_scan) {
@@ -1699,49 +1699,21 @@ scan_depthmap(d_map)
                ((!reverse_scan) && (y > next_edge))) {
 
             render_dmap_line(d_map + (depthmap_size - 1 - y) * depthmap_size, 
-                             active_list); 
+                             active.head); 
 
-	    if (active_list != NULL) {
-                
-	        edgep2 = active_list;
-	        edgep = active_list->next;
-	        while (edgep != NULL) {
-	            if ((reverse_scan &&
-                         edgep->ystart >= (edgep->ystop - 1)) ||
-                        ((!reverse_scan) &&
-                         edgep->ystart <= (edgep->ystop + 1))) {
-                        edgep2->next = edgep->next;
-		        sfree(edgep);
-	                edgep = edgep2->next;
-		    } else {
-		        edgep2 = edgep;
-		        edgep = edgep->next;
-		    }
-                }
-                
-  	        if ((reverse_scan && 
-                     active_list->ystart >= (active_list->ystop - 1)) ||
-                    ((!reverse_scan) &&
-                     active_list->ystart <= (active_list->ystop + 1))) {
-	            edgep = active_list;
-		    active_list = active_list->next;
-	            sfree(edgep);
-	        }
-                
-	        edgep = active_list;
-	        while (edgep != NULL) {
-	            edgep->ystart += reverse_scan ? 1 : -1;
-		    edgep->xstart += edgep->xstep;
-                    edgep->hden += edgep->hdenstep;
-		    edgep = edgep->next;
-	        }
-	    }
+            active_retire(&active);
 
+            for (edgep = active.head; edgep != NULL; edgep = edgep->next) {
+                edgep->ystart += reverse_scan ? 1 : -1;
+                edgep->xstart += edgep->xstep;
+                edgep->hden += edgep->hdenstep;
+            }
+ 
             /*
              * The abort_render flag maybe set in render_dmap_line.
              */
             if (abort_render) {
-                y_bucket[y] = active_list;  /* Save for later cleanup */
+                y_bucket[y] = active.head;  /* Save for later cleanup */
                 return;
             }
 
@@ -1760,8 +1732,7 @@ scan_depthmap(d_map)
  * the depthmap.
  */
 void
-shadowmaps_create(size)
-    int size;
+shadowmaps_create(int size)
 {
     Transf_mat      view_mat;
     Vector          view_vec;
@@ -1817,6 +1788,7 @@ shadowmaps_create(size)
 
             MatCopy(&curr_mat, &ident_matrix);
 
+            arena_reset(&edge_arena);
             traverse_object_tree(sipp_world, &view_mat, 
                                  depthmap_size - 1, depthmap_size - 1, 
                                  PHONG);
@@ -1842,7 +1814,7 @@ shadowmaps_create(size)
  * Destoy all the shadowmaps created by shadowmaps_create()
  */
 void
-shadowmaps_destruct()
+shadowmaps_destruct(void)
 {
     depthmaps_destruct();
 }
@@ -1855,15 +1827,9 @@ shadowmaps_destruct()
  * Call scan_and_render to do the real work.
  */
 static void
-render_main(xres, yres, storage_mode, render_mode, oversampling, field)
-    int   xres, yres;
-    int   storage_mode;
-    int   render_mode;
-    int   oversampling;
-    int   field;
+render_main(int xres, int yres, int storage_mode, int render_mode, int oversampling, int field)
 {
     Transf_mat      view_mat;
-    int i;
 
     get_view_transf(&view_mat, sipp_current_camera, render_mode);
 
@@ -1872,7 +1838,7 @@ render_main(xres, yres, storage_mode, render_mode, oversampling, field)
       case LINE:
         if (storage_mode == PBM_FILE) {
             im_data = sipp_bitmap_create(xres, yres);
-            pixel_set = sipp_bitmap_line;
+            line_set = bitmap_line;
         }
         break;
 
@@ -1889,6 +1855,7 @@ render_main(xres, yres, storage_mode, render_mode, oversampling, field)
     }
 
     MatCopy(&curr_mat, &ident_matrix);
+    arena_reset(&edge_arena);
     traverse_object_tree(sipp_world, &view_mat, xres - 1, yres - 1, 
                          render_mode);
 
@@ -1919,15 +1886,19 @@ render_main(xres, yres, storage_mode, render_mode, oversampling, field)
         }
         break;
     }
+
+    /*
+     * Give the memory used by edges and transformed vertices back.
+     * (Keeping the blocks around would save a few mallocs per frame in
+     * an animation, but this keeps the memory footprint nicer.
+     */
+    arena_release(&edge_arena);
+    arena_release(&vcoord_arena);
 }
     
 
 void
-render_image_file(xres, yres, im_file, render_mode, oversampling)
-    int   xres, yres;
-    FILE *im_file;
-    int   render_mode;
-    int   oversampling;
+render_image_file(int xres, int yres, FILE *im_file, int render_mode, int oversampling)
 {
     image_file = im_file;
 
@@ -1940,26 +1911,17 @@ render_image_file(xres, yres, im_file, render_mode, oversampling)
 
 
 void
-render_image_func(xres, yres, pixel_func, data, render_mode, oversampling)
-    int     xres, yres;
-    void  (*pixel_func)();
-    void   *data;
-    int     render_mode;
-    int     oversampling;
+render_image_func(int xres, int yres, Pixel_func *pixel_func, void *data, int render_mode, int oversampling)
 {
     im_data = data;
     pixel_set = pixel_func;
+    line_set = (Line_func *)(void (*)(void))pixel_func; /* LINE mode only */
     render_main(xres, yres, FUNCTION, render_mode, oversampling, BOTH);
 }
 
 
 void
-render_field_file(xres, yres, im_file, render_mode, oversampling, field)
-    int   xres, yres;
-    FILE *im_file;
-    int   render_mode;
-    int   oversampling;
-    int   field;
+render_field_file(int xres, int yres, FILE *im_file, int render_mode, int oversampling, int field)
 {
     image_file = im_file;
 
@@ -1973,14 +1935,7 @@ render_field_file(xres, yres, im_file, render_mode, oversampling, field)
 
 
 void
-render_field_func(xres, yres, pixel_func, data, render_mode, 
-                  oversampling, field)
-    int     xres, yres;
-    void  (*pixel_func)();
-    void   *data;
-    int     render_mode;
-    int     oversampling;
-    int     field;
+render_field_func(int xres, int yres, Pixel_func *pixel_func, void *data, int render_mode, int oversampling, int field)
 {
     if (render_mode == LINE) {
         fprintf(stderr, "render_field_func: Can't render line fields\n");
@@ -2002,7 +1957,7 @@ render_field_func(xres, yres, pixel_func, data, render_mode,
  * Function to terminate rendering prematurely.
  */
 void
-sipp_render_terminate()
+sipp_render_terminate(void)
 {
     abort_render = TRUE;
 }
@@ -2012,8 +1967,7 @@ sipp_render_terminate()
  * If the argument is TRUE, render the scanlines in reverse.
  */
 void
-sipp_render_direction(direction)
-    bool direction;
+sipp_render_direction(bool direction)
 {
     reverse_scan = direction;
 }
@@ -2027,10 +1981,7 @@ sipp_render_direction(direction)
  * Call with proc NULL to disable updates.
  */
 void
-sipp_set_update_callback(func, client_data, period)
-    Update_func *func;
-    void        *client_data;
-    int          period;
+sipp_set_update_callback(Update_func *func, void *client_data, int period)
 {
     update_func = func;
     update_client_data = client_data;
@@ -2045,8 +1996,7 @@ sipp_set_update_callback(func, client_data, period)
  * as facing in the opposit direction.
  */
 void
-sipp_show_backfaces(flag)
-    bool flag;
+sipp_show_backfaces(bool flag)
 {
     show_backfaces = flag;
 }
@@ -2058,9 +2008,7 @@ sipp_show_backfaces(flag)
  * argument is then used as the size of the depthmaps.
  */
 void
-sipp_shadows(flag, size)
-    bool flag;
-    int  size;
+sipp_shadows(bool flag, int size)
 {
     if ((auto_shadows = flag) == TRUE) {
         if (size != 0) {
@@ -2077,8 +2025,7 @@ sipp_shadows(flag, size)
  * Set the background color of the image.
  */
 void
-sipp_background(red, grn, blu)
-    double red, grn, blu;
+sipp_background(double red, double grn, double blu)
 {
     sipp_bgcol.red = red;
     sipp_bgcol.grn = grn;
@@ -2091,8 +2038,10 @@ sipp_background(red, grn, blu)
  * Necessary initializations.
  */
 void
-sipp_init()
+sipp_init(void)
 {
+    arena_init(&edge_arena, EDGE_ARENA_BLOCK);
+    arena_init(&vcoord_arena, VCOORD_ARENA_BLOCK);
     objects_init();
     lightsource_init();
     camera_init();

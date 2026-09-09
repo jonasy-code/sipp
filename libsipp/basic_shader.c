@@ -27,16 +27,9 @@
 #include <geometric.h>
 
 void
-basic_shader(pos, normal, texture, view_vec, lights, sd, color, opacity)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Surf_desc   *sd;
-    Color       *color;
-    Color       *opacity;
+basic_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *sd_, Color *color, Color *opacity)
 {
+    Surf_desc    *sd = (Surf_desc *)sd_;
     Vector       unit_norm;
     Vector       light_dir;
     Vector       specular;

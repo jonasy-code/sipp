@@ -36,7 +36,7 @@ typedef struct vertex_ref_t {
 
 
 extern void
-objects_init _ANSI_ARGS_((void));
+objects_init(void);
 
 
 #endif /* OBJECT_H */

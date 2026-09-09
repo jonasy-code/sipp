@@ -36,9 +36,7 @@
  * Enough space is allocated so each line ends on a byte boundary.
  */
 Sipp_bitmap *
-sipp_bitmap_create(width, height)
-    int   width;
-    int   height;
+sipp_bitmap_create(int width, int height)
 {
     Sipp_bitmap  * bm;
 
@@ -49,7 +47,7 @@ sipp_bitmap_create(width, height)
     if ((width & 7) != 0) {
         bm->width_bytes++;
     } 
-    bm->buffer = (u_char *) scalloc(bm->width_bytes * height, sizeof(u_char));
+    bm->buffer = (unsigned char *) scalloc(bm->width_bytes * height, sizeof(unsigned char));
 
     return bm;
 }
@@ -60,8 +58,7 @@ sipp_bitmap_create(width, height)
  * Destruct a bitmap, and free allocated memory.
  */
 void
-sipp_bitmap_destruct(bm)
-    Sipp_bitmap  * bm;
+sipp_bitmap_destruct(Sipp_bitmap * bm)
 {
     if (bm != NULL) {
         if (bm->buffer != NULL) {
@@ -83,10 +80,7 @@ sipp_bitmap_destruct(bm)
         (bm)[(y) * (width_bytes) + ((x) >> 3)] |= (1 << (7 - ((x) & 7)))
 
 void
-sipp_bitmap_line(bm, x1, y1, x2, y2)
-    Sipp_bitmap  * bm;
-    int            x1, y1;
-    int            x2, y2;
+sipp_bitmap_line(Sipp_bitmap * bm, int x1, int y1, int x2, int y2)
 {
     int   d;
     int   x,  y;
@@ -141,9 +135,7 @@ sipp_bitmap_line(bm, x1, y1, x2, y2)
  */
 
 void
-sipp_bitmap_write(file, bm)
-    FILE         * file;
-    Sipp_bitmap  * bm;
+sipp_bitmap_write(FILE * file, Sipp_bitmap * bm)
 {
     int    written;
     int    wrote;

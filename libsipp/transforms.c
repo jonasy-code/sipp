@@ -29,9 +29,7 @@
  * Set the transformation matrix of OBJ to MATRIX.
  */
 void
-object_set_transf(obj, matrix)
-    Object     *obj;
-    Transf_mat *matrix;
+object_set_transf(Object *obj, Transf_mat *matrix)
 {
     MatCopy(&obj->transf, matrix);
 }
@@ -41,9 +39,7 @@ object_set_transf(obj, matrix)
  * Retrieve the transformation matrix of OBJ
  */
 Transf_mat *
-object_get_transf(obj, matrix)
-    Object     *obj;
-    Transf_mat *matrix;
+object_get_transf(Object *obj, Transf_mat *matrix)
 {
     Transf_mat *tmp;
 
@@ -62,8 +58,7 @@ object_get_transf(obj, matrix)
  * Set the transformation matrix of OBJ to the identity matrix.
  */
 void
-object_clear_transf(obj)
-    Object *obj;
+object_clear_transf(Object *obj)
 {
     MatCopy(&obj->transf, &ident_matrix);
 }
@@ -73,9 +68,7 @@ object_clear_transf(obj)
  * Post multiply MATRIX into the transformation matrix of OBJ.
  */
 void
-object_transform(obj, matrix)
-    Object     *obj;
-    Transf_mat *matrix;
+object_transform(Object *obj, Transf_mat *matrix)
 {
     mat_mul(&obj->transf, &obj->transf, matrix);
 }
@@ -85,9 +78,7 @@ object_transform(obj, matrix)
  * Rotate the object OBJ ANG radians about the x-axis.
  */
 void
-object_rot_x(obj, ang)
-    Object *obj;
-    double  ang;
+object_rot_x(Object *obj, double ang)
 {
     mat_rotate_x(&obj->transf, ang);
 }
@@ -97,9 +88,7 @@ object_rot_x(obj, ang)
  * Rotate the object OBJ ANG radians about the y-axis.
  */
 void
-object_rot_y(obj, ang)
-    Object *obj;
-    double  ang;
+object_rot_y(Object *obj, double ang)
 {
     mat_rotate_y(&obj->transf, ang);
 }
@@ -109,9 +98,7 @@ object_rot_y(obj, ang)
  * Rotate the object OBJ ANG radians about the z-axis.
  */
 void
-object_rot_z(obj, ang)
-    Object *obj;
-    double  ang;
+object_rot_z(Object *obj, double ang)
 {
     mat_rotate_z(&obj->transf, ang);
 }
@@ -122,11 +109,7 @@ object_rot_z(obj, ang)
  * by POINT and VEC.
  */
 void
-object_rot(obj, point, vec, ang)
-    Object *obj;
-    Vector *point;
-    Vector *vec;
-    double  ang;
+object_rot(Object *obj, Vector *point, Vector *vec, double ang)
 {
     mat_rotate(&obj->transf, point, vec, ang);
 }
@@ -136,9 +119,7 @@ object_rot(obj, point, vec, ang)
  * Scale the object OBJ with respect to the origin.
  */
 void
-object_scale(obj, xscale, yscale, zscale)
-    Object *obj;
-    double  xscale, yscale, zscale;
+object_scale(Object *obj, double xscale, double yscale, double zscale)
 {
     mat_scale(&obj->transf, xscale, yscale, zscale);
 }
@@ -148,9 +129,7 @@ object_scale(obj, xscale, yscale, zscale)
  * Translate the object OBJ.
  */
 void
-object_move(obj, dx, dy, dz)
-    Object *obj;
-    double  dx, dy, dz;
+object_move(Object *obj, double dx, double dy, double dz)
 {
     mat_translate(&obj->transf, dx, dy, dz);
 }

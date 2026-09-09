@@ -34,12 +34,12 @@ extern double    hither;              /* Hither z-clipping plane */
 extern double    yon;                 /* Yonder z-clipping plane */
 
 extern void
-camera_init _ANSI_ARGS_((void));
+camera_init(void);
 
 extern void
-get_view_transf _ANSI_ARGS_((Transf_mat *view_mat,
+get_view_transf(Transf_mat *view_mat,
                              Camera     *camera,
-                             int         render_mode));
+                             int         render_mode);
 
 
 #endif /* VIEWPOINT_H */

@@ -33,16 +33,9 @@
 
 
 void
-wood_shader(pos, normal, texture, view_vec, lights, wd, color, opacity)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Wood_desc   *wd;
-    Color       *color;
-    Color       *opacity;
+wood_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *wd_, Color *color, Color *opacity)
 {
+    Wood_desc    *wd = (Wood_desc *)wd_;
     Vector    tpos;
     Vector    tmp;
     Surf_desc surface;

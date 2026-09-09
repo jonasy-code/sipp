@@ -43,7 +43,7 @@ double        yon;             /* Yonder z-clipping plane */
  * Initialize the internal camera.
  */
 void
-camera_init()
+camera_init(void)
 {
     sipp_camera = &intern_camera;
     camera_params(sipp_camera, 0.0, 0.0, 10.0,  0.0, 0.0, 0.0,  
@@ -56,7 +56,7 @@ camera_init()
  * Create a virtual camera.
  */
 Camera *
-camera_create()
+camera_create(void)
 {
     Camera *cp;
 
@@ -70,8 +70,7 @@ camera_create()
  * Return memory used by a virtual camera.
  */
 void
-camera_destruct(cp)
-    Camera *cp;
+camera_destruct(Camera *cp)
 {
     if (cp != sipp_camera) {
         sfree(cp);
@@ -86,9 +85,7 @@ camera_destruct(cp)
  * Change the position of a virtual camera.
  */
 void 
-camera_position(cp, x, y, z)
-    Camera *cp;
-    double  x, y, z;
+camera_position(Camera *cp, double x, double y, double z)
 {
     MakeVector(cp->position, x, y, z);
 }
@@ -98,9 +95,7 @@ camera_position(cp, x, y, z)
  * Change the point a virtual camera is "looking" at.
  */
 void 
-camera_look_at(cp, x, y, z)
-    Camera *cp;
-    double  x, y, z;
+camera_look_at(Camera *cp, double x, double y, double z)
 {
     MakeVector(cp->lookat, x, y, z);
 }
@@ -110,9 +105,7 @@ camera_look_at(cp, x, y, z)
  * Set the up vector of a virtual camera.
  */
 void 
-camera_up(cp, x, y, z)
-    Camera *cp;
-    double  x, y, z;
+camera_up(Camera *cp, double x, double y, double z)
 {
     MakeVector(cp->up, x, y, z);
 }
@@ -122,9 +115,7 @@ camera_up(cp, x, y, z)
  * Set the focal factor of a virtual camera.
  */
 void 
-camera_focal(cp, focal)
-    Camera *cp;
-    double  focal;
+camera_focal(Camera *cp, double focal)
 {
     cp->focal_ratio = focal;
 }
@@ -134,9 +125,7 @@ camera_focal(cp, focal)
  * Set all parameters in a virtual camera in a single call.
  */
 void 
-camera_params(cp, x0, y0, z0, x, y, z, ux, uy, uz, ratio)
-    Camera *cp;
-    double  x0, y0, z0, x, y, z, ux, uy, uz, ratio;
+camera_params(Camera *cp, double x0, double y0, double z0, double x, double y, double z, double ux, double uy, double uz, double ratio)
 {
     MakeVector(cp->position, x0, y0, z0);
     MakeVector(cp->lookat, x, y, z);
@@ -149,8 +138,7 @@ camera_params(cp, x0, y0, z0, x, y, z, ux, uy, uz, ratio)
  * Set the current viewpoint parameters to be
  * the ones in the virtyal camera pointed to by CP.
  */
-void camera_use(cp)
-    Camera *cp;
+void camera_use(Camera *cp)
 {
     sipp_current_camera = cp;
 }
@@ -161,10 +149,7 @@ void camera_use(cp)
  * into view coordinates from a particular camera position.
  */
 void
-get_view_transf(view_mat, camera, render_mode)
-    Transf_mat *view_mat;
-    Camera     *camera;
-    int         render_mode;
+get_view_transf(Transf_mat *view_mat, Camera *camera, int render_mode)
 {
     Vector tmp;
     double transl[3];

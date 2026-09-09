@@ -32,15 +32,12 @@
 extern bool noise_ready;
 
 static void
-marble _ANSI_ARGS_((Vector      *p,
+marble(Vector      *p,
                     Color       *color,
-                    Marble_desc *md));
+                    Marble_desc *md);
 
 static void
-marble(p, color, md)
-    Vector *p;
-    Color *color;
-    Marble_desc *md;
+marble(Vector *p, Color *color, Marble_desc *md)
 {
     double x, t;
 
@@ -66,16 +63,9 @@ marble(p, color, md)
 
 
 void
-marble_shader(pos, normal, texture, view_vec, lights, md, color, opacity)
-    Vector      *pos;
-    Vector      *normal;
-    Vector      *texture;
-    Vector      *view_vec;
-    Lightsource *lights;
-    Marble_desc *md;
-    Color       *color;
-    Color       *opacity;
+marble_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *md_, Color *color, Color *opacity)
 {
+    Marble_desc  *md = (Marble_desc *)md_;
     Vector     tmp;
     Surf_desc  surface;
 

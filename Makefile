@@ -70,7 +70,7 @@ EXTRA_FLAGS =
 
 # Choose a suitable C compiler and appropriate flags:
 CC = gcc -pipe
-CFLAGS = -O2 $(EXTRA_FLAGS)
+CFLAGS = -O3 $(EXTRA_FLAGS)
 
 
 # Choose a lexical analyzer generator:
