@@ -46,9 +46,7 @@ wood_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Ligh
     double t;
     double rad;
 
-    if (!noise_ready) {
-        noise_init();
-    }
+    noise_init();
 
     /*
      * Scale the texture coordinates.

@@ -38,65 +38,25 @@ Color sipp_bgcol;
 
 
 /*
- * Entry in a position in the pixel buffer.
- */
-typedef struct {
-    Edge          *edge;
-    Vector         worldstep;
-    Vector         texturestep;
-    Vector         normalstep;
-    double         offset;
-    double         hden;
-    double         depth;
-    int            next;
-} Pixel_info;
-
-
-static int          pixbuf_size;     /* Current size of pixel buffer */
-static int          size_delta;      /* How much to realloc each time */
-static Pixel_info  *pixbuf = 0;      /* The actual pixel buffer */
-static int          first_free;      /* First free Pixel_info in the buffer */
-
-/*
- * Shading cache, see pixel_collect().  For each output pixel we keep a
- * few (polygon id, shader result) pairs.  A polygon is identified by
- * the id in its edges; ids are unique within a rendering pass.  If a
- * pixel sees more polygons than there are slots, the extra ones are
- * simply shaded every time.
- */
-#define SHADE_SLOTS  8
-
-typedef struct {
-    int    polygon;
-    Color  color;
-    Color  opacity;
-} Shade_entry;
-
-static Shade_entry *shade_cache;      /* npixels * SHADE_SLOTS entries */
-static int         *shade_count;      /* Entries in use, per pixel */
-static int          shade_npixels;
-
-/*
  * Prototypes of internal functions.
  */
 static int
-pixel_alloc(void);
+pixel_alloc(Pixel_buffer *pb);
 
 
 /*
  * Initialize the pixel buffer.
  */
 void
-pixels_setup(int init_size)
+pixels_setup(Pixel_buffer *pb, int init_size)
 {
-    if (pixbuf != 0) {
-        sfree(pixbuf);        /* Just in case */
-    }
-
-    pixbuf = (Pixel_info *)scalloc(init_size, sizeof(Pixel_info));
-    pixbuf_size = init_size;
-    pixels_reinit();
-    size_delta = init_size / 2;
+    pb->pixbuf = (Pixel_info *)scalloc(init_size, sizeof(Pixel_info));
+    pb->pixbuf_size = init_size;
+    pb->size_delta = init_size / 2;
+    pb->first_free = 0;
+    pb->shade_cache = NULL;
+    pb->shade_count = NULL;
+    pb->shade_npixels = 0;
 }
 
 
@@ -104,10 +64,13 @@ pixels_setup(int init_size)
  * Free memory used by pixel_buffer.
  */
 void
-pixels_free(void)
+pixels_free(Pixel_buffer *pb)
 {
-    sfree(pixbuf);
-    pixbuf = 0;
+    if (pb->pixbuf != NULL) {
+        sfree(pb->pixbuf);
+    }
+    pb->pixbuf = NULL;
+    shade_cache_free(pb);
 }
 
 
@@ -115,9 +78,9 @@ pixels_free(void)
  * Renitialize the free_list.
  */
 void
-pixels_reinit(void)
+pixels_reinit(Pixel_buffer *pb)
 {
-    first_free = 0;
+    pb->first_free = 0;
 }
     
 
@@ -126,17 +89,18 @@ pixels_reinit(void)
  * Realloc a larger pixbuf if needed.
  */
 static int
-pixel_alloc(void)
+pixel_alloc(Pixel_buffer *pb)
 {
-    if (first_free == pixbuf_size) {
-        pixbuf_size += size_delta;
-        pixbuf = (Pixel_info *)srealloc(pixbuf, 
-                                        pixbuf_size * sizeof(Pixel_info));
+    if (pb->first_free == pb->pixbuf_size) {
+        pb->pixbuf_size += pb->size_delta;
+        pb->pixbuf = (Pixel_info *)srealloc(pb->pixbuf, 
+                                            pb->pixbuf_size 
+                                            * sizeof(Pixel_info));
     }
 
-    pixbuf[first_free].next = -1;
-    first_free++;
-    return (first_free - 1);
+    pb->pixbuf[pb->first_free].next = -1;
+    pb->first_free++;
+    return (pb->first_free - 1);
 }
     
 
@@ -145,13 +109,15 @@ pixel_alloc(void)
  * insert it into PIXEL.
  */
 int
-pixel_insert(int pixel, Vector *worldstep, Vector *texturestep, Vector *normalstep, double depth, double hden, double offset, Edge *edge)
+pixel_insert(Pixel_buffer *pb, int pixel, Vector *worldstep, Vector *texturestep, Vector *normalstep, double depth, double hden, double offset, Active_edge *edge)
 {
+    Pixel_info *pixbuf;
     int  pixref1;
     int  pixref2;
     int  tmp;
 
-    tmp = pixel_alloc();
+    tmp = pixel_alloc(pb);
+    pixbuf = pb->pixbuf;               /* pixel_alloc() may have moved it */
     pixbuf[tmp].worldstep = *worldstep;
     pixbuf[tmp].texturestep = *texturestep;
     pixbuf[tmp].normalstep = *normalstep;
@@ -186,34 +152,34 @@ pixel_insert(int pixel, Vector *worldstep, Vector *texturestep, Vector *normalst
  * background color.
  */
 void
-shade_cache_setup(int npixels)
+shade_cache_setup(Pixel_buffer *pb, int npixels)
 {
-    shade_cache = (Shade_entry *)smalloc(npixels * SHADE_SLOTS 
-                                         * sizeof(Shade_entry));
-    shade_count = (int *)scalloc(npixels, sizeof(int));
-    shade_npixels = npixels;
+    pb->shade_cache = (Shade_entry *)smalloc(npixels * SHADE_SLOTS 
+                                             * sizeof(Shade_entry));
+    pb->shade_count = (int *)scalloc(npixels, sizeof(int));
+    pb->shade_npixels = npixels;
 }
 
 
 void
-shade_cache_clear(void)
+shade_cache_clear(Pixel_buffer *pb)
 {
-    if (shade_count != NULL) {
-        memset(shade_count, 0, shade_npixels * sizeof(int));
+    if (pb->shade_count != NULL) {
+        memset(pb->shade_count, 0, pb->shade_npixels * sizeof(int));
     }
 }
 
 
 void
-shade_cache_free(void)
+shade_cache_free(Pixel_buffer *pb)
 {
-    if (shade_cache != NULL) {
-        sfree(shade_cache);
-        sfree(shade_count);
+    if (pb->shade_cache != NULL) {
+        sfree(pb->shade_cache);
+        sfree(pb->shade_count);
     }
-    shade_cache = NULL;
-    shade_count = NULL;
-    shade_npixels = 0;
+    pb->shade_cache = NULL;
+    pb->shade_count = NULL;
+    pb->shade_npixels = 0;
 }
 
 
@@ -222,13 +188,13 @@ shade_cache_free(void)
  * SLOT.  Returns TRUE and fills in COLOR/OPACITY if found.
  */
 static bool
-shade_cache_lookup(int slot, int polygon, Color *color, Color *opacity)
+shade_cache_lookup(Pixel_buffer *pb, int slot, int polygon, Color *color, Color *opacity)
 {
     Shade_entry *e;
     int          i;
 
-    e = shade_cache + slot * SHADE_SLOTS;
-    for (i = 0; i < shade_count[slot]; i++) {
+    e = pb->shade_cache + slot * SHADE_SLOTS;
+    for (i = 0; i < pb->shade_count[slot]; i++) {
         if (e[i].polygon == polygon) {
             *color = e[i].color;
             *opacity = e[i].opacity;
@@ -240,12 +206,12 @@ shade_cache_lookup(int slot, int polygon, Color *color, Color *opacity)
 
 
 static void
-shade_cache_insert(int slot, int polygon, Color *color, Color *opacity)
+shade_cache_insert(Pixel_buffer *pb, int slot, int polygon, Color *color, Color *opacity)
 {
     Shade_entry *e;
 
-    if (shade_count[slot] < SHADE_SLOTS) {
-        e = shade_cache + slot * SHADE_SLOTS + shade_count[slot]++;
+    if (pb->shade_count[slot] < SHADE_SLOTS) {
+        e = pb->shade_cache + slot * SHADE_SLOTS + pb->shade_count[slot]++;
         e->polygon = polygon;
         e->color = *color;
         e->opacity = *opacity;
@@ -265,13 +231,14 @@ shade_cache_insert(int slot, int polygon, Color *color, Color *opacity)
  * sub-sample; only the shader call is shared.
  */
 void
-pixel_collect(int pixel, Color *result, int render_mode, int cache_slot)
+pixel_collect(Pixel_buffer *pb, int pixel, Color *result, int render_mode, int cache_slot)
 {
+    Pixel_info *pixbuf = pb->pixbuf;
     Color    frac;
     Color    opacity_sum;
     Color    surf_color;
     Color    surf_opacity;
-    Edge    *edge;
+    Active_edge *edge;
     Vector   world;
     Vector   texture;
     Vector   normal;
@@ -307,17 +274,18 @@ pixel_collect(int pixel, Color *result, int render_mode, int cache_slot)
             VecAddS(normal, pixbuf[pixref].offset, 
                     pixbuf[pixref].normalstep, edge->normal);
             if (cache_slot >= 0 
-                && shade_cache_lookup(cache_slot, edge->polygon, 
+                && shade_cache_lookup(pb, cache_slot, edge->edge->polygon, 
                                       &surf_color, &surf_opacity)) {
                 break;
             }
             VecSub(viewer, sipp_current_camera->position, world);
             vecnorm(&viewer);
-            edge->surface->shader(&world, &normal, &texture, &viewer, 
-                                  lightsrc_stack, edge->surface->surface, 
+            edge->edge->surface->shader(&world, &normal, &texture, 
+                                        &viewer, lightsrc_stack, 
+                                        edge->edge->surface->surface, 
                                   &surf_color, &surf_opacity);
             if (cache_slot >= 0) {
-                shade_cache_insert(cache_slot, edge->polygon, 
+                shade_cache_insert(pb, cache_slot, edge->edge->polygon, 
                                    &surf_color, &surf_opacity);
             }
             break;

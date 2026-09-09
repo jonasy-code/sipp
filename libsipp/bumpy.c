@@ -29,7 +29,6 @@
 #include <shaders.h>
 
 
-extern bool noise_ready;
 
 
 void
@@ -40,9 +39,7 @@ bumpy_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lig
     Vector     norm;
     double     no;
 
-    if (!noise_ready) {
-        noise_init();
-    }
+    noise_init();
 
     VecCopy(norm, *normal);
     vecnorm(&norm);

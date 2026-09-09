@@ -1,4 +1,5 @@
 #include <math.h>
+#include <pthread.h>
 
 #include <sipp.h>
 #include <noise.h>
@@ -56,13 +57,27 @@ iadjust(double f)
  * Initialize the array of random numbers.
  * RANDOM() is defined in sipp.h
  */
-void noise_init(void)
+static void
+noise_fill(void)
 {
     int i;
    
     for (i = 0; i < NUMPTS; ++i)
         pts[i] = RANDOM();
     noise_ready = TRUE;
+}
+
+
+/*
+ * Initialize the noise table, once.  Safe to call from several threads
+ * at the same time; the shaders call it before their first use of
+ * noise().
+ */
+void noise_init(void)
+{
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+
+    pthread_once(&once, noise_fill);
 }
 
 

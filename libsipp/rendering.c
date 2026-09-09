@@ -21,6 +21,7 @@
  **/
 
 #include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 #ifndef NOMEMCPY
 #include <memory.h>
@@ -32,6 +33,8 @@
 #   define MAXFLOAT ((float)3.40282346638528860e+38)
 #endif
 
+#include <unistd.h>
+#include <pthread.h>
 #include <xalloca.h>
 #include <sipp.h>
 #include <smalloc.h>
@@ -81,11 +84,14 @@ static void         *im_data;         /* Data to pixel_set()/line_set()   */
 
 static Arena         edge_arena;
 static Arena         vcoord_arena;
+static int           edge_count;      /* Edges created in this pass */
+static int           render_threads = 1; /* Threads to render with */
+
 
 /*
  * Flag that can be set to TRUE to terminate the rendering.
  */
-static bool          abort_render;
+static volatile bool abort_render;
 
 /*
  * Function to call during rendering process to check for windown events, etc,
@@ -132,9 +138,6 @@ create_edges(View_coord *view_vert,
                           Surface    *surface,
                           int         render_mode);
 
-static void
-clean_up_y_bucket(int size);
-
 static View_coord *
 interpolate(View_coord *v1,
                          View_coord *v2,
@@ -168,49 +171,8 @@ ffd_vertices(Surface  *surface);
 #endif
 
 static void
-render_scanline(int      res,
-                             int     *scanline,
-                             Edge    *edge_list,
-                             int      render_mode);
-
-/*
- * The active edge list: the edges crossing the current scanline.
- * Doubly linked so that edges can be inserted and removed anywhere
- * in constant time.
- */
-typedef struct {
-    Edge *head;
-    Edge *tail;
-} Active_list;
-
-static void
-active_insert(Active_list *al,
-                           Edge        *edge);
-
-static void
-active_merge(Active_list *al,
-                          Edge        *bucket);
-
-static void
-active_retire(Active_list *al);
-
-static void
-store_line(unsigned char  *buf,
-                        int      npixels,
-                        int      line,
-                        int      storage_mode);
-
-static void
-buffer_clear(int    res,
-                          int   *scanline);
-
-static void
-scan_and_render(int   xres,
-                             int   yres,
-                             int   storage_mode,
-                             int   render_mode,
-                             int   oversampl,
-                             int   field);
+scan_and_render(int xres, int yres, int storage_mode, int render_mode,
+                int oversampl, int field);
 
 static void
 matrix_push(void);
@@ -226,12 +188,7 @@ traverse_object_tree(Object      *object,
                                   int          render_mode);
 
 static void
-render_dmap_line(float       *dmap_line,
-                              Edge        *edge_list);
-
-
-static void
-scan_depthmap(float      *d_map);
+scan_depthmap(float *d_map);
 
 static void
 render_main(int   xres, 
@@ -483,8 +440,7 @@ create_edges(View_coord *view_vert, int polygon, Surface *surface, int render_mo
             }
             edge->polygon = polygon;
             edge->surface = surface;
-            edge->prev = NULL;
-            edge->active = FALSE;
+            edge->id = edge_count++;
             edge->next = y_bucket[edge->ystart];
             y_bucket[edge->ystart] = edge;
 
@@ -509,21 +465,6 @@ create_edges(View_coord *view_vert, int polygon, Surface *surface, int render_mo
 
 
 
-/*
- * Used to clean up edges in y_bucket when rendering is terminated 
- * prematurely. The Edges themselves live in edge_arena and are
- * reclaimed by the next arena_reset(), so all we need to do is drop
- * the bucket pointers.
- */
-static void
-clean_up_y_bucket(int size)
-{
-    int   y;
-
-    for (y = 0; y < size; y++) {
-      y_bucket[y] = NULL;
-    }
-}
 
 
 
@@ -832,7 +773,9 @@ transf_vertices(Vertex *vertex[], int nvertices, Surface *surface, Transf_mat *v
     arena_reset(&vcoord_arena);
 
     for (i = 0; i < nvertices; i++) {
-        view_ref = (View_coord *)arena_alloc(&vcoord_arena, sizeof(View_coord));
+
+        view_ref = (View_coord *)arena_alloc(&vcoord_arena, 
+                                             sizeof(View_coord));
 
         /* Transform the normal (world coordinates) but */
         /* do not include the translation part. */
@@ -1047,43 +990,621 @@ ffd_vertices(Surface *surface)
 
 
 
+/*======================== The scanline sweep =========================*/
+
 /*
- * Read edge pairs from the edge list EDGE_LIST. Walk along the scanline
- * and interpolate z value, world coordinates, texture coordinates and 
- * normal vector as we go. Store info about each pixel in the pixel buffer.
+ * The object tree traversal produces, for every polygon, a set of
+ * immutable Edges bucketed by their first scanline (y_bucket).  The
+ * sweep walks the scanlines in scan order keeping an "active list" of
+ * the edges crossing the current scanline.  The interpolation state of
+ * an active edge (its current x, 1/w, world position, normal and
+ * texture coordinates) lives in an Active_edge record which is stepped
+ * from scanline to scanline; the Edge itself is never written, so any
+ * number of sweeps can share the edges.
+ *
+ * All state of a sweep is kept in a Render_ctx.  The image is rendered
+ * as bands of output scanlines; a band that does not start at the
+ * first scanline first brings its active list to the state the
+ * sequential sweep would have had there (band_open()).  This is what
+ * lets bands be rendered independently, and in parallel.
+ */
+
+#define ACTIVE_ARENA_BLOCK  (64 * 1024)
+
+typedef struct {
+    /* The pass */
+    int             xres, yres;      /* Sub-sampled resolution */
+    int             oversampl;
+    int             render_mode;
+    int             field;
+    bool            step_vectors;    /* Step normal/texture/world too */
+    bool            call_update;     /* Run the update callback here */
+
+    /* Active edges */
+    Active_edge    *head, *tail;
+    Active_edge   **by_id;           /* Active record of each Edge, or NULL */
+    Active_edge    *free_list;       /* Retired records, for reuse */
+    Active_edge   **retire_bucket;   /* Per scanline: records to retire
+                                        after it, during a replay */
+    Arena           arena;           /* Active_edge records */
+    bool            analytic;        /* Insertion compares analytic x */
+
+    /* Per-scanline buffers */
+    int            *pixel_line;      /* Fragment list head per sub-pixel */
+    Color         **linebuf;         /* oversampl sub-scanlines of colour */
+    Pixel_buffer    pb;
+
+    /* Output */
+    unsigned char  *image;           /* Rows of the image, in scan order */
+    int             xres_out;
+    int             storage_mode;
+    bool            deliver_rows;    /* Call store_line() as rows finish */
+} Render_ctx;
+
+/*
+ * The replay lists of all bands, see band_lists_build().
+ */
+typedef struct {
+    Edge **edges;        /* All lists, one after the other */
+    int   *start;        /* Index of the first edge of each band ... */
+    int   *count;        /* ... and its number of edges */
+} Band_lists;
+
+
+/*
+ * Work shared by the threads of one scan_and_render().
+ */
+typedef struct {
+    pthread_mutex_t lock;
+    int             next_band;       /* First band nobody has taken yet */
+    int             nbands;
+    int             yres_out;
+    bool           *band_done;       /* Band rendered completely */
+    Band_lists      lists;           /* Replay list of each band */
+    float          *d_map;           /* Depthmap to render, or NULL for
+                                        the image */
+} Render_job;
+
+
+/*
+ * Scanline bookkeeping.  Scanlines are visited in "scan order": from
+ * yres - 1 down to 0 normally, from 0 up when reverse_scan is set.
+ */
+#define SCAN_STEP           (reverse_scan ? 1 : -1)
+#define FIRST_SUBLINE(ctx)  (reverse_scan ? 0 : (ctx)->yres - 1)
+#define OUTLINE_SUBLINE(ctx, k) \
+    (reverse_scan ? (k) * (ctx)->oversampl \
+                  : (ctx)->yres - 1 - (k) * (ctx)->oversampl)
+/*
+ * The "scanline" number of output line K, as it was passed to
+ * store_line() and used for field parity by the original sweep.
+ */
+#define OUTLINE_NUMBER(ctx, k) \
+    (reverse_scan ? ((ctx)->yres - 1) * (ctx)->oversampl - (k) : (k))
+
+#define PIXEL_OF(x)   ((int)((x) + 0.5))
+
+static void
+store_line(unsigned char *buf, int npixels, int line, int storage_mode);
+
+static int
+edge_retire_line(Edge *edge);
+
+static void
+render_dmap_line(Render_ctx *ctx, float *dmap_line);
+
+
+/*
+ * x of EDGE at scanline Y, computed rather than stepped.
+ */
+static double
+edge_x_at(Edge *edge, int y)
+{
+    return edge->xstart + (double)abs(edge->ystart - y) * edge->xstep;
+}
+
+
+static void
+ctx_init(Render_ctx *ctx, int xres, int yres, int oversampl, 
+         int render_mode, int field, int nedges)
+{
+    int i;
+
+    ctx->xres = xres;
+    ctx->yres = yres;
+    ctx->oversampl = oversampl;
+    ctx->render_mode = render_mode;
+    ctx->field = field;
+    ctx->step_vectors = (render_mode != FLAT);
+    ctx->call_update = TRUE;
+    ctx->head = ctx->tail = NULL;
+    ctx->by_id = (Active_edge **)scalloc(nedges > 0 ? nedges : 1, 
+                                         sizeof(Active_edge *));
+    ctx->free_list = NULL;
+    ctx->retire_bucket = (Active_edge **)scalloc(yres, sizeof(Active_edge *));
+    arena_init(&ctx->arena, ACTIVE_ARENA_BLOCK);
+    ctx->analytic = FALSE;
+    ctx->pixel_line = (int *)scalloc(xres, sizeof(int));
+    ctx->linebuf = (Color **)smalloc(oversampl * sizeof(Color *));
+    for (i = 0; i < oversampl; i++) {
+        ctx->linebuf[i] = (Color *)scalloc(xres, sizeof(Color));
+    }
+    pixels_setup(&ctx->pb, xres);
+    if (shading_per_pixel && render_mode == PHONG) {
+        shade_cache_setup(&ctx->pb, xres / oversampl);
+    }
+    ctx->image = NULL;
+    ctx->xres_out = xres / oversampl;
+    ctx->storage_mode = 0;
+    ctx->deliver_rows = FALSE;
+}
+
+
+static void
+ctx_free(Render_ctx *ctx)
+{
+    int i;
+
+    sfree(ctx->by_id);
+    sfree(ctx->retire_bucket);
+    arena_release(&ctx->arena);
+    sfree(ctx->pixel_line);
+    for (i = 0; i < ctx->oversampl; i++) {
+        sfree(ctx->linebuf[i]);
+    }
+    sfree(ctx->linebuf);
+    pixels_free(&ctx->pb);
+}
+
+
+/*
+ * Drop all active edges, so the context can be used for another band.
  */
 static void
-render_scanline(int res, int *scanline, Edge *edge_list, int render_mode)
+ctx_clear_active(Render_ctx *ctx)
 {
-    Edge  *startedge, *stopedge;
-    Vector worldstep;
-    Vector normalstep;
-    Vector texturestep;
-    double hden, hdenstep;
-    double real_z;
-    int    xstart, xstop;
-    double ratio;
-    int    i;
+    Active_edge *ae;
+
+    for (ae = ctx->head; ae != NULL; ae = ae->next) {
+        ctx->by_id[ae->edge->id] = NULL;
+    }
+    ctx->head = ctx->tail = NULL;
+    ctx->free_list = NULL;
+    arena_reset(&ctx->arena);
+}
+
+
+static Active_edge *
+active_alloc(Render_ctx *ctx)
+{
+    Active_edge *ae;
+
+    if (ctx->free_list != NULL) {
+        ae = ctx->free_list;
+        ctx->free_list = ae->next;
+    } else {
+        ae = (Active_edge *)arena_alloc(&ctx->arena, sizeof(Active_edge));
+    }
+    return ae;
+}
+
+
+/*
+ * Insert AE into the active list.
+ *
+ * The list is organized in groups: all active edges of one polygon are
+ * adjacent, sorted on x (and on xstep when they round to the same
+ * pixel), so that render_scanline() can walk the list in pairs.  Groups
+ * are ordered by the time the polygon first became active.
+ *
+ * To find the group without scanning the list from the head, we look
+ * for an active edge among the polygon's siblings (the ring built in
+ * create_edges()); polygons are small, so this is a handful of steps.
+ * From there we back up to the first edge of the group and place AE
+ * with the comparisons the original list-scanning version used.
+ *
+ * Y is the current scanline.  When ctx->analytic is set (while a band
+ * replays the scanlines above it, see band_open()) the x of the edges
+ * already in the list is computed for Y instead of read from the
+ * (unstepped) records.
+ */
+static void
+active_insert(Render_ctx *ctx, Active_edge *ae, int y)
+{
+    Edge        *edge = ae->edge;
+    Edge        *sib;
+    Active_edge *ref;
+    double       ref_x;
+
+    for (sib = edge->sibling; 
+         sib != edge && ctx->by_id[sib->id] == NULL; 
+         sib = sib->sibling)
+        ;
+
+    if (sib == edge) {
+        ref = NULL;
+    } else {
+        ref = ctx->by_id[sib->id];
+        while (ref->prev != NULL && ref->prev->edge->polygon == edge->polygon) {
+            ref = ref->prev;
+        }
+        while (ref != NULL && ref->edge->polygon == edge->polygon) {
+            ref_x = ctx->analytic ? edge_x_at(ref->edge, y) : ref->x;
+            if (ref_x > ae->x
+                || (PIXEL_OF(ref_x) == PIXEL_OF(ae->x)
+                    && ref->edge->xstep > edge->xstep)) {
+                break;
+            }
+            ref = ref->next;
+        }
+    }
+
+    ae->next = ref;
+    if (ref == NULL) {
+        ae->prev = ctx->tail;
+        if (ctx->tail != NULL) {
+            ctx->tail->next = ae;
+        } else {
+            ctx->head = ae;
+        }
+        ctx->tail = ae;
+    } else {
+        ae->prev = ref->prev;
+        if (ref->prev != NULL) {
+            ref->prev->next = ae;
+        } else {
+            ctx->head = ae;
+        }
+        ref->prev = ae;
+    }
+    ctx->by_id[edge->id] = ae;
+}
+
+
+/*
+ * Make all edges starting at scanline Y active.
+ */
+static void
+active_activate(Render_ctx *ctx, Edge *edge)
+{
+    Active_edge *ae;
+
+    ae = active_alloc(ctx);
+    ae->edge = edge;
+    ae->y = edge->ystart;
+    ae->x = edge->xstart;
+    ae->hden = edge->hden;
+    ae->world = edge->world;
+    ae->normal = edge->normal;
+    ae->texture = edge->texture;
+    active_insert(ctx, ae, edge->ystart);
+    if (ctx->analytic) {
+        int line = edge_retire_line(edge);
+
+        ae->retire_next = ctx->retire_bucket[line];
+        ctx->retire_bucket[line] = ae;
+    }
+}
+
+
+static void
+active_merge(Render_ctx *ctx, int y)
+{
+    Edge *edge;
+
+    for (edge = y_bucket[y]; edge != NULL; edge = edge->next) {
+        active_activate(ctx, edge);
+    }
+}
+
+
+/*
+ * Take AE out of the active list and put its record on the free list.
+ */
+static void
+active_unlink(Render_ctx *ctx, Active_edge *ae)
+{
+    if (ae->prev != NULL) {
+        ae->prev->next = ae->next;
+    } else {
+        ctx->head = ae->next;
+    }
+    if (ae->next != NULL) {
+        ae->next->prev = ae->prev;
+    } else {
+        ctx->tail = ae->prev;
+    }
+    ctx->by_id[ae->edge->id] = NULL;
+    ae->next = ctx->free_list;
+    ctx->free_list = ae;
+}
+
+
+/*
+ * After scanline Y: remove the edges that have reached their last
+ * scanline.  The order of the remaining edges is unchanged.
+ */
+static void
+active_retire(Render_ctx *ctx, int y)
+{
+    Active_edge *ae, *next;
+
+    for (ae = ctx->head; ae != NULL; ae = next) {
+        next = ae->next;
+        if ((reverse_scan    && y >= (ae->edge->ystop - 1)) ||
+            ((!reverse_scan) && y <= (ae->edge->ystop + 1))) {
+            active_unlink(ctx, ae);
+        }
+    }
+}
+
+
+/*
+ * The scanline after which an edge is retired: its last scanline
+ * ystop+1 (ystop-1 scanning upwards), or its first if that comes
+ * later.
+ */
+static int
+edge_retire_line(Edge *edge)
+{
+    if (reverse_scan) {
+        return (edge->ystart > edge->ystop - 1) ? edge->ystart 
+                                                : edge->ystop - 1;
+    }
+    return (edge->ystart < edge->ystop + 1) ? edge->ystart : edge->ystop + 1;
+}
+
+
+/*
+ * Replay version of active_retire(): the records were put into
+ * retire buckets by active_merge(), so only the ones due now are
+ * touched.  Same result, without walking the list.
+ */
+static void
+active_retire_bucket(Render_ctx *ctx, int y)
+{
+    Active_edge *ae, *next;
+
+    for (ae = ctx->retire_bucket[y]; ae != NULL; ae = next) {
+        next = ae->retire_next;
+        active_unlink(ctx, ae);
+    }
+    ctx->retire_bucket[y] = NULL;
+}
+
+
+/*
+ * Step one active edge to the next scanline.
+ */
+static void
+active_step_one(Render_ctx *ctx, Active_edge *ae)
+{
+    Edge *edge = ae->edge;
+
+    ae->y += SCAN_STEP;
+    ae->x += edge->xstep;
+    ae->hden += edge->hdenstep;
+    if (ctx->step_vectors) {
+        VecAdd(ae->normal, ae->normal, edge->normalstep); 
+        VecAdd(ae->texture, ae->texture, edge->texturestep); 
+        if (ctx->render_mode == PHONG) {
+            VecAdd(ae->world, ae->world, edge->worldstep);
+        }
+    }
+}
+
+
+static void
+active_step(Render_ctx *ctx)
+{
+    Active_edge *ae;
+
+    for (ae = ctx->head; ae != NULL; ae = ae->next) {
+        active_step_one(ctx, ae);
+    }
+}
+
+
+/*
+ * Prepare CTX to start sweeping at sub-scanline Y0, in the state the
+ * sequential sweep would be in when reaching Y0.
+ *
+ * LIST holds, in activation order, the N edges of every polygon that
+ * is still active at Y0 (see band_lists_build()); no other edge can
+ * influence where those polygons' groups sit in the active list, so
+ * replaying just these with the real activation and retirement logic,
+ * but without stepping anything, yields the same order.  The edges
+ * still active at Y0 are then stepped to Y0 exactly as the sequential
+ * sweep would have stepped them.
+ */
+static void
+band_open(Render_ctx *ctx, int y0, Edge **list, int n)
+{
+    Active_edge *ae;
+    int          y, i;
+
+    ctx_clear_active(ctx);
+    if (y0 == FIRST_SUBLINE(ctx)) {
+        return;
+    }
+
+    ctx->analytic = TRUE;
+    i = 0;
+    for (y = FIRST_SUBLINE(ctx); y != y0; y += SCAN_STEP) {
+        while (i < n && list[i]->ystart == y) {
+            active_activate(ctx, list[i++]);
+        }
+        active_retire_bucket(ctx, y);
+    }
+    ctx->analytic = FALSE;
+    /* Records still in buckets at or after Y0 belong to live edges. */
+    for (y = y0; y >= 0 && y < ctx->yres; y += SCAN_STEP) {
+        ctx->retire_bucket[y] = NULL;
+    }
+
+    for (ae = ctx->head; ae != NULL; ae = ae->next) {
+        while (ae->y != y0) {
+            active_step_one(ctx, ae);
+        }
+    }
+}
+
+
+
+
+/*
+ * Activation order: first scanline in scan order, then position in
+ * its y_bucket (edges are pushed on the head of a bucket, so a higher
+ * id comes first).
+ */
+static int
+edge_activation_cmp(const void *a, const void *b)
+{
+    Edge *ea = *(Edge **)a, *eb = *(Edge **)b;
+
+    if (ea->ystart != eb->ystart) {
+        return reverse_scan ? ea->ystart - eb->ystart : eb->ystart - ea->ystart;
+    }
+    return eb->id - ea->id;
+}
+
+
+/*
+ * For every band, collect the edges of the polygons that are still
+ * active at the band's first scanline, in activation order.  A polygon
+ * is active at a scanline iff its topmost edge starts before it and
+ * its bottommost edge ends after it, in scan order.
+ *
+ * Done once, before the bands are rendered, in O(edges * bands).
+ */
+static void
+band_lists_build(Band_lists *bl, Render_ctx *ctx, int nbands, int yres_out)
+{
+    unsigned char *seen;
+    Edge          *edge, *sib;
+    int           *y0;
+    int            band, top, bottom, y, total, n;
+    int            i;
+
+    y0 = (int *)smalloc(nbands * sizeof(int));
+    for (band = 0; band < nbands; band++) {
+        y0[band] = OUTLINE_SUBLINE(ctx, (int)((long)yres_out * band / nbands));
+    }
+    bl->start = (int *)scalloc(nbands, sizeof(int));
+    bl->count = (int *)scalloc(nbands, sizeof(int));
+    seen = (unsigned char *)scalloc(edge_count > 0 ? edge_count : 1, 1);
+
+    /*
+     * Two passes over the polygons: count, then fill.
+     */
+    for (i = 0; i < 2; i++) {
+        if (i == 1) {
+            total = 0;
+            for (band = 0; band < nbands; band++) {
+                bl->start[band] = total;
+                total += bl->count[band];
+                bl->count[band] = 0;
+            }
+            bl->edges = (Edge **)smalloc((total > 0 ? total : 1) 
+                                         * sizeof(Edge *));
+            memset(seen, 0, edge_count);
+        }
+        for (y = 0; y < ctx->yres; y++) {
+            for (edge = y_bucket[y]; edge != NULL; edge = edge->next) {
+                if (seen[edge->id]) {
+                    continue;
+                }
+                /* Extent of the polygon, in scan order. */
+                top = bottom = edge->ystart;
+                n = 0;
+                sib = edge;
+                do {
+                    seen[sib->id] = 1;
+                    n++;
+                    if (reverse_scan) {
+                        if (sib->ystart < top) top = sib->ystart;
+                        if (sib->ystop > bottom) bottom = sib->ystop;
+                    } else {
+                        if (sib->ystart > top) top = sib->ystart;
+                        if (sib->ystop < bottom) bottom = sib->ystop;
+                    }
+                    sib = sib->sibling;
+                } while (sib != edge);
+
+                for (band = 1; band < nbands; band++) {
+                    /* Active at y0: started before, not yet retired. */
+                    if (reverse_scan ? (top < y0[band] && y0[band] < bottom)
+                                     : (top > y0[band] && y0[band] > bottom)) {
+                        if (i == 0) {
+                            bl->count[band] += n;
+                        } else {
+                            sib = edge;
+                            do {
+                                bl->edges[bl->start[band] 
+                                          + bl->count[band]++] = sib;
+                                sib = sib->sibling;
+                            } while (sib != edge);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for (band = 1; band < nbands; band++) {
+        qsort(bl->edges + bl->start[band], bl->count[band], sizeof(Edge *),
+              edge_activation_cmp);
+    }
+    sfree(seen);
+    sfree(y0);
+}
+
+
+static void
+band_lists_free(Band_lists *bl)
+{
+    sfree(bl->edges);
+    sfree(bl->start);
+    sfree(bl->count);
+}
+
+
+/*
+ * Interpolate across the active edges on the current scanline and
+ * enter the fragments into the pixel buffer.
+ */
+static void
+render_scanline(Render_ctx *ctx)
+{
+    Active_edge *startedge, *stopedge;
+    int         *scanline = ctx->pixel_line;
+    Vector       worldstep;
+    Vector       normalstep;
+    Vector       texturestep;
+    double       hden, hdenstep;
+    double       real_z;
+    int          xstart, xstop;
+    double       ratio;
+    int          i;
     
-    startedge = edge_list;
+    startedge = ctx->head;
     stopedge = NULL;
 
     while (startedge != NULL) {
 
         stopedge = startedge->next;
-        xstart = (int)(startedge->xstart + 0.5);
-        xstop  = (int)(stopedge->xstart - 0.5);
+        xstart = (int)(startedge->x + 0.5);
+        xstop  = (int)(stopedge->x - 0.5);
         hden = startedge->hden;
  
         if (xstart < xstop) {
             ratio = 1.0 / (double)(xstop - xstart);
             hdenstep = (stopedge->hden - hden) * ratio;
-            if (render_mode != FLAT) {
+            if (ctx->render_mode != FLAT) {
                 VecSub(normalstep, stopedge->normal, startedge->normal);
                 VecScalMul(normalstep, ratio, normalstep);
                 VecSub(texturestep, stopedge->texture, startedge->texture);
                 VecScalMul(texturestep, ratio, texturestep);
-                if (render_mode == PHONG) {
+                if (ctx->render_mode == PHONG) {
                     VecSub(worldstep, stopedge->world, startedge->world);
                     VecScalMul(worldstep, ratio, worldstep);
                 }
@@ -1098,12 +1619,15 @@ render_scanline(int res, int *scanline, Edge *edge_list, int render_mode)
  
         for (i = xstart; i <= xstop; i++) {
             real_z = 1.0 / (sipp_current_camera->focal_ratio * hden);
-            scanline[i] = pixel_insert(scanline[i], &worldstep, &texturestep, 
-                                       &normalstep, real_z, hden, 
-                                       (double)(i - xstart), startedge); 
+            scanline[i] = pixel_insert(&ctx->pb, scanline[i], &worldstep, 
+                                       &texturestep, &normalstep, real_z, 
+                                       hden, (double)(i - xstart), 
+                                       startedge); 
             hden += hdenstep;
         }
-        UPDATE_CALLBACK;
+        if (ctx->call_update) {
+            UPDATE_CALLBACK;
+        }
         if (abort_render) {
             return;
         }
@@ -1112,135 +1636,136 @@ render_scanline(int res, int *scanline, Edge *edge_list, int render_mode)
 }
 
 
-
-
 /*
- * Insert EDGE into the active list.
- *
- * The list is organized in groups: all active edges of one polygon are
- * adjacent, sorted on xstart (and on xstep when they round to the same
- * pixel), so that render_scanline() can walk the list in pairs.  Groups
- * are ordered by the time the polygon first became active.
- *
- * To find the group without scanning the list from the head, we look
- * for an active edge among the polygon's siblings (the ring built in
- * create_edges()); polygons are small, so this is a handful of steps.
- * From there we back up to the first edge of the group and place EDGE
- * with exactly the comparisons the original list-scanning version used.
- */
-#define PIXEL_OF(x)   ((int)((x) + 0.5))
-
-static void
-active_insert(Active_list *al, Edge *edge)
-{
-    Edge *sib;
-    Edge *ref;
-
-    /*
-     * Find an active sibling, if any.
-     */
-    for (sib = edge->sibling; sib != edge && !sib->active; sib = sib->sibling)
-        ;
-
-    if (sib == edge) {
-        /*
-         * No other edge of this polygon is active: the polygon
-         * gets a new group at the end of the list.
-         */
-        ref = NULL;
-    } else {
-        /*
-         * Back up to the first edge of the group, then walk forward
-         * to the first edge that should come after EDGE.
-         */
-        ref = sib;
-        while (ref->prev != NULL && ref->prev->polygon == edge->polygon) {
-            ref = ref->prev;
-        }
-        while (ref != NULL 
-               && ref->polygon == edge->polygon
-               && !(ref->xstart > edge->xstart
-                    || (PIXEL_OF(ref->xstart) == PIXEL_OF(edge->xstart)
-                        && ref->xstep > edge->xstep))) {
-            ref = ref->next;
-        }
-    }
-
-    /*
-     * Link EDGE in before REF (or at the tail if REF is NULL).
-     */
-    edge->next = ref;
-    if (ref == NULL) {
-        edge->prev = al->tail;
-        if (al->tail != NULL) {
-            al->tail->next = edge;
-        } else {
-            al->head = edge;
-        }
-        al->tail = edge;
-    } else {
-        edge->prev = ref->prev;
-        if (ref->prev != NULL) {
-            ref->prev->next = edge;
-        } else {
-            al->head = edge;
-        }
-        ref->prev = edge;
-    }
-    edge->active = TRUE;
-}
-
-
-/*
- * Insert all edges in the y-bucket list BUCKET into the active list,
- * in bucket order.
+ * Clear the fragment lists of a scanline.
  */
 static void
-active_merge(Active_list *al, Edge *bucket)
+buffer_clear(int res, int *scanline)
 {
-    Edge *next;
+    int i;
 
-    while (bucket != NULL) {
-        next = bucket->next;
-        active_insert(al, bucket);
-        bucket = next;
+    for (i = 0; i < res; i++) {
+        scanline[i] = -1;
     }
 }
 
 
 /*
- * Remove all edges that have reached their last scanline from the
- * active list.  The order of the remaining edges is unchanged.
+ * Render output lines K0 (inclusive) to K1 (exclusive) into
+ * ctx->image.  Row K of the image holds output line K in scan order.
  */
 static void
-active_retire(Active_list *al)
+band_render(Render_ctx *ctx, int k0, int k1, Edge **list, int nlist)
 {
-    Edge *edge, *next;
+    unsigned char *row;
+    Color          sum;
+    int            y, k, curr_line, number;
+    int            i, j, l;
+    int            over = ctx->oversampl;
+    int            n2 = over * over;
 
-    for (edge = al->head; edge != NULL; edge = next) {
-        next = edge->next;
-        if ((reverse_scan    && edge->ystart >= (edge->ystop - 1)) ||
-            ((!reverse_scan) && edge->ystart <= (edge->ystop + 1))) {
-            if (edge->prev != NULL) {
-                edge->prev->next = edge->next;
-            } else {
-                al->head = edge->next;
+    band_open(ctx, OUTLINE_SUBLINE(ctx, k0), list, nlist);
+    shadow_jitter_reset();
+
+    y = OUTLINE_SUBLINE(ctx, k0);
+    k = k0;
+    curr_line = 0;
+
+    while (k < k1 && !abort_render) {
+
+        active_merge(ctx, y);
+        number = OUTLINE_NUMBER(ctx, k);
+
+        if (ctx->field == BOTH || (number & 1) == ctx->field) {
+            buffer_clear(ctx->xres, ctx->pixel_line);
+
+            /*
+             * Interpolate across the polygons and build the fragment
+             * lists, then walk the lists front to back, calling the
+             * shaders only where the result will be used.
+             */
+            render_scanline(ctx);
+
+            for (i = 0; i < ctx->xres; i++) {
+                pixel_collect(&ctx->pb, ctx->pixel_line[i], 
+                              ctx->linebuf[curr_line] + i, ctx->render_mode,
+                              (shading_per_pixel && ctx->render_mode == PHONG)
+                              ? i / over : -1);
+                if (ctx->call_update) {
+                    UPDATE_CALLBACK;
+                }
+                if (abort_render) {
+                    break;
+                }
             }
-            if (edge->next != NULL) {
-                edge->next->prev = edge->prev;
-            } else {
-                al->tail = edge->prev;
-            }
-            edge->active = FALSE;
-            /* The Edge itself is reclaimed by the edge_arena reset. */
         }
+        if (abort_render) {
+            break;
+        }
+
+        if (++curr_line == over) {
+            if (ctx->field == BOTH || (number & 1) == ctx->field) {
+                /*
+                 * Average the sub-samples into the output row.
+                 */
+                row = ctx->image + (size_t)k * ctx->xres_out * 3;
+                for (i = 0; i < ctx->xres_out; i++) {
+                    sum.red = sum.grn = sum.blu = 0.0;
+                    for (j = i * over; j < i * over + over; j++) {
+                        for (l = 0; l < over; l++) {
+                            sum.red += (ctx->linebuf[l] + j)->red;
+                            sum.grn += (ctx->linebuf[l] + j)->grn;
+                            sum.blu += (ctx->linebuf[l] + j)->blu;
+                        }
+                    }
+                    row[i * 3]     = (unsigned char)(sum.red / n2 * 255.0 + 0.5);
+                    row[i * 3 + 1] = (unsigned char)(sum.grn / n2 * 255.0 + 0.5);
+                    row[i * 3 + 2] = (unsigned char)(sum.blu / n2 * 255.0 + 0.5);
+                }
+                pixels_reinit(&ctx->pb);
+                shade_cache_clear(&ctx->pb);
+                if (ctx->deliver_rows) {
+                    store_line(row, ctx->xres_out, number, ctx->storage_mode);
+                }
+            }
+            curr_line = 0;
+            k++;
+        }
+
+        active_retire(ctx, y);
+        active_step(ctx);
+        y += SCAN_STEP;
     }
 }
 
 
+/*
+ * Depthmap counterpart of band_render(): scanlines K0 (inclusive) to
+ * K1 (exclusive) of D_MAP.  Each position keeps its smallest depth, so
+ * the result cannot depend on how the map is divided into bands.
+ */
+static void
+depthmap_band(Render_ctx *ctx, int k0, int k1, Edge **list, int nlist,
+              float *d_map)
+{
+    int y, k;
+
+    band_open(ctx, OUTLINE_SUBLINE(ctx, k0), list, nlist);
+    y = OUTLINE_SUBLINE(ctx, k0);
+
+    for (k = k0; k < k1 && !abort_render; k++) {
+        active_merge(ctx, y);
+        render_dmap_line(ctx, d_map + (depthmap_size - 1 - y) * depthmap_size);
+        active_retire(ctx, y);
+        active_step(ctx);
+        y += SCAN_STEP;
+    }
+}
+
 
 /*
- * Store a rendered line on the place indicated by STORAGE_MODE.
+ * Deliver one finished output row: to the image file, or to the
+ * user's pixel function.
  */
 static void
 store_line(unsigned char *buf, int npixels, int line, int storage_mode)
@@ -1265,209 +1790,298 @@ store_line(unsigned char *buf, int npixels, int line, int storage_mode)
 }
 
 
-static void
-buffer_clear(int res, int *scanline)
-{
-    int         i;
-    
-    for (i = 0; i < res; i++) {
-        scanline[i] = -1;
-    }
-}
-
-    
-
 /*
- * Allocate the needed buffers. Create a list of active edges and
- * move down the y-bucket, inserting and deleting edges from this
- * active list as we go. Call render_scanline for each scanline and
- * then do a second pass through the pixelbuffer to do the actual shading.
- * This scheme saves a lot of unnecessary shader calls.
- * Last we do an average filtering before storing the scanline.
+ * Write the image header for PPM output.
  */
 static void
-scan_and_render(int xres, int yres, int storage_mode, int render_mode, int oversampl, int field)
+write_ppm_header(int xres_out, int yres_out, int field)
 {
-    Active_list   active;
-    Edge         *edgep;
-    int          *pixel_line;
-    Color       **linebuf;
-    unsigned char       *line;
-    int           curr_line;
-    int           scanline;
-    int           y, next_edge, y_limit;
-    Color         sum;
-    int           i, j, k;
-    
-    line = (unsigned char *)smalloc(xres * 3 * sizeof(unsigned char));
-    pixel_line = (int *)scalloc(xres, sizeof(int));
-    linebuf  = (Color **)alloca(oversampl * sizeof(Color *));
-    for (i = 0; i < oversampl; i++) {
-        linebuf[i] = (Color *)scalloc(xres, sizeof(Color));
+    fprintf(image_file, "P6\n");
+    fprintf(image_file, "#Image rendered with SIPP %s\n", SIPP_VERSION);
+
+    switch (field) {
+      case BOTH:
+        fprintf(image_file, "%d\n%d\n255\n", xres_out, yres_out);
+        break;
+
+      case EVEN:
+        fprintf(image_file, "#Image field containing EVEN lines\n");
+        fprintf(image_file, "%d\n%d\n255\n", xres_out, 
+                (yres_out & 1) ? (yres_out >> 1) + 1 : yres_out >> 1);
+        break;
+
+      case ODD:
+        fprintf(image_file, "#Image field containing ODD lines\n");
+        fprintf(image_file, "%d\n%d\n255\n", xres_out, yres_out >> 1);
+        break;
     }
-    pixels_setup(xres);
-    if (shading_per_pixel && render_mode == PHONG) {
-        shade_cache_setup(xres / oversampl);
-    }
-
-
-    if (storage_mode == PPM_FILE) {
-        fprintf(image_file, "P6\n");
-        fprintf(image_file, "#Image rendered with SIPP %s\n", SIPP_VERSION);
-
-        switch (field) {
-          case BOTH:
-            fprintf(image_file, "%d\n%d\n255\n", xres / oversampl, 
-                                                 yres / oversampl);
-            break;
-
-          case EVEN:
-            fprintf(image_file, "#Image field containing EVEN lines\n");
-            fprintf(image_file, "%d\n%d\n255\n", xres / oversampl, 
-                    ((yres / oversampl) & 1)
-                    ? ((yres / oversampl) >> 1) + 1
-                    :  (yres / oversampl) >> 1);
-            break;
-
-          case ODD:
-            fprintf(image_file, "#Image field containing ODD lines\n");
-            fprintf(image_file, "%d\n%d\n255\n", xres / oversampl, 
-                                                 (yres / oversampl) >> 1);
-            break;
-        }
-    }
-
-    if (reverse_scan) {
-        y = 0;
-        y_limit = yres;
-        scanline =  (yres - 1) * oversampl;
-    } else {
-        y = yres - 1;
-        y_limit = -1;
-        scanline =  0;
-    }
-    active.head = active.tail = NULL;
-    curr_line = 0;
-
-    /*
-     * The abort_render flag maybe set in render_scanline.
-     */
-    while (y != y_limit && !abort_render) {
-
-        active_merge(&active, y_bucket[y]);
-        y_bucket[y] = NULL;
-
-        if (reverse_scan) {
-            next_edge = y + 1;
-            while (next_edge < y_limit && y_bucket[next_edge] == NULL)
-                next_edge++;
-        } else {
-            next_edge = y - 1;
-            while (next_edge >= 0 && y_bucket[next_edge] == NULL)
-                next_edge--;
-        }
-        while ((reverse_scan    && (y < next_edge)) ||
-               ((!reverse_scan) && (y > next_edge))) {
-            if (field == BOTH || (scanline & 1) == field) {
-                buffer_clear(xres, pixel_line);
-
-                /*
-                 * Here we call the routine to perform interpolation
-                 * across the polygons and build the information in the
-                 * pixel buffer.
-                 */
-                render_scanline(xres, pixel_line, active.head, render_mode); 
-
-                /*
-                 * Now we do a second pass through the pixel buffer. The
-                 * information is now depth-sorted so shaders
-                 * (which are called inside pixel_collect() are only called
-                 * if the result will actually be used.
-                 */
-                for (i = 0; i < xres; i++) {
-                    pixel_collect(pixel_line[i], linebuf[curr_line] + i, 
-                                  render_mode,
-                                  (shading_per_pixel && render_mode == PHONG)
-                                  ? i / oversampl : -1);
-                    UPDATE_CALLBACK;
-                    if (abort_render) {
-                        break;
-                    }
-                }
-            }
-
-            if (abort_render) {
-                y_bucket[y] = active.head;  /* Save for later cleanup */
-                break;
-            }
-
-            if (++curr_line == oversampl) {
-
-                if (field == BOTH || (scanline & 1) == field) {
-                    /*
-                     * Average the pixel.
-                     */
-                    for (i = 0; i < ((xres / oversampl)); i++) {
-                        sum.red = 0.0;
-                        sum.grn = 0.0;
-                        sum.blu = 0.0;
-                        for (j = i * oversampl;                          
-                             j < (i * oversampl + oversampl); j++) {
-                            for (k = 0; k < oversampl; k++) {
-                                sum.red += (linebuf[k] + j)->red;
-                                sum.grn += (linebuf[k] + j)->grn;
-                                sum.blu += (linebuf[k] + j)->blu;
-                            }
-                        }
-                        line[i * 3]    = (unsigned char)(sum.red 
-                                                  / (oversampl * oversampl) 
-                                                  * 255.0 + 0.5);
-                        line[i * 3 + 1] = (unsigned char)(sum.grn
-                                                   / (oversampl * oversampl) 
-                                                   * 255.0 + 0.5);
-                        line[i * 3 + 2] = (unsigned char)(sum.blu 
-                                                   / (oversampl * oversampl) 
-                                                   * 255.0 + 0.5);
-                    }
-                    store_line(line, xres / oversampl, scanline, 
-                               storage_mode);
-                    pixels_reinit();
-                    shade_cache_clear();
-                }
-
-                curr_line = 0;
-                scanline += reverse_scan ? -1 : 1;
-            }
-            
-            active_retire(&active);
-
-            for (edgep = active.head; edgep != NULL; edgep = edgep->next) {
-                edgep->ystart += reverse_scan ? 1 : -1;
-                edgep->xstart += edgep->xstep;
-                edgep->hden += edgep->hdenstep;
-                if (render_mode != FLAT) {
-                    VecAdd(edgep->normal, edgep->normal,
-                           edgep->normalstep);
-                    VecAdd(edgep->texture, edgep->texture,
-                           edgep->texturestep);
-                    if (render_mode == PHONG) {
-                        VecAdd(edgep->world, edgep->world,
-                               edgep->worldstep);
-                    }
-	        }
-	    }
-            y += reverse_scan ? 1 : -1;
-	}
-    }
-    sfree(line);
-    sfree(pixel_line);
-    for (i = 0; i < oversampl; i++) {
-        sfree(linebuf[i]);
-    }
-    pixels_free();
-    shade_cache_free();
 }
 
+
+/*
+ * Render the whole image: split it into bands, render them, and
+ * deliver the rows in scan order.
+ */
+typedef struct {
+    Render_job *job;
+    Render_ctx *ctx;
+} Worker_arg;
+
+static void *
+worker_main(void *arg)
+{
+    Worker_arg *wa = (Worker_arg *)arg;
+    Render_job *job = wa->job;
+    int         band, k0, k1;
+
+    for (;;) {
+        pthread_mutex_lock(&job->lock);
+        band = job->next_band++;
+        pthread_mutex_unlock(&job->lock);
+        if (band >= job->nbands || abort_render) {
+            break;
+        }
+        k0 = (int)((long)job->yres_out * band / job->nbands);
+        k1 = (int)((long)job->yres_out * (band + 1) / job->nbands);
+        if (job->d_map != NULL) {
+            depthmap_band(wa->ctx, k0, k1, 
+                          job->lists.edges + job->lists.start[band],
+                          job->lists.count[band], job->d_map);
+        } else {
+            band_render(wa->ctx, k0, k1, 
+                        job->lists.edges + job->lists.start[band],
+                        job->lists.count[band]);
+        }
+        if (!abort_render) {
+            job->band_done[band] = TRUE;
+        }
+    }
+    return NULL;
+}
+
+
+/*
+ * How many threads and bands to use for NLINES output lines.
+ * Several bands per thread even out the differences in cost between
+ * bands.  SIPP_BANDS in the environment overrides the number of bands;
+ * it exists for testing the band logic.
+ */
+static void
+choose_bands(int nlines, int *nthreads, int *nbands)
+{
+    int t, b;
+
+    t = render_threads;
+    if (t > nlines) {
+        t = nlines;
+    }
+    if (t < 1) {
+        t = 1;
+    }
+    b = (t > 1) ? t * 4 : 1;
+    if (getenv("SIPP_BANDS") != NULL) {
+        b = atoi(getenv("SIPP_BANDS"));
+    }
+    if (b < 1) {
+        b = 1;
+    }
+    if (b > nlines) {
+        b = nlines;
+    }
+    *nthreads = t;
+    *nbands = b;
+}
+
+
+/*
+ * Render NBANDS bands of NLINES output lines with NTHREADS threads,
+ * using the initialized contexts CTX[0..NTHREADS-1].  D_MAP selects
+ * depthmap rendering; NULL renders the image.  On return
+ * job->band_done tells which bands were completed.
+ */
+static void
+run_bands(Render_job *job, Render_ctx *ctx, int nthreads, int nbands,
+          int nlines, float *d_map)
+{
+    Worker_arg *args;
+    pthread_t  *threads;
+    int         t;
+
+    args = (Worker_arg *)smalloc(nthreads * sizeof(Worker_arg));
+    threads = (pthread_t *)smalloc(nthreads * sizeof(pthread_t));
+    for (t = 0; t < nthreads; t++) {
+        args[t].job = job;
+        args[t].ctx = &ctx[t];
+    }
+
+    pthread_mutex_init(&job->lock, NULL);
+    job->next_band = 0;
+    job->nbands = nbands;
+    job->yres_out = nlines;
+    job->band_done = (bool *)scalloc(nbands, sizeof(bool));
+    job->d_map = d_map;
+    band_lists_build(&job->lists, &ctx[0], nbands, nlines);
+
+    for (t = 1; t < nthreads; t++) {
+        if (pthread_create(&threads[t], NULL, worker_main, &args[t]) != 0) {
+            fprintf(stderr, "sipp: cannot create rendering thread\n");
+            exit(1);
+        }
+    }
+    worker_main(&args[0]);                /* This thread works too */
+    for (t = 1; t < nthreads; t++) {
+        pthread_join(threads[t], NULL);
+    }
+    pthread_mutex_destroy(&job->lock);
+    band_lists_free(&job->lists);
+    sfree(threads);
+    sfree(args);
+}
+
+
+/*
+ * Render the whole image: split it into bands, render them (with
+ * several threads if asked to), and deliver the rows in scan order.
+ */
+static void
+scan_and_render(int xres, int yres, int storage_mode, int render_mode, 
+                int oversampl, int field)
+{
+    Render_job     job;
+    Render_ctx    *ctx;
+    unsigned char *image;
+    int            xres_out = xres / oversampl;
+    int            yres_out = yres / oversampl;
+    int            nthreads, nbands, t, k, number;
+
+    if (storage_mode == PPM_FILE) {
+        write_ppm_header(xres_out, yres_out, field);
+    }
+
+    choose_bands(yres_out, &nthreads, &nbands);
+
+    image = (unsigned char *)scalloc((size_t)xres_out * yres_out * 3, 1);
+
+    ctx = (Render_ctx *)smalloc(nthreads * sizeof(Render_ctx));
+    for (t = 0; t < nthreads; t++) {
+        ctx_init(&ctx[t], xres, yres, oversampl, render_mode, field, 
+                 edge_count);
+        ctx[t].image = image;
+        ctx[t].storage_mode = storage_mode;
+        /*
+         * Only the calling thread may run the user's callbacks.  With
+         * a single thread the rows are also delivered as they finish,
+         * exactly as before.
+         */
+        ctx[t].call_update = (t == 0);
+        ctx[t].deliver_rows = (nthreads == 1);
+    }
+    run_bands(&job, ctx, nthreads, nbands, yres_out, NULL);
+    for (t = 0; t < nthreads; t++) {
+        ctx_free(&ctx[t]);
+    }
+
+    /*
+     * With several threads the rows are delivered now, in scan order.
+     * After an abort only complete bands are delivered.
+     */
+    if (nthreads > 1) {
+        int band, k_done;
+
+        for (band = 0; band < nbands && job.band_done[band]; band++)
+            ;
+        k_done = (int)((long)yres_out * band / nbands);
+        for (k = 0; k < k_done; k++) {
+            number = OUTLINE_NUMBER(&ctx[0], k);
+            if (field == BOTH || (number & 1) == field) {
+                store_line(image + (size_t)k * xres_out * 3, xres_out, 
+                           number, storage_mode);
+            }
+        }
+    }
+    sfree(job.band_done);
+    sfree(ctx);
+    sfree(image);
+}
+
+
+/*
+ * Enter the depths along the current scanline into DMAP_LINE, keeping
+ * the smallest depth seen at each position.
+ */
+static void
+render_dmap_line(Render_ctx *ctx, float *dmap_line)
+{
+    Active_edge *startedge, *stopedge;
+    double       hden, hdenstep;
+    float        zfact;
+    float        real_z;
+    int          xstart, xstop;
+    int          i;
+    
+    startedge = ctx->head;
+    stopedge = NULL;
+
+    zfact = (float)(1.0 / sipp_current_camera->focal_ratio);
+
+    while (startedge != NULL && !abort_render) {
+
+        stopedge = startedge->next;
+        xstart = (int)(startedge->x + 0.5);
+        xstop  = (int)(stopedge->x + 0.5);
+        hden = startedge->hden;
+
+        if (xstart < xstop) {
+            hdenstep = (stopedge->hden - hden) / (double)(xstop - xstart);
+        } else {
+            hdenstep = 0.0;
+        }
+
+        for (i = xstart; i <= xstop; i++) {
+            real_z = zfact / hden;
+            if (real_z < dmap_line[i]) {
+                dmap_line[i] = real_z;
+            }
+            hden += hdenstep;
+        }
+        startedge = stopedge->next;
+        if (ctx->call_update) {
+            UPDATE_CALLBACK;
+        }
+    }
+}
+
+
+/*
+ * Sweep the y_bucket of a lightsource, writing a depthmap.
+ */
+static void
+scan_depthmap(float *d_map)
+{
+    Render_job  job;
+    Render_ctx *ctx;
+    int         nthreads, nbands, t;
+
+    choose_bands(depthmap_size, &nthreads, &nbands);
+    if (getenv("SIPP_DMAP_BANDS") != NULL) {         /* For testing */
+        nbands = atoi(getenv("SIPP_DMAP_BANDS"));
+        if (nbands < 1) nbands = 1;
+        if (nbands > depthmap_size) nbands = depthmap_size;
+    }
+    ctx = (Render_ctx *)smalloc(nthreads * sizeof(Render_ctx));
+    for (t = 0; t < nthreads; t++) {
+        ctx_init(&ctx[t], depthmap_size, depthmap_size, 1, PHONG, BOTH, 
+                 edge_count);
+        ctx[t].step_vectors = FALSE;      /* Only x and 1/w are needed */
+        ctx[t].call_update = (t == 0);
+    }
+    run_bands(&job, ctx, nthreads, nbands, depthmap_size, d_map);
+    for (t = 0; t < nthreads; t++) {
+        ctx_free(&ctx[t]);
+    }
+    sfree(job.band_done);
+    sfree(ctx);
+}
 
 
 /*
@@ -1621,118 +2235,6 @@ traverse_object_tree(Object *object, Transf_mat *view_mat, int xres, int yres, i
 
 
 /*
- * Render one scanline in a depth-map. This is just a stripped
- * version of render_scanline().
- */
-static void
-render_dmap_line(float *dmap_line, Edge *edge_list)
-{
-    Edge  *startedge, *stopedge;
-    double hden, hdenstep;
-    float  zfact;
-    float  real_z;
-    int    xstart, xstop;
-    int    i;
-    
-    startedge = edge_list;
-    stopedge = NULL;
-
-    zfact = (float)(1.0 / sipp_current_camera->focal_ratio);
-
-    while (startedge != NULL && !abort_render) {
-
-        stopedge = startedge->next;
-        xstart = (int)(startedge->xstart + 0.5);
-        xstop  = (int)(stopedge->xstart + 0.5);
-        hden = startedge->hden;
-
-        if (xstart < xstop) {
-            hdenstep = (stopedge->hden - hden) / (double)(xstop - xstart);
-        } else {
-            hdenstep = 0.0;
-        }
-
-        for (i = xstart; i <= xstop; i++) {
-            real_z = zfact / hden;
-            if (real_z < dmap_line[i]) {
-                dmap_line[i] = real_z;
-            }
-            hden += hdenstep;
-        }
-        startedge = stopedge->next;
-        UPDATE_CALLBACK;
-    }
-}
-
-
-
-/*
- * Similar function to scan_and_render() used when rendering depthmaps.
- * Allocate the needed buffers. Create a list of active edges and
- * move down the y-bucket, inserting and deleting edges from this
- * active list as we go. Call render_dmap_line() for each scanline.
- */
-static void
-scan_depthmap(float *d_map)
-{
-    Active_list      active;
-    Edge            *edgep;
-    int              y, next_edge, y_limit;
-    
-    if (reverse_scan) {
-        y = 0;
-        y_limit = depthmap_size;
-    } else {
-        y = depthmap_size - 1;
-        y_limit = -1;
-    }
-    active.head = active.tail = NULL;
- 
-    while (y != y_limit) {
-
-        active_merge(&active, y_bucket[y]);
-        y_bucket[y] = NULL;
-
-        if (reverse_scan) {
-            next_edge = y + 1;
-            while (next_edge < y_limit && y_bucket[next_edge] == NULL)
-                next_edge++;
-        } else {
-            next_edge = y - 1;
-            while (next_edge >= 0 && y_bucket[next_edge] == NULL)
-                next_edge--;
-        }
-
-        while ((reverse_scan    && (y < next_edge)) ||
-               ((!reverse_scan) && (y > next_edge))) {
-
-            render_dmap_line(d_map + (depthmap_size - 1 - y) * depthmap_size, 
-                             active.head); 
-
-            active_retire(&active);
-
-            for (edgep = active.head; edgep != NULL; edgep = edgep->next) {
-                edgep->ystart += reverse_scan ? 1 : -1;
-                edgep->xstart += edgep->xstep;
-                edgep->hden += edgep->hdenstep;
-            }
- 
-            /*
-             * The abort_render flag maybe set in render_dmap_line.
-             */
-            if (abort_render) {
-                y_bucket[y] = active.head;  /* Save for later cleanup */
-                return;
-            }
-
-            y += reverse_scan ? 1 : -1;
-	}
-    }
-}
-
-
-
-/*
  * Render depthmaps for the lightsources that will cast
  * shadows. Place the camera in the position of each lightsource
  * in turn and render the depthmap. Store the matrix converting
@@ -1797,6 +2299,7 @@ shadowmaps_create(int size)
             MatCopy(&curr_mat, &ident_matrix);
 
             arena_reset(&edge_arena);
+            edge_count = 0;
             traverse_object_tree(sipp_world, &view_mat, 
                                  depthmap_size - 1, depthmap_size - 1, 
                                  PHONG);
@@ -1810,7 +2313,6 @@ shadowmaps_create(int size)
     show_backfaces = backface_tmp;
 
     if (abort_render) {
-        clean_up_y_bucket(depthmap_size);
     }
 
     sfree(y_bucket);
@@ -1864,6 +2366,7 @@ render_main(int xres, int yres, int storage_mode, int render_mode, int oversampl
 
     MatCopy(&curr_mat, &ident_matrix);
     arena_reset(&edge_arena);
+    edge_count = 0;
     traverse_object_tree(sipp_world, &view_mat, xres - 1, yres - 1, 
                          render_mode);
 
@@ -1878,15 +2381,9 @@ render_main(int xres, int yres, int storage_mode, int render_mode, int oversampl
       case FLAT:
       case GOURAUD:
       case PHONG:
-        if (abort_render) {
-            clean_up_y_bucket (yres);
-            sfree(y_bucket);
-            break;
-        }
-        scan_and_render(xres, yres, storage_mode, render_mode, 
-                        oversampling, field);
-        if (abort_render) {
-            clean_up_y_bucket(yres);
+        if (!abort_render) {
+            scan_and_render(xres, yres, storage_mode, render_mode, 
+                            oversampling, field);
         }
         sfree(y_bucket);
         if (auto_shadows) {
@@ -1898,7 +2395,8 @@ render_main(int xres, int yres, int storage_mode, int render_mode, int oversampl
     /*
      * Give the memory used by edges and transformed vertices back.
      * (Keeping the blocks around would save a few mallocs per frame in
-     * an animation, but this keeps the memory footprint nicer.
+     * an animation, but this keeps the memory footprint between
+     * renderings identical to what it was before.)
      */
     arena_release(&edge_arena);
     arena_release(&vcoord_arena);
@@ -2024,6 +2522,24 @@ sipp_show_backfaces(bool flag)
  * but shading detail within a polygon (e.g. procedural textures) is
  * sampled once per pixel.  Only affects PHONG rendering.
  */
+/*
+ * Set the number of threads used to render an image.  N <= 0 selects
+ * the number of processors available.  The default is 1.
+ */
+void
+sipp_render_threads(int n)
+{
+    if (n <= 0) {
+#ifdef _SC_NPROCESSORS_ONLN
+        n = (int)sysconf(_SC_NPROCESSORS_ONLN);
+#else
+        n = 1;
+#endif
+    }
+    render_threads = (n > 0) ? n : 1;
+}
+
+
 void
 sipp_shading_per_pixel(bool flag)
 {
@@ -2071,6 +2587,7 @@ sipp_init(void)
     camera_init();
     sipp_shadows(FALSE, 0);
     sipp_shading_per_pixel(FALSE);
+    sipp_render_threads(1);
     sipp_show_backfaces(FALSE);
     sipp_render_direction(TOP_TO_BOTTOM);
     sipp_background(0.0, 0.0, 0.0);

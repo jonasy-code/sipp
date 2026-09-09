@@ -36,12 +36,30 @@ Lightsource  *lightsrc_stack;  /* Stack of installed lightsources. */
 
 extern int depthmap_size;
 
-static int    rand_index = 0;
+/*
+ * Index into the jitter table for shadow sampling.  Each thread walks
+ * the table on its own, so the pattern a pixel gets depends on which
+ * thread renders it; with one thread it is the same as it always was.
+ */
+static _Thread_local int rand_index = 0;
 static double rand_no[256];
 
 static double
 shadow_sample(Shadow_info *sh,
                            Vector      *pos);
+
+
+/*
+ * Restart the jitter sequence used for soft shadows.  The renderer
+ * calls this at the start of every band, so that the shadow pattern
+ * depends only on how the image is divided into bands, not on which
+ * thread happened to render what.
+ */
+void
+shadow_jitter_reset(void)
+{
+    rand_index = 0;
+}
 
 
 /*

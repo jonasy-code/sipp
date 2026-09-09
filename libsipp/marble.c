@@ -29,7 +29,6 @@
 #include <geometric.h>
 
 
-extern bool noise_ready;
 
 static void
 marble(Vector      *p,
@@ -69,9 +68,7 @@ marble_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Li
     Vector     tmp;
     Surf_desc  surface;
 
-    if (!noise_ready) {
-        noise_init();
-    }
+    noise_init();
 
     VecScalMul(tmp, md->scale, *texture);
     marble(&tmp, &surface.color, md);

@@ -28,7 +28,6 @@
 #include <shaders.h>
 
 
-extern bool noise_ready;
 
 void
 bozo_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *bd_, Color *color, Color *opacity)
@@ -39,9 +38,7 @@ bozo_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Ligh
     double     noiseval;
     int        i;
 
-    if (!noise_ready) {
-        noise_init();
-    }
+    noise_init();
 
     VecScalMul(tmp, bd->scale, *texture);
     noiseval = noise(&tmp);

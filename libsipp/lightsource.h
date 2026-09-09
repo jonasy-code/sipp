@@ -56,4 +56,7 @@ extern void
 depthmaps_destruct(void);
 
 
+extern void
+shadow_jitter_reset(void);
+
 #endif /* LIGHTSOURCE_H */

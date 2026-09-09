@@ -30,7 +30,6 @@
 #include <geometric.h>
 
 
-extern bool noise_ready;
 
 
 static void 
@@ -64,9 +63,7 @@ granite_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, L
     Vector     tmp;
     Surf_desc  surface;
 
-    if (!noise_ready) {
-        noise_init();
-    }
+    noise_init();
 
     VecScalMul(tmp, gd->scale, *texture);
     granite(&tmp, &surface.color, gd);

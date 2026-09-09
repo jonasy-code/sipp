@@ -31,7 +31,7 @@
 
 #
 # If you need extra libraries during the link, define them here.
-#LIBS=
+LIBS = -lpthread
 
 # LIBDIR is where libsipp.a will be placed when you make install.
 # INCLUDEDIR is where the include files will be placed when you make install.

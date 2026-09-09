@@ -18,62 +18,73 @@ Surf_desc scroll_surf = {
  * onto the scroll. We map it on the middle flat part.
  */
 unsigned char scrolltexture[360][113];
-int scroll_ready = 0;
+/*
+ * Read the bitmap used as texture.  Done once, before rendering: the
+ * shader may run in several threads at once and must not load it.
+ */
+static void
+scroll_texture_load(void)
+{
+    FILE *texture_file;
+    int   x, y, c;
+
+    texture_file = fopen("sipp.bm", "r");
+    if (texture_file == NULL) {
+        fprintf(stderr, "scroll: cannot open texture file sipp.bm\n");
+        exit(1);
+    }
+    x = y = 0;
+    if (fscanf(texture_file, "P4") == EOF) {
+        fprintf(stderr, "scroll: sipp.bm is not a P4 pbm file\n");
+        exit(1);
+    }
+    /* Skip whitespace and any '#' comment lines before the size. */
+    for (;;) {
+        c = fgetc(texture_file);
+        if (c == '#') {
+            while (c != '\n' && c != EOF) {
+                c = fgetc(texture_file);
+            }
+        } else if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+            ungetc(c, texture_file);
+            break;
+        }
+    }
+    if (fscanf(texture_file, "%d %d", &x, &y) != 2) {
+        fprintf(stderr, "scroll: cannot read bitmap size from sipp.bm\n");
+        exit(1);
+    }
+    fgetc(texture_file);               /* single whitespace before data */
+    if (x != 900 || y != 360) {
+        fprintf(stderr, "scroll: expected a 900x360 bitmap, got %dx%d\n",
+                x, y);
+        exit(1);
+    }
+    if (fread(scrolltexture, 1, 113*360, texture_file) != 113*360) {
+        fprintf(stderr, "scroll: sipp.bm is truncated\n");
+        exit(1);
+    }
+    fclose(texture_file);
+}
+
+
 static void
 scroll_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *foo, Color *color, Color *opacity)
 {
     Surf_desc   sd;
-    FILE       *texture_file;
     int         x, y;
 
-    if (!scroll_ready) {
-        int  c;
-    
-        texture_file = fopen("sipp.bm", "r");
-        if (texture_file == NULL) {
-            fprintf(stderr, "scroll: cannot open texture file sipp.bm\n");
-            exit(1);
-        }
-        x = y = 0;
-        if (fscanf(texture_file, "P4") == EOF) {
-            fprintf(stderr, "scroll: sipp.bm is not a P4 pbm file\n");
-            exit(1);
-        }
-        /* Skip whitespace and any '#' comment lines before the size. */
-        for (;;) {
-            c = fgetc(texture_file);
-            if (c == '#') {
-                while (c != '\n' && c != EOF) {
-                    c = fgetc(texture_file);
-                }
-            } else if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
-                ungetc(c, texture_file);
-                break;
-            }
-        }
-        if (fscanf(texture_file, "%d %d", &x, &y) != 2) {
-            fprintf(stderr, "scroll: cannot read bitmap size from sipp.bm\n");
-            exit(1);
-        }
-        fgetc(texture_file);               /* single whitespace before data */
-        if (x != 900 || y != 360) {
-            fprintf(stderr, "scroll: expected a 900x360 bitmap, got %dx%d\n",
-                    x, y);
-            exit(1);
-        }
-        if (fread(scrolltexture, 1, 113*360, texture_file) != 113*360) {
-            fprintf(stderr, "scroll: sipp.bm is truncated\n");
-            exit(1);
-        }
-        fclose(texture_file);
-        scroll_ready = 1;
-    }
 
     sd = scroll_surf;
 
     if (texture->x > 0.2 && texture->x < 0.8) {
         x = (texture->x - 0.2) / 0.6 * 900;
         y = texture->y * 360;
+        /* Interpolated coordinates can land exactly on the far edge. */
+        if (x < 0) x = 0;
+        if (x > 899) x = 899;
+        if (y < 0) y = 0;
+        if (y > 359) y = 359;
         if (scrolltexture[y][x / 8] & (1 << (7 - (x % 8)))) {
             sd.color.red = sd.color.grn = sd.color.blu = 0.0;
         }
@@ -118,6 +129,7 @@ int
 main(int argc, char **argv)
 {
     bool        shade_once = FALSE;
+    int nthreads = 1;
     Object  *scroll;
     Surface *scrollsurf;
     int    i;
@@ -132,9 +144,10 @@ main(int argc, char **argv)
     mode = PHONG;
     size = 256;
 
-    while ((c = getopt(argc, argv, "apgfls:")) != EOF) {
+    while ((c = getopt(argc, argv, "aj:pgfls:")) != EOF) {
         switch (c) {
           case 'a': shade_once = TRUE; break;
+          case 'j': nthreads = atoi(optarg); break;
           case 'p':
             mode = PHONG;
             imfile_name = "scroll.ppm";
@@ -163,6 +176,7 @@ main(int argc, char **argv)
 
     sipp_init();
     sipp_shading_per_pixel(shade_once);
+    sipp_render_threads(nthreads);
     sipp_show_backfaces(TRUE);
     sipp_background(0.078, 0.361, 0.753); /* UNC sky blue */
     sipp_shadows(TRUE, (size<512)?2*size:size);
@@ -205,6 +219,7 @@ main(int argc, char **argv)
     fflush(stdout);
 
     image = fopen(imfile_name, "w");
+    scroll_texture_load();
     render_image_file(size, size, image, mode, 3);
     printf("Done.\n");
 

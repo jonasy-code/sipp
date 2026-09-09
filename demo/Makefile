@@ -27,6 +27,7 @@ CFLAGS = -pipe -O3 $(ARCHFLAGS) -I../libsipp -std=gnu99 -Wall -Wstrict-prototype
 #CFLAGS = -pipe -g -I../libsipp
 
 SHELL = /bin/sh
+LIBS = -lpthread
 RM = rm -f
 
 SRCS = torustest.c conetest.c ellipsoid.c prismtest.c chain.c scroll.c geombench.c\
@@ -78,6 +79,9 @@ ellipsoid:    ellipsoid.o ../libsipp/libsipp.a
 torustest: torustest.o ../libsipp/libsipp.a
 	$(CC) -o torustest torustest.o ../libsipp/libsipp.a -lm $(LIBS)
 
+geombench: geombench.o ../libsipp/libsipp.a
+	$(CC) -o geombench geombench.o ../libsipp/libsipp.a -lm $(LIBS)
+
 conetest: conetest.o ../libsipp/libsipp.a
 	$(CC) -o conetest conetest.o ../libsipp/libsipp.a -lm $(LIBS)
 
@@ -92,9 +96,6 @@ woodtest: woodtest.o ../libsipp/libsipp.a
 
 scroll: scroll.o ../libsipp/libsipp.a
 	$(CC) -o scroll scroll.o ../libsipp/libsipp.a -lm $(LIBS)
-
-geombench: geombench.o ../libsipp/libsipp.a
-	$(CC) -o geombench geombench.o ../libsipp/libsipp.a -lm $(LIBS)
 
 
 # ================================================================

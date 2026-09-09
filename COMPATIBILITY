@@ -39,6 +39,25 @@ may affect existing programs:
   reused for the pixel's sub-samples (see sipp.h).  Off by default, so
   existing programs render exactly as before.
 
+* New function sipp_render_threads(int n): render with n threads
+  (n <= 0: one per processor).  The default is 1, which renders exactly
+  as before.  Requirements for user code when n > 1:
+  - Shaders, FFD functions and mask functions are called from several
+    threads at once and must be reentrant: no static scratch variables,
+    and no writing into the surface description they are given.
+    Anything a shader needs (texture images, tables) should be loaded
+    before rendering starts, not lazily on the first call.
+  - The update callback and the pixel function of render_image_func()
+    are only ever called from the thread that called the rendering
+    function.  With several threads the rows of the image are delivered
+    after rendering, in scan order, rather than one by one as they
+    finish, and the update callback runs less often (it counts only the
+    pixels rendered by the calling thread).
+  - The jitter pattern of soft shadows depends on the number of threads
+    (it is deterministic for a given number).  Rendering with one thread
+    gives the same image as before.
+  Link with -lpthread.
+
 * The Vertex structure is a linked list (fields "next" and "hnext")
   instead of a binary tree ("big" and "sml").  Only code that walked
   the vertex tree directly is affected.

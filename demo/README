@@ -10,6 +10,7 @@ All the testprograms takes the following switches:
         -f      Render with FLAT shading.
         -l      Render a LINE image.
         -s n    Make the image (n X n) pixels big.
+        -j n    Render with n threads (0 = one per processor).
         -a      Shade each polygon once per pixel instead of once per
                 sub-sample (see sipp_shading_per_pixel() in sipp.h).
                 Faster with expensive shaders; edges are anti-aliased

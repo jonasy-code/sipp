@@ -3,6 +3,7 @@
 LIBDIR=../../libsipp
 
 CC = gcc
+LIBS = -lpthread
 #CC = cc
 
 # Instruction-set flags by host architecture; see ../../libsipp/Makefile.
@@ -26,5 +27,5 @@ clean:
  
 
 animation: animation.o
-	$(CC) -o $@ animation.o -L$(LIBDIR) -lsipp -lm
+	$(CC) -o $@ animation.o -L$(LIBDIR) -lsipp -lm $(LIBS)
 

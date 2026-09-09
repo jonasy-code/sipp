@@ -389,6 +389,9 @@ sipp_set_update_callback(Update_func *func,
                                       int          period);
 
 EXTERN void
+sipp_render_threads(int n);
+
+EXTERN void
 sipp_shading_per_pixel(bool flag);
 
 EXTERN void

@@ -45,18 +45,18 @@ turb(int size, double scale_factor, Vector loc)
 
 
 
-extern bool noise_ready;
 
 void
 planet_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *sd_, Color *color, Color *opacity)
 {
-    Surf_desc    *sd = (Surf_desc *)sd_;
+    Surf_desc     surf = *(Surf_desc *)sd_;   /* Local copy: the shader
+                                                 must not write into the
+                                                 shared description */
+    Surf_desc    *sd = &surf;
     Vector  tmp;
     double  amt;
 
-    if (!noise_ready) {
-        noise_init();
-    }
+    noise_init();
 
     VecCopy(tmp, *texture);
 

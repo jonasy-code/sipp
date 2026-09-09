@@ -21,15 +21,17 @@ main(int argc, char **argv)
     int      mode;
     int      c;
     bool shade_once = FALSE;
+    int nthreads = 1;
     int      size;
 
     imfile_name = "ellipsoid.ppm";
     mode = PHONG;
     size = 256;
 
-    while ((c = getopt(argc, argv, "apgfls:")) != EOF) {
+    while ((c = getopt(argc, argv, "aj:pgfls:")) != EOF) {
         switch (c) {
           case 'a': shade_once = TRUE; break;
+          case 'j': nthreads = atoi(optarg); break;
           case 'p':
             mode = PHONG;
             imfile_name = "ellipsoid.ppm";
@@ -58,6 +60,7 @@ main(int argc, char **argv)
 
     sipp_init();
     sipp_shading_per_pixel(shade_once);
+    sipp_render_threads(nthreads);
 
     lightsource_create(1.0, 1.0, 1.0, 0.9, 0.9, 0.9, LIGHT_DIRECTION);
     lightsource_create(-1.0, -1.0, 0.5, 0.4, 0.4, 0.4, LIGHT_DIRECTION);
