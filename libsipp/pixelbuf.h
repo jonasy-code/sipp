@@ -51,7 +51,22 @@ pixel_insert(int      pixel,
 extern void
 pixel_collect(int     pixel,
                            Color  *result,
-                           int     render_mode);
+                           int     render_mode,
+                           int     cache_slot);
+
+/*
+ * Shading cache: remembers, per output pixel, the shader results of the
+ * polygons seen so far in that pixel, so that a polygon is shaded once
+ * per pixel instead of once per sub-sample when oversampling.
+ */
+extern void
+shade_cache_setup(int npixels);
+
+extern void
+shade_cache_clear(void);
+
+extern void
+shade_cache_free(void);
 
 
 #endif 

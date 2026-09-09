@@ -51,14 +51,16 @@ main(int argc, char **argv)
     char    *imfile_name;
     int      mode;
     int      c;
+    bool shade_once = FALSE;
     int      size;
 
     imfile_name = "isy90.ppm";
     mode = PHONG;
     size = 256;
 
-    while ((c = getopt(argc, argv, "pgfhls:")) != EOF) {
+    while ((c = getopt(argc, argv, "apgfhls:")) != EOF) {
         switch (c) {
+          case 'a': shade_once = TRUE; break;
           case 'p':
             mode = PHONG;
             imfile_name = "isy90.ppm";
@@ -86,6 +88,7 @@ main(int argc, char **argv)
     }
 
     sipp_init();
+    sipp_shading_per_pixel(shade_once);
     sipp_shadows(TRUE, ((size<512)?2*size:size));
 
     teapot = sipp_teapot(BEZ_RES, &teapot_surf, marble_shader, WORLD);

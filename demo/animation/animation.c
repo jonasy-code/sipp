@@ -7,7 +7,6 @@
 #include <shaders.h>
 #include <primitives.h>
 
-extern double atof();
 
 extern char *optarg;
 extern int optind,  opterr;
@@ -46,8 +45,9 @@ Floor_desc floor_surf = {
  * A shader to produce a checkered floor.
  */
 static void
-floor_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, Floor_desc *fd, Color *color, Color *transp)
+floor_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *fd_, Color *color, Color *transp)
 {
+    Floor_desc *fd = (Floor_desc *)fd_;
     Surf_desc  * col;
     int          intu;
     int          intv;
@@ -92,11 +92,12 @@ main(int argc, char **argv)
     double   height;
     double   t_scale;
     double   xyscaling;
-    double   zscaling;
+    double   zscaling = 1.0;   /* Read back in the squash phase */
     double   angle;
     char     filename[256];
     char     *file_ext;
     char     c;
+    bool     shade_once = FALSE;
 
     mode = LINE;
     time_start = 0.0;
@@ -105,8 +106,9 @@ main(int argc, char **argv)
     image_size = 256;
     file_ext = "pbm";
 
-    while ((c = getopt(argc, argv, "pgfls:")) != EOF) {
+    while ((c = getopt(argc, argv, "apgfls:")) != EOF) {
         switch (c) {
+          case 'a': shade_once = TRUE; break;
           case 'p':
             mode = PHONG;
             file_ext = "ppm";
@@ -135,6 +137,7 @@ main(int argc, char **argv)
 
 
     sipp_init();
+    sipp_shading_per_pixel(shade_once);
 
 
     /* Create the floor. */

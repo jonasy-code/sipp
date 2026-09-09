@@ -30,8 +30,6 @@
 
 
 Tokenval     tokenval;
-extern FILE *yyin;
-extern int   yylex (void);
 
 /*
  * Prototypes of internal functions.
@@ -100,13 +98,13 @@ vertex_read(Bez_Object *obj)
     int token;
     int i, j;
 
-    token = yylex();
+    token = bezier_lex();
     if (token != NVERTICES) {
         fprintf(stderr, "Corrupt vertex description.\n");
         goto errout;
     }
     
-    token = yylex();
+    token = bezier_lex();
     if (token != INTEGER) {
         fprintf(stderr, "Corrupt vertex description.\n");
         goto errout;
@@ -114,7 +112,7 @@ vertex_read(Bez_Object *obj)
     obj->nvertex = tokenval.intval;
     obj->vertex = (Vector *)smalloc(obj->nvertex * sizeof(Vector));
 
-    token = yylex();
+    token = bezier_lex();
     if (token != VERTEX_LIST) {
         fprintf(stderr, "Corrupt vertex description.\n");
         goto errout;
@@ -122,7 +120,7 @@ vertex_read(Bez_Object *obj)
 
     for (i = 0; i < obj->nvertex; i++) {
         for (j = 0; j < 3; j++) {
-            token = yylex();
+            token = bezier_lex();
             if (token != FLOAT && token != INTEGER) {
                 fprintf(stderr, "Corrupt vertex description.\n");
                 goto errout;
@@ -176,13 +174,13 @@ curve_read(Bez_Object *obj)
     int         token;
     int         i, j;
 
-    token = yylex();
+    token = bezier_lex();
     if (token != NCURVES) {
         fprintf(stderr, "Corrupt curve description.\n");
         goto errout;
     }
     
-    token = yylex();
+    token = bezier_lex();
     if (token != INTEGER) {
         fprintf(stderr, "Corrupt curve description.\n");
         goto errout;
@@ -190,7 +188,7 @@ curve_read(Bez_Object *obj)
     obj->n.ncurves = tokenval.intval;
     obj->cp.ccp = (Bez_Curve *)smalloc(obj->n.ncurves * sizeof(Bez_Curve));
 
-    token = yylex();
+    token = bezier_lex();
     if (token != CURVE_LIST) {
         fprintf(stderr, "Corrupt curve description.\n");
         goto errout;
@@ -198,7 +196,7 @@ curve_read(Bez_Object *obj)
 
     for (i = 0; i < obj->n.ncurves; i++) {
         for (j = 0; j < 4; j++) {
-            token = yylex();
+            token = bezier_lex();
             if (token != INTEGER) {
                 fprintf(stderr, "Corrupt curve description.\n");
                 goto errout;
@@ -229,13 +227,13 @@ patch_read(Bez_Object *obj)
     int         token;
     int         i, j, k;
 
-    token = yylex();
+    token = bezier_lex();
     if (token != NPATCHES) {
         fprintf(stderr, "Corrupt patch description.\n");
         goto errout;
     }
     
-    token = yylex();
+    token = bezier_lex();
     if (token != INTEGER) {
         fprintf(stderr, "Corrupt patch description.\n");
         goto errout;
@@ -243,7 +241,7 @@ patch_read(Bez_Object *obj)
     obj->n.npatches = tokenval.intval;
     obj->cp.pcp = (Bez_Patch *)smalloc(obj->n.npatches * sizeof(Bez_Patch));
 
-    token = yylex();
+    token = bezier_lex();
     if (token != PATCH_LIST) {
         fprintf(stderr, "Corrupt patch description.\n");
         goto errout;
@@ -252,7 +250,7 @@ patch_read(Bez_Object *obj)
     for (i = 0; i < obj->n.npatches; i++) {
         for (j = 0; j < 4; j++) {
             for (k = 0; k < 4; k++) {
-                token = yylex();
+                token = bezier_lex();
                 if (token != INTEGER) {
                     fprintf(stderr, "Corrupt patch description.\n");
                     goto errout;
@@ -285,10 +283,10 @@ bezier_read(FILE *file)
     Bez_Object *obj;
 
 
-    yyin = file;
+    bezier_lex_open(file);
 
     obj = (Bez_Object *)scalloc(1, sizeof(Bez_Object));
-    if ((token = yylex()) == PATCHES) {
+    if ((token = bezier_lex()) == PATCHES) {
         obj->type = PATCHES;
         vertex_read(obj);
         if (obj->vertex == NULL) {
@@ -310,12 +308,15 @@ bezier_read(FILE *file)
         }
     } else {
         fprintf(stderr, "Corrupt bezier description file.\n");
+        bezier_lex_close();
         return NULL;
     }
 
+    bezier_lex_close();
     return obj;
 
   errout:
+    bezier_lex_close();
     if (obj != NULL) {
         if (obj->vertex != NULL) {
             sfree(obj->vertex);

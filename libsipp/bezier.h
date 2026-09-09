@@ -43,6 +43,13 @@ typedef union {
     double floatval;
 } Tokenval;
 
+/*
+ * The tokenizer (bezier_lex.c).
+ */
+EXTERN void bezier_lex_open(FILE *file);
+EXTERN int  bezier_lex(void);
+EXTERN void bezier_lex_close(void);
+
 
 typedef struct {
     int cp[4];

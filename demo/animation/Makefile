@@ -2,11 +2,19 @@
 
 LIBDIR=../../libsipp
 
-CC = gcc -traditional
+CC = gcc
 #CC = cc
+
+# Instruction-set flags by host architecture; see ../../libsipp/Makefile.
+ARCH := $(shell uname -m)
+ifeq ($(ARCH),x86_64)
+ARCHFLAGS = -msse4.1
+else
+ARCHFLAGS =
+endif
+
 #CFLAGS = -g -I$(LIBDIR)
-#CFLAGS = -O4 -I$(LIBDIR)
-CFLAGS = -pipe -O2 -I$(LIBDIR)
+CFLAGS = -pipe -O3 $(ARCHFLAGS) -I$(LIBDIR) -std=gnu99 -Wall -Wstrict-prototypes -Wold-style-definition
 
 PROGS = animation
 

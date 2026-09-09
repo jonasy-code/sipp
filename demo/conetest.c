@@ -21,14 +21,16 @@ main(int argc, char **argv)
     char    *imfile_name;
     int      mode;
     int      c;
+    bool shade_once = FALSE;
     int      size;
 
     imfile_name = "cone.ppm";
     mode = PHONG;
     size = 256;
 
-    while ((c = getopt(argc, argv, "pgfls:")) != EOF) {
+    while ((c = getopt(argc, argv, "apgfls:")) != EOF) {
         switch (c) {
+          case 'a': shade_once = TRUE; break;
           case 'p':
             mode = PHONG;
             imfile_name = "cone.ppm";
@@ -56,6 +58,7 @@ main(int argc, char **argv)
     }
 
     sipp_init();
+    sipp_shading_per_pixel(shade_once);
 
     lightsource_create(1.0, 1.0, 1.0, 0.9, 0.9, 0.9, LIGHT_DIRECTION);
     lightsource_create(-1.0, -1.0, 0.5, 0.4, 0.4, 0.4, LIGHT_DIRECTION);

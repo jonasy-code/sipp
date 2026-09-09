@@ -19,7 +19,7 @@ Surf_desc scroll_surf = {
  */
 unsigned char scrolltexture[360][113];
 int scroll_ready = 0;
-void
+static void
 scroll_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *foo, Color *color, Color *opacity)
 {
     Surf_desc   sd;
@@ -28,7 +28,7 @@ scroll_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Li
 
     if (!scroll_ready) {
         int  c;
-
+    
         texture_file = fopen("sipp.bm", "r");
         if (texture_file == NULL) {
             fprintf(stderr, "scroll: cannot open texture file sipp.bm\n");
@@ -87,7 +87,7 @@ scroll_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Li
 /*
  * FFD which twists the ends of the scroll "paper"
  */
-void
+static void
 scroll_twist(void *dummy, Vector *world, Vector *txt, Vector *new_world, Vector *new_txt)
 {
     double rad;
@@ -117,6 +117,7 @@ extern char *optarg;
 int
 main(int argc, char **argv)
 {
+    bool        shade_once = FALSE;
     Object  *scroll;
     Surface *scrollsurf;
     int    i;
@@ -131,8 +132,9 @@ main(int argc, char **argv)
     mode = PHONG;
     size = 256;
 
-    while ((c = getopt(argc, argv, "pgfls:")) != EOF) {
+    while ((c = getopt(argc, argv, "apgfls:")) != EOF) {
         switch (c) {
+          case 'a': shade_once = TRUE; break;
           case 'p':
             mode = PHONG;
             imfile_name = "scroll.ppm";
@@ -160,6 +162,7 @@ main(int argc, char **argv)
     }
 
     sipp_init();
+    sipp_shading_per_pixel(shade_once);
     sipp_show_backfaces(TRUE);
     sipp_background(0.078, 0.361, 0.753); /* UNC sky blue */
     sipp_shadows(TRUE, (size<512)?2*size:size);

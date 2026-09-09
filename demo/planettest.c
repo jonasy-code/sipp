@@ -21,14 +21,16 @@ main(int argc, char **argv)
     char    *imfile_name;
     int      mode;
     int      c;
+    bool shade_once = FALSE;
     int      size;
 
     imfile_name = "planet.ppm";
     mode = PHONG;
     size = 256;
 
-    while ((c = getopt(argc, argv, "pgfls:")) != EOF) {
+    while ((c = getopt(argc, argv, "apgfls:")) != EOF) {
         switch (c) {
+          case 'a': shade_once = TRUE; break;
           case 'p':
             mode = PHONG;
             imfile_name = "planet.ppm";
@@ -66,6 +68,7 @@ main(int argc, char **argv)
     planet_surface.opacity.blu = 1.0;
 
     sipp_init();
+    sipp_shading_per_pixel(shade_once);
 
     lightsource_create(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, LIGHT_DIRECTION);
 

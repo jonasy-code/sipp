@@ -28,6 +28,17 @@ may affect existing programs:
 * The _ANSI_ARGS_ macro is still defined (as a no-op) so that old
   declarations keep compiling, but it is no longer used.
 
+* The bezier description file reader no longer uses lex; a hand-written
+  tokenizer (bezier_lex.c) replaces the generated one, so lex/flex is
+  not needed to build.  The file syntax is unchanged.  One difference:
+  a comment on the last line of a file that has no trailing newline is
+  now accepted (the lex version rejected it).
+
+* New function sipp_shading_per_pixel(bool).  When on, each polygon is
+  shaded once per output pixel while oversampling, and the result is
+  reused for the pixel's sub-samples (see sipp.h).  Off by default, so
+  existing programs render exactly as before.
+
 * The Vertex structure is a linked list (fields "next" and "hnext")
   instead of a binary tree ("big" and "sml").  Only code that walked
   the vertex tree directly is affected.

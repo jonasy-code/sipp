@@ -54,6 +54,7 @@ char *SIPP_VERSION = VERSION;
 static bool          show_backfaces;  /* Don't do backface culling */
 static bool          reverse_scan;    /* Render scan lines in reverse */
 static bool          auto_shadows;    /* Calculate shadows */
+static bool          shading_per_pixel; /* Shade each polygon once per pixel */
 static Edge        **y_bucket;        /* Y-bucket for edge lists. */
 static FILE         *image_file;      /* File to store image in      */
                                       /* when rendering into a file. */
@@ -1305,6 +1306,9 @@ scan_and_render(int xres, int yres, int storage_mode, int render_mode, int overs
         linebuf[i] = (Color *)scalloc(xres, sizeof(Color));
     }
     pixels_setup(xres);
+    if (shading_per_pixel && render_mode == PHONG) {
+        shade_cache_setup(xres / oversampl);
+    }
 
 
     if (storage_mode == PPM_FILE) {
@@ -1382,7 +1386,9 @@ scan_and_render(int xres, int yres, int storage_mode, int render_mode, int overs
                  */
                 for (i = 0; i < xres; i++) {
                     pixel_collect(pixel_line[i], linebuf[curr_line] + i, 
-                                  render_mode);
+                                  render_mode,
+                                  (shading_per_pixel && render_mode == PHONG)
+                                  ? i / oversampl : -1);
                     UPDATE_CALLBACK;
                     if (abort_render) {
                         break;
@@ -1426,6 +1432,7 @@ scan_and_render(int xres, int yres, int storage_mode, int render_mode, int overs
                     store_line(line, xres / oversampl, scanline, 
                                storage_mode);
                     pixels_reinit();
+                    shade_cache_clear();
                 }
 
                 curr_line = 0;
@@ -1458,6 +1465,7 @@ scan_and_render(int xres, int yres, int storage_mode, int render_mode, int overs
         sfree(linebuf[i]);
     }
     pixels_free();
+    shade_cache_free();
 }
 
 
@@ -2007,6 +2015,22 @@ sipp_show_backfaces(bool flag)
  * If called with TRUE, objects will cast shadows. The second
  * argument is then used as the size of the depthmaps.
  */
+/*
+ * Choose between shading every sub-sample (FLAG = FALSE, the default)
+ * and shading each polygon once per output pixel (FLAG = TRUE) when
+ * rendering with oversampling.  With FLAG = TRUE the shader is called
+ * once per polygon per pixel and the result is reused for all of the
+ * pixel's sub-samples; edges are still anti-aliased by the oversampling,
+ * but shading detail within a polygon (e.g. procedural textures) is
+ * sampled once per pixel.  Only affects PHONG rendering.
+ */
+void
+sipp_shading_per_pixel(bool flag)
+{
+    shading_per_pixel = flag;
+}
+
+
 void
 sipp_shadows(bool flag, int size)
 {
@@ -2046,6 +2070,7 @@ sipp_init(void)
     lightsource_init();
     camera_init();
     sipp_shadows(FALSE, 0);
+    sipp_shading_per_pixel(FALSE);
     sipp_show_backfaces(FALSE);
     sipp_render_direction(TOP_TO_BOTTOM);
     sipp_background(0.0, 0.0, 0.0);

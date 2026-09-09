@@ -21,6 +21,8 @@
  **/
 
 
+#include <string.h>
+
 #include <sipp.h>
 #include <smalloc.h>
 #include <rendering.h>
@@ -54,6 +56,25 @@ static int          pixbuf_size;     /* Current size of pixel buffer */
 static int          size_delta;      /* How much to realloc each time */
 static Pixel_info  *pixbuf = 0;      /* The actual pixel buffer */
 static int          first_free;      /* First free Pixel_info in the buffer */
+
+/*
+ * Shading cache, see pixel_collect().  For each output pixel we keep a
+ * few (polygon id, shader result) pairs.  A polygon is identified by
+ * the id in its edges; ids are unique within a rendering pass.  If a
+ * pixel sees more polygons than there are slots, the extra ones are
+ * simply shaded every time.
+ */
+#define SHADE_SLOTS  8
+
+typedef struct {
+    int    polygon;
+    Color  color;
+    Color  opacity;
+} Shade_entry;
+
+static Shade_entry *shade_cache;      /* npixels * SHADE_SLOTS entries */
+static int         *shade_count;      /* Entries in use, per pixel */
+static int          shade_npixels;
 
 /*
  * Prototypes of internal functions.
@@ -165,7 +186,86 @@ pixel_insert(int pixel, Vector *worldstep, Vector *texturestep, Vector *normalst
  * background color.
  */
 void
-pixel_collect(int pixel, Color *result, int render_mode)
+shade_cache_setup(int npixels)
+{
+    shade_cache = (Shade_entry *)smalloc(npixels * SHADE_SLOTS 
+                                         * sizeof(Shade_entry));
+    shade_count = (int *)scalloc(npixels, sizeof(int));
+    shade_npixels = npixels;
+}
+
+
+void
+shade_cache_clear(void)
+{
+    if (shade_count != NULL) {
+        memset(shade_count, 0, shade_npixels * sizeof(int));
+    }
+}
+
+
+void
+shade_cache_free(void)
+{
+    if (shade_cache != NULL) {
+        sfree(shade_cache);
+        sfree(shade_count);
+    }
+    shade_cache = NULL;
+    shade_count = NULL;
+    shade_npixels = 0;
+}
+
+
+/*
+ * Look up a cached shader result for polygon POLYGON in output pixel
+ * SLOT.  Returns TRUE and fills in COLOR/OPACITY if found.
+ */
+static bool
+shade_cache_lookup(int slot, int polygon, Color *color, Color *opacity)
+{
+    Shade_entry *e;
+    int          i;
+
+    e = shade_cache + slot * SHADE_SLOTS;
+    for (i = 0; i < shade_count[slot]; i++) {
+        if (e[i].polygon == polygon) {
+            *color = e[i].color;
+            *opacity = e[i].opacity;
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+
+static void
+shade_cache_insert(int slot, int polygon, Color *color, Color *opacity)
+{
+    Shade_entry *e;
+
+    if (shade_count[slot] < SHADE_SLOTS) {
+        e = shade_cache + slot * SHADE_SLOTS + shade_count[slot]++;
+        e->polygon = polygon;
+        e->color = *color;
+        e->opacity = *opacity;
+    }
+}
+
+
+/*
+ * Walk the fragments of PIXEL front to back, shading and compositing
+ * them into RESULT.
+ *
+ * CACHE_SLOT is the index of the output pixel this sub-sample belongs
+ * to, or -1.  When it is >= 0, shader results are looked up in and
+ * stored into the shading cache, so that each polygon is shaded once
+ * per output pixel and the result reused for all of the pixel's
+ * sub-samples.  Depth sorting and transparency are still resolved per
+ * sub-sample; only the shader call is shared.
+ */
+void
+pixel_collect(int pixel, Color *result, int render_mode, int cache_slot)
 {
     Color    frac;
     Color    opacity_sum;
@@ -206,11 +306,20 @@ pixel_collect(int pixel, Color *result, int render_mode)
             VecScalMul(texture, 1.0 / pixbuf[pixref].hden, texture);
             VecAddS(normal, pixbuf[pixref].offset, 
                     pixbuf[pixref].normalstep, edge->normal);
+            if (cache_slot >= 0 
+                && shade_cache_lookup(cache_slot, edge->polygon, 
+                                      &surf_color, &surf_opacity)) {
+                break;
+            }
             VecSub(viewer, sipp_current_camera->position, world);
             vecnorm(&viewer);
             edge->surface->shader(&world, &normal, &texture, &viewer, 
                                   lightsrc_stack, edge->surface->surface, 
                                   &surf_color, &surf_opacity);
+            if (cache_slot >= 0) {
+                shade_cache_insert(cache_slot, edge->polygon, 
+                                   &surf_color, &surf_opacity);
+            }
             break;
 
           /*

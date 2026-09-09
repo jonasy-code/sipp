@@ -35,7 +35,7 @@ Floor_desc floor_surf = {
 extern bool noise_ready;
 
 
-void
+static void
 hole_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *sd_, Color *color, Color *transp)
 {
     Surf_desc *sd = (Surf_desc *)sd_;
@@ -105,14 +105,16 @@ main(int argc, char **argv)
     char    *imfile_name;
     int      mode;
     int      c;
+    bool shade_once = FALSE;
     int      size;
 
     imfile_name = "teapot.ppm";
     mode = PHONG;
     size = 256;
 
-    while ((c = getopt(argc, argv, "pgfls:")) != EOF) {
+    while ((c = getopt(argc, argv, "apgfls:")) != EOF) {
         switch (c) {
+          case 'a': shade_once = TRUE; break;
           case 'p':
             mode = PHONG;
             imfile_name = "teapot.ppm";
@@ -140,6 +142,7 @@ main(int argc, char **argv)
     }
 
     sipp_init();
+    sipp_shading_per_pixel(shade_once);
     sipp_show_backfaces(TRUE);
     sipp_background(0.078, 0.361, 0.753); /* UNC sky blue */
 

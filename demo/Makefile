@@ -4,8 +4,26 @@
 
 # These values are used if not overruled from the command line
 #CC = cc
+# Instruction-set flags, chosen by host architecture.
+#
+# On x86-64, SSE4.1 lets the compiler emit floor() as one instruction
+# instead of a slow bit-manipulation sequence.  noise() calls floor()
+# twelve times per evaluation, so the procedural-texture shaders get
+# 1.7-1.8x faster, with byte-identical output.  Every x86-64 CPU since
+# about 2009 has SSE4.1.  Adding -mfma gives another ~3% but changes
+# floating-point rounding (and therefore some pixels), so it is left out.
+#
+# On arm64 (Apple silicon, Linux aarch64) the equivalent instructions are
+# part of the base architecture, so no flag is needed.
+ARCH := $(shell uname -m)
+ifeq ($(ARCH),x86_64)
+ARCHFLAGS = -msse4.1
+else
+ARCHFLAGS =
+endif
+
 CC = gcc
-CFLAGS = -pipe -O2 -I../libsipp -std=gnu99 -Wall -Wstrict-prototypes -Wold-style-definition
+CFLAGS = -pipe -O3 $(ARCHFLAGS) -I../libsipp -std=gnu99 -Wall -Wstrict-prototypes -Wold-style-definition
 #CFLAGS = -pipe -g -I../libsipp
 
 SHELL = /bin/sh

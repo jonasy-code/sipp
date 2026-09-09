@@ -44,6 +44,7 @@ main(int argc, char **argv)
     char      *imfile_name;
     int        mode;
     int        c;
+    bool shade_once = FALSE;
     int        size;
     int        res;
     int        grid;
@@ -59,8 +60,9 @@ main(int argc, char **argv)
     grid = 4;
     report = 0;
 
-    while ((c = getopt(argc, argv, "pgfls:r:c:t")) != EOF) {
+    while ((c = getopt(argc, argv, "apgfls:r:c:t")) != EOF) {
         switch (c) {
+          case 'a': shade_once = TRUE; break;
           case 'p': mode = PHONG;   imfile_name = "geombench.ppm"; break;
           case 'g': mode = GOURAUD; imfile_name = "geombench.ppm"; break;
           case 'f': mode = FLAT;    imfile_name = "geombench.ppm"; break;
@@ -73,6 +75,7 @@ main(int argc, char **argv)
     }
 
     sipp_init();
+    sipp_shading_per_pixel(shade_once);
 
     lightsource_create( 1.0,  1.0, 1.0,  0.9, 0.9, 0.9,  LIGHT_DIRECTION);
     lightsource_create(-1.0, -1.0, 0.5,  0.4, 0.4, 0.4,  LIGHT_DIRECTION);
