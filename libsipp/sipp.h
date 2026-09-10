@@ -103,6 +103,28 @@
 #define BOTH 2
 
 /*
+ * Image file formats, for render_image_file() and render_field_file().
+ * A format may be combined (bitwise or) with IMAGE_ALPHA to give the
+ * image an alpha channel.  render_image_func() and render_field_func()
+ * look only at the IMAGE_ALPHA bit.
+ *
+ * With an alpha channel each pixel holds the color of the surfaces seen
+ * in it, not mixed with any background: the background is completely
+ * transparent and sipp_background() has no effect.  Alpha is the
+ * opacity of the surfaces seen in the pixel (the largest of the three
+ * color bands of their opacity): 255 where they are opaque, 0 where no
+ * surface is seen, and anti-aliased along with the color when
+ * oversampling.  The colors are straight, not premultiplied by alpha.
+ * sipp_image_extension() gives the customary file name extension.
+ */
+typedef enum {
+  IMAGE_PPM = 0,      /* Portable anymap: PPM, PBM for LINE images, */
+                      /* PAM with an alpha channel */
+  IMAGE_PNG = 1,      /* Portable network graphics */
+  IMAGE_ALPHA = 0x100 /* Flag: add an alpha channel */
+} Image_format;
+
+/*
  * Types of lightsources.
  */
 #define LIGHT_DIRECTION 0
@@ -150,12 +172,14 @@ typedef void Shader(Vector *pos, Vector *normal, Vector *texture,
 /*
  * Interface to the user supplied output functions of render_image_func()
  * and render_field_func().  A Pixel_func receives one pixel of a shaded
- * image.  In LINE mode a Line_func is used instead, receiving one line
- * segment in image coordinates; pass it as (Pixel_func *) to the
- * rendering function.
+ * image; ALPHA is 255 unless the image was rendered with IMAGE_ALPHA.
+ * In LINE mode a Line_func is used instead, receiving one line segment
+ * in image coordinates; pass it as (Pixel_func *) to the rendering
+ * function.
  */
 typedef void Pixel_func(void *data, int x, int y, unsigned char red,
-                        unsigned char grn, unsigned char blu);
+                        unsigned char grn, unsigned char blu,
+                        unsigned char alpha);
 
 typedef void Line_func(void *data, int x1, int y1, int x2, int y2);
 
@@ -484,17 +508,22 @@ EXTERN void camera_use(Camera *cp);
 /* Functions to render an image. */
 
 EXTERN void render_image_file(int xres, int yres, FILE *im_file,
-                              int render_mode, int oversampling);
+                              Image_format format, int render_mode,
+                              int oversampling);
 
 EXTERN void render_image_func(int xres, int yres, Pixel_func *pixel_func,
-                              void *data, int render_mode, int oversampling);
+                              void *data, Image_format format, int render_mode,
+                              int oversampling);
 
 EXTERN void render_field_file(int xres, int yres, FILE *im_file,
-                              int render_mode, int oversampling, int field);
+                              Image_format format, int render_mode,
+                              int oversampling, int field);
 
 EXTERN void render_field_func(int xres, int yres, Pixel_func *pixel_func,
-                              void *data, int render_mode, int oversampling,
-                              int field);
+                              void *data, Image_format format, int render_mode,
+                              int oversampling, int field);
+
+EXTERN const char *sipp_image_extension(Image_format format, int render_mode);
 
 EXTERN void sipp_render_terminate(void);
 
@@ -526,6 +555,6 @@ EXTERN void object_delete(Object *o);
 #define lightsource_push(x, y, z, i)                                           \
   lightsource_create(x, y, z, i, i, i, LIGHT_DIRECTION)
 #define render_image_pixmap(w, h, p, f, m, o)                                  \
-  render_image_func(w, h, f, p, m, o)
+  render_image_func(w, h, f, p, IMAGE_PPM, m, o)
 
 #endif /* _SIPP_H */

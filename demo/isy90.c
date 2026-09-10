@@ -40,18 +40,21 @@ int main(int argc, char **argv) {
   FILE *image;
   int i;
 
-  char *imfile_name;
+  char imfile_name[64];
+  const char *imbase;
   int mode;
   int c;
   bool shade_once = FALSE;
   int nthreads = 1;
+  Image_format format = IMAGE_PPM;
+  bool alpha = FALSE;
   int size;
 
-  imfile_name = "isy90.ppm";
+  imbase = "isy90";
   mode = PHONG;
   size = 256;
 
-  while ((c = getopt(argc, argv, "aj:pgfhls:")) != EOF) {
+  while ((c = getopt(argc, argv, "aj:pgfhls:PA")) != EOF) {
     switch (c) {
     case 'a':
       shade_once = TRUE;
@@ -61,29 +64,39 @@ int main(int argc, char **argv) {
       break;
     case 'p':
       mode = PHONG;
-      imfile_name = "isy90.ppm";
       break;
 
     case 'g':
       mode = GOURAUD;
-      imfile_name = "isy90.ppm";
       break;
 
     case 'f':
       mode = FLAT;
-      imfile_name = "isy90.ppm";
       break;
 
     case 'l':
       mode = LINE;
-      imfile_name = "isy90.pbm";
       break;
 
     case 's':
       size = atoi(optarg);
       break;
+
+    case 'P':
+      format = IMAGE_PNG;
+      break;
+
+    case 'A':
+      alpha = TRUE;
+      break;
     }
   }
+
+  if (alpha) {
+    format = (Image_format)(format | IMAGE_ALPHA);
+  }
+  snprintf(imfile_name, sizeof(imfile_name), "%s.%s", imbase,
+           sipp_image_extension(format, mode));
 
   sipp_init();
   sipp_shading_per_pixel(shade_once);
@@ -127,7 +140,7 @@ int main(int argc, char **argv) {
   fflush(stdout);
 
   image = fopen(imfile_name, "w");
-  render_image_file(size, size, image, mode, 3);
+  render_image_file(size, size, image, format, mode, 3);
   printf("Done.\n");
 
   exit(0);

@@ -36,11 +36,14 @@ int main(int argc, char **argv) {
   Surf_desc surf;
   Surf_desc *sp;
   Object *torus;
-  char *imfile_name;
+  char imfile_name[64];
+  const char *imbase;
   int mode;
   int c;
   bool shade_once = FALSE;
   int nthreads = 1;
+  Image_format format = IMAGE_PPM;
+  bool alpha = FALSE;
   int size;
   int res;
   int grid;
@@ -49,14 +52,14 @@ int main(int argc, char **argv) {
   long npolys;
   double t0, t1, t2;
 
-  imfile_name = "geombench.ppm";
+  imbase = "geombench";
   mode = PHONG;
   size = 256;
   res = 4;
   grid = 4;
   report = 0;
 
-  while ((c = getopt(argc, argv, "aj:pgfls:r:c:t")) != EOF) {
+  while ((c = getopt(argc, argv, "aj:pgfls:r:c:tPA")) != EOF) {
     switch (c) {
     case 'a':
       shade_once = TRUE;
@@ -66,22 +69,26 @@ int main(int argc, char **argv) {
       break;
     case 'p':
       mode = PHONG;
-      imfile_name = "geombench.ppm";
       break;
     case 'g':
       mode = GOURAUD;
-      imfile_name = "geombench.ppm";
       break;
     case 'f':
       mode = FLAT;
-      imfile_name = "geombench.ppm";
       break;
     case 'l':
       mode = LINE;
-      imfile_name = "geombench.pbm";
       break;
     case 's':
       size = atoi(optarg);
+      break;
+
+    case 'P':
+      format = IMAGE_PNG;
+      break;
+
+    case 'A':
+      alpha = TRUE;
       break;
     case 'r':
       res = atoi(optarg);
@@ -94,6 +101,12 @@ int main(int argc, char **argv) {
       break;
     }
   }
+
+  if (alpha) {
+    format = (Image_format)(format | IMAGE_ALPHA);
+  }
+  snprintf(imfile_name, sizeof(imfile_name), "%s.%s", imbase,
+           sipp_image_extension(format, mode));
 
   sipp_init();
   sipp_shading_per_pixel(shade_once);
@@ -135,7 +148,7 @@ int main(int argc, char **argv) {
                 0.5);
 
   fp = fopen(imfile_name, "w");
-  render_image_file(size, size, fp, mode, 2);
+  render_image_file(size, size, fp, format, mode, 2);
   fclose(fp);
   t2 = now();
 

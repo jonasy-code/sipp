@@ -60,7 +60,7 @@ is allocated using malloc(3).
 .sp
 Frees all memory associated to the \fISipp_pixmap pm\fR.
 
-.IP \fIvoid\ sipp_pixmap_set_pixel(pm,\ col,\ row,\ red,\ grn,\ blu)\fR
+.IP \fIvoid\ sipp_pixmap_set_pixel(pm,\ col,\ row,\ red,\ grn,\ blu,\ alpha)\fR
 .br
 \fISipp_pixmap\ *pm;\fR
 .br
@@ -72,7 +72,9 @@ Frees all memory associated to the \fISipp_pixmap pm\fR.
 .br
 \fIu_char\ grn;\fR
 .br
-\fIu_char\ blu\fR
+\fIu_char\ blu;\fR
+.br
+\fIu_char\ alpha\fR
 .sp
 Set the pixel at (\fIcol\fR, \fIrow\fR) in pixmap \fIpm\fR to be the color
 (\fIred\fR, \fIgrn\fR, \fIblu\fR). (0, 0) is upper left.

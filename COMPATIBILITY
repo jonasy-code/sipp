@@ -58,6 +58,29 @@ may affect existing programs:
     gives the same image as before.
   Link with -lpthread.
 
+* The rendering functions take a new "format" argument, after the file
+  or the pixel function and its data:
+      render_image_file(w, h, file, format, mode, oversampling)
+      render_field_file(w, h, file, format, mode, oversampling, field)
+      render_image_func(w, h, func, data, format, mode, oversampling)
+      render_field_func(w, h, func, data, format, mode, oversampling, field)
+  "format" is an Image_format: IMAGE_PPM (the files written before: PPM,
+  or PBM in LINE mode) or IMAGE_PNG, optionally or:ed with IMAGE_ALPHA
+  to add an alpha channel.  With IMAGE_ALPHA the background is transparent, alpha is
+  the opacity of the surfaces, and a PPM becomes a PAM (P7, RGB_ALPHA).
+  The function variants only look at IMAGE_ALPHA.  Old calls: add
+  IMAGE_PPM as the new argument to render exactly as before.
+  sipp_image_extension(format, mode) returns "ppm", "pbm", "pam" or
+  "png" for naming files.
+
+* A Pixel_func takes a fourth color argument, alpha (255 unless the
+  image is rendered with IMAGE_ALPHA).  sipp_pixmap_set_pixel() takes
+  and ignores it, so it can still be used as a Pixel_func.
+
+* PNG files are written by a built-in encoder (sipp_png.c); no library
+  is needed.  sipp_pixmap_write_png() and sipp_bitmap_write_png() write
+  a pixmap or bitmap as PNG.
+
 * The Vertex structure is a linked list (fields "next" and "hnext")
   instead of a binary tree ("big" and "sml").  Only code that walked
   the vertex tree directly is affected.

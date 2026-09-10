@@ -14,18 +14,21 @@ int main(int argc, char **argv) {
   Surf_desc planet_surface;
   FILE *outfile;
 
-  char *imfile_name;
+  char imfile_name[64];
+  const char *imbase;
   int mode;
   int c;
   bool shade_once = FALSE;
   int nthreads = 1;
+  Image_format format = IMAGE_PPM;
+  bool alpha = FALSE;
   int size;
 
-  imfile_name = "planet.ppm";
+  imbase = "planet";
   mode = PHONG;
   size = 256;
 
-  while ((c = getopt(argc, argv, "aj:pgfls:")) != EOF) {
+  while ((c = getopt(argc, argv, "aj:pgfls:PA")) != EOF) {
     switch (c) {
     case 'a':
       shade_once = TRUE;
@@ -35,26 +38,30 @@ int main(int argc, char **argv) {
       break;
     case 'p':
       mode = PHONG;
-      imfile_name = "planet.ppm";
       break;
 
     case 'g':
       mode = GOURAUD;
-      imfile_name = "planet.ppm";
       break;
 
     case 'f':
       mode = FLAT;
-      imfile_name = "planet.ppm";
       break;
 
     case 'l':
       mode = LINE;
-      imfile_name = "planet.pbm";
       break;
 
     case 's':
       size = atoi(optarg);
+      break;
+
+    case 'P':
+      format = IMAGE_PNG;
+      break;
+
+    case 'A':
+      alpha = TRUE;
       break;
     }
   }
@@ -68,6 +75,12 @@ int main(int argc, char **argv) {
   planet_surface.opacity.red = 1.0;
   planet_surface.opacity.grn = 1.0;
   planet_surface.opacity.blu = 1.0;
+
+  if (alpha) {
+    format = (Image_format)(format | IMAGE_ALPHA);
+  }
+  snprintf(imfile_name, sizeof(imfile_name), "%s.%s", imbase,
+           sipp_image_extension(format, mode));
 
   sipp_init();
   sipp_shading_per_pixel(shade_once);
@@ -86,7 +99,7 @@ int main(int argc, char **argv) {
   fflush(stdout);
 
   outfile = fopen(imfile_name, "w");
-  render_image_file(size, size, outfile, mode, 3);
+  render_image_file(size, size, outfile, format, mode, 3);
   printf("Done.\n");
 
   exit(0);

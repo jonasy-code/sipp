@@ -77,8 +77,8 @@ extern int pixel_insert(Pixel_buffer *pb, int pixel, Vector *worldstep,
                         Vector *texturestep, Vector *normalstep, double depth,
                         double hden, double offset, Active_edge *edge);
 
-extern void pixel_collect(Pixel_buffer *pb, int pixel, Color *result,
-                          int render_mode, int cache_slot);
+extern void pixel_collect(Pixel_buffer *pb, int pixel, Color *color,
+                          Color *opacity, int render_mode, int cache_slot);
 
 extern void shade_cache_setup(Pixel_buffer *pb, int npixels);
 

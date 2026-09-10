@@ -734,7 +734,7 @@ main()
                       0.0, 0.0, 0.0,  0.0, 0.0, 1.0,  0.4);
 
         image_fd = fopen("ex1.ppm", "w");
-        render_image_file(400, 400, image_fd, PHONG, 1);
+        render_image_file(400, 400, image_fd, IMAGE_PPM, PHONG, 1);
 @}
 
 @end smallexample
@@ -826,7 +826,7 @@ main()
                       0.0, 0.0, 0.0,  0.0, 0.0, 1.0,  0.4);
 
         image_fd = fopen("ex2.ppm", "w");
-        render_image_file(400, 400, image_fd, PHONG, 2);
+        render_image_file(400, 400, image_fd, IMAGE_PPM, PHONG, 2);
 @}
 @end smallexample
 
@@ -2834,9 +2834,10 @@ There are two functions for rendering into a file.
 @findex @code{render_image_file()}
 @smallexample
 void
-render_image_file(width, height, file, mode, oversampling)
+render_image_file(width, height, file, format, mode, oversampling)
         int    width, height;
         FILE  *file;
+        Image_format format;
         int    mode;
         int    oversampling;
 @end smallexample
@@ -2856,6 +2857,23 @@ is defined to refer to the smaller of the two.
 This is a pointer to an open file on which the image will be written. If
 the system supports it, it could just as well be a pipe or a socket of
 course.
+
+@item
+@code{format}
+
+This selects the file format, an @code{Image_format}: @code{IMAGE_PPM} for a portable pixmap
+(a portable bitmap in @code{LINE} mode) or @code{IMAGE_PNG} for a PNG
+file.  Either can be combined, with a bitwise or, with
+@code{IMAGE_ALPHA} to give the image an alpha channel.  With an alpha
+channel the pixels hold the color of the surfaces alone, not mixed with
+any background (the background is transparent and the background color
+is not used), and alpha is the opacity of the surfaces: 255 where they
+are opaque, 0 where none is seen, anti-aliased along with the color.
+The colors are not premultiplied by alpha.  A portable pixmap with an
+alpha channel is written as a PAM file (@code{P7}, @code{RGB_ALPHA}).
+The function @code{sipp_image_extension(format, mode)} returns the
+customary file name extension: @code{"ppm"}, @code{"pbm"}, @code{"pam"}
+or @code{"png"}.
 
 @item
 @code{mode}
@@ -2883,9 +2901,10 @@ when rendering fields.
 @findex @code{render_field_file()}
 @smallexample
 void
-render_field_file(width, height, file, mode, oversampling, field)
+render_field_file(width, height, file, format, mode, oversampling, field)
         int    width, height;
         FILE  *file;
+        Image_format format;
         int    mode;
         int    oversampling;
         int    field;
@@ -2948,10 +2967,11 @@ file:
 @findex @code{render_image_func()}
 @smallexample
 void
-render_image_func(width, height, pix_func, data, mode, oversampling)
+render_image_func(width, height, pix_func, data, format, mode, oversampling)
         int    width, height;
-        void (*pix_func)();
+        Pixel_func *pix_func;
         void  *data;
+        Image_format format;
         int    mode;
         int    oversampling;
 @end smallexample
@@ -2974,10 +2994,9 @@ instead. The function must have the following interface:
 
 @smallexample
 void
-my_pixel_function(data, col, row, red, green, blue)
-        my_data       *data;
-        int            col, row;
-        unsigned char  red, green, blue;
+my_pixel_function(void *data, int col, int row, unsigned char red,
+                  unsigned char green, unsigned char blue,
+                  unsigned char alpha)
 @end smallexample
 @itemize
 @item
@@ -2991,6 +3010,10 @@ Specifies position of the pixel. (0, 0) is upper left.
 @code{red, green, blue}
 This is the color of the pixel quantified to 24 bits, 8 bits for each of
 red, green and blue.
+@item 
+@code{alpha}
+The opacity of the pixel, 0 to 255, when the image is rendered with
+@code{IMAGE_ALPHA} in @code{format}; otherwise always 255.
 @end itemize
 
 If @code{LINE} rendering is used instead, the user provided function is
@@ -2998,11 +3021,9 @@ called for each rendered line instead of each pixel and should have the
 following interface:
 @smallexample
 void
-my_line_function(data, col1, row1, col2, row2)
-        my_data       *data;
-        int            col1, row1;
-        int            col2, row2;
+my_line_function(void *data, int col1, int row1, int col2, int row2)
 @end smallexample
+Pass it to @code{render_image_func()} cast to @code{(Pixel_func *)}.
 @itemize
 @item 
 @code{data}
@@ -3019,6 +3040,14 @@ Specification of the two endpoints of the line. (0, 0) is upper left,
 This is a pointer to any data structure that the pixel function (see
 next item) needs. It could be a pointer to a specific pixmap or window
 or whatever.
+
+@item
+@code{format}
+
+Only the @code{IMAGE_ALPHA} bit matters here (@pxref{Rendering to
+file}): with it, the pixel function receives the color of the surfaces
+alone and their opacity as @code{alpha}; without it the background is
+mixed in and @code{alpha} is always 255.
 
 @item
 @code{mode}
@@ -3044,10 +3073,11 @@ rendering a field into a user defined place. As in that function,
 @findex @code{render_field_func()}
 @smallexample
 void
-render_field_func(width, height, pix_func, data, mode, oversampling, field)
+render_field_func(width, height, pix_func, data, format, mode, oversampling, field)
         int    width, height;
-        void (*pix_func)();
+        Pixel_func *pix_func;
         void  *data;
+        Image_format format;
         int    mode;
         int    oversampling;
         int    field;
@@ -3131,17 +3161,20 @@ to the heap.
 
 @smallexample
 void
-sipp_pixmap_set_pixel(pm, col, row, red, grn, blu)
+sipp_pixmap_set_pixel(pm, col, row, red, grn, blu, alpha)
         Sipp_pixmap   *pm;
         int            col;
         int            row;
         unsigned char  red;
         unsigned char  grn;
         unsigned char  blu;
+        unsigned char  alpha;
 @end smallexample
 @findex @code{sipp_pixmap_set_pixel()}
 Set the pixel at (@code{col}, @code{row}) in pixmap @code{pm} to be the
-color (@code{red}, @code{grn}, @code{blu}). (0, 0) is upper left.  Note
+color (@code{red}, @code{grn}, @code{blu}). (0, 0) is upper left.
+@code{alpha} is ignored, the pixmap has no alpha channel; it is there so
+that the function has the interface of a @code{Pixel_func}.  Note
 that this function is directly usable in @code{render_image_func()}
 defined in @ref{Rendering to other devices}, when using the @code{FLAT},
 @code{GOURAUD} or @code{PHONG} mode of rendering.

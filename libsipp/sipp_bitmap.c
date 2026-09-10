@@ -25,6 +25,7 @@
 
 #include <sipp.h>
 #include <sipp_bitmap.h>
+#include <sipp_png.h>
 #include <smalloc.h>
 
 /* ================================================================ */
@@ -136,4 +137,11 @@ void sipp_bitmap_write(FILE *file, Sipp_bitmap *bm) {
     written += wrote;
     left -= wrote;
   }
+}
+
+/*
+ * Write the bitmap BM as a 1 bit greyscale PNG file.
+ */
+void sipp_bitmap_write_png(FILE *file, Sipp_bitmap *bm) {
+  sipp_png_write_bitmap(file, bm->width, bm->height, bm->buffer);
 }

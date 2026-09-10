@@ -83,19 +83,20 @@ int main(int argc, char **argv) {
   double zscaling = 1.0; /* Read back in the squash phase */
   double angle;
   char filename[256];
-  char *file_ext;
+  const char *file_ext;
   char c;
   bool shade_once = FALSE;
   int nthreads = 1;
+  Image_format format = IMAGE_PPM;
+  bool alpha = FALSE;
 
   mode = LINE;
   time_start = 0.0;
   time_stop = 1.0;
   time_step = 0.04;
   image_size = 256;
-  file_ext = "pbm";
 
-  while ((c = getopt(argc, argv, "aj:pgfls:")) != EOF) {
+  while ((c = getopt(argc, argv, "aj:pgfls:PA")) != EOF) {
     switch (c) {
     case 'a':
       shade_once = TRUE;
@@ -105,29 +106,38 @@ int main(int argc, char **argv) {
       break;
     case 'p':
       mode = PHONG;
-      file_ext = "ppm";
       break;
 
     case 'g':
       mode = GOURAUD;
-      file_ext = "ppm";
       break;
 
     case 'f':
       mode = FLAT;
-      file_ext = "ppm";
       break;
 
     case 'l':
       mode = LINE;
-      file_ext = "pbm";
       break;
 
     case 's':
       image_size = atoi(optarg);
       break;
+
+    case 'P':
+      format = IMAGE_PNG;
+      break;
+
+    case 'A':
+      alpha = TRUE;
+      break;
     }
   }
+
+  if (alpha) {
+    format = (Image_format)(format | IMAGE_ALPHA);
+  }
+  file_ext = sipp_image_extension(format, mode);
 
   sipp_init();
   sipp_shading_per_pixel(shade_once);
@@ -203,7 +213,7 @@ int main(int argc, char **argv) {
     fflush(stdout);
 
     /* Render the image. */
-    render_image_file(image_size, image_size, image, mode, 3);
+    render_image_file(image_size, image_size, image, format, mode, 3);
     fclose(image);
 
     /* Reset the teapot to its original position and shape. */

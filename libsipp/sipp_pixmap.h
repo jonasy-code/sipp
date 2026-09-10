@@ -27,7 +27,8 @@
 
 /* The generic pixel setter usable for any pixmap type. */
 typedef void (*Pixmap_set_pixel_func)(void *pm, int x, int y, unsigned char red,
-                                      unsigned char grn, unsigned char blu);
+                                      unsigned char grn, unsigned char blu,
+                                      unsigned char alpha);
 
 /* The SIPP pixmap and its associated functions. */
 
@@ -43,8 +44,10 @@ EXTERN void sipp_pixmap_destruct(Sipp_pixmap *pm);
 
 EXTERN void sipp_pixmap_set_pixel(Sipp_pixmap *pm, int x, int y,
                                   unsigned char red, unsigned char grn,
-                                  unsigned char blu);
+                                  unsigned char blu, unsigned char alpha);
 
 EXTERN void sipp_pixmap_write(FILE *file, Sipp_pixmap *pm);
+
+EXTERN void sipp_pixmap_write_png(FILE *file, Sipp_pixmap *pm);
 
 #endif /* SIPP_PIXMAP_H */

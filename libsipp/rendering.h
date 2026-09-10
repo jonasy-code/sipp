@@ -27,11 +27,12 @@
 #include <sipp.h>
 
 /*
- * Modes for storing the image.
+ * Where the image goes.
  */
-#define PBM_FILE 0
-#define PPM_FILE 1
-#define FUNCTION 2
+typedef enum {
+  IMAGE_FILE, /* A file, in the format chosen by the caller */
+  FUNCTION    /* The caller's pixel (or line) function */
+} Storage_mode;
 
 /*
  * Temporary storage of transformed vertices.

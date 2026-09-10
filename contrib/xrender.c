@@ -74,7 +74,8 @@ dither_value(int x, int y, int size)
 /* ------------------------------------------------------------------------- */
 
 static void
-myplot(void *data, int x, int y, unsigned char r, unsigned char g, unsigned char b)
+myplot(void *data, int x, int y, unsigned char r, unsigned char g, unsigned char b,
+       unsigned char a)
 {
     int size = (int)(intptr_t)data;
 
@@ -118,7 +119,7 @@ myrender(int w, int h, int mode, int over)
     height = h / size;
     render_image_func(width, height, 
                       (mode == LINE) ? (Pixel_func *)myline : myplot, 
-                      (void *)(intptr_t)size, mode, over);
+                      (void *)(intptr_t)size, IMAGE_PPM, mode, over);
     if (!update) {
         XClearWindow(disp, win);
     }
@@ -140,7 +141,7 @@ myrender2(int w, int h, int mode, int over)
         width = w / size;
         height = h / size;
         render_image_func(width, height, myplot, (void *)(intptr_t)size,
-                          mode, over);
+                          IMAGE_PPM, mode, over);
         if (!cmap && (size / 2 == 1)) {
             break;
         }
@@ -171,7 +172,7 @@ myrender3(int w, int h, int mode, int over)
     height = h / size;
     pm = sipp_pixmap_create(width, height);
     render_image_func(width, height, (Pixel_func *)sipp_pixmap_set_pixel,
-                      pm, mode, over);
+                      pm, IMAGE_PPM, mode, over);
     for (i = 0; i < width; i++) {
         for(j = 0; j < height; j++);
     }

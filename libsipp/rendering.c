@@ -36,6 +36,7 @@
 #include <pixelbuf.h>
 #include <rendering.h>
 #include <sipp_bitmap.h>
+#include <sipp_png.h>
 #include <smalloc.h>
 #include <viewpoint.h>
 #include <xalloca.h>
@@ -61,6 +62,12 @@ static bool shading_per_pixel; /* Shade each polygon once per pixel */
 static Edge **y_bucket;        /* Y-bucket for edge lists. */
 static FILE *image_file;       /* File to store image in      */
                                /* when rendering into a file. */
+static Image_format image_format; /* Its format: IMAGE_PPM or IMAGE_PNG */
+static bool image_alpha;       /* The image has an alpha channel */
+static unsigned char *png_rows; /* The rows of a PNG image are    */
+static int png_nrows;           /* collected here until all of    */
+static int png_lines;           /* them are known                 */
+static int png_rowbytes;
 static Pixel_func *pixel_set;  /* User function receiving pixels   */
                                /* when rendering with a function.  */
 static Line_func *line_set;    /* Likewise for lines in LINE mode. */
@@ -147,7 +154,7 @@ static void do_ffd(Vertex *vertex, Surface *surface);
 static void ffd_vertices(Surface *surface);
 #endif
 
-static void scan_and_render(int xres, int yres, int storage_mode,
+static void scan_and_render(int xres, int yres, Storage_mode storage_mode,
                             int render_mode, int oversampl, int field);
 
 static void matrix_push(void);
@@ -159,8 +166,8 @@ static void traverse_object_tree(Object *object, Transf_mat *view_mat, int xres,
 
 static void scan_depthmap(float *d_map);
 
-static void render_main(int xres, int yres, int storage_mode, int render_mode,
-                        int oversampling, int field);
+static void render_main(int xres, int yres, Storage_mode storage_mode,
+                        int render_mode, int oversampling, int field);
 
 /*
  * Line_func adapter for the internal bitmap used when a LINE image is
@@ -911,14 +918,17 @@ typedef struct {
   bool analytic;               /* Insertion compares analytic x */
 
   /* Per-scanline buffers */
-  int *pixel_line; /* Fragment list head per sub-pixel */
-  Color **linebuf; /* oversampl sub-scanlines of colour */
+  int *pixel_line;   /* Fragment list head per sub-pixel */
+  Color **linebuf;   /* oversampl sub-scanlines of colour */
+  double **alphabuf; /* ... and of alpha, when alpha is set */
   Pixel_buffer pb;
 
   /* Output */
+  bool alpha;           /* Produce an alpha channel */
+  int channels;         /* Bytes per pixel in image: 3 or 4 */
   unsigned char *image; /* Rows of the image, in scan order */
   int xres_out;
-  int storage_mode;
+  Storage_mode storage_mode;
   bool deliver_rows; /* Call store_line() as rows finish */
 } Render_ctx;
 
@@ -964,7 +974,7 @@ typedef struct {
 #define PIXEL_OF(x) ((int)((x) + 0.5))
 
 static void store_line(unsigned char *buf, int npixels, int line,
-                       int storage_mode);
+                       Storage_mode storage_mode);
 
 static int edge_retire_line(Edge *edge);
 
@@ -1000,13 +1010,22 @@ static void ctx_init(Render_ctx *ctx, int xres, int yres, int oversampl,
   for (i = 0; i < oversampl; i++) {
     ctx->linebuf[i] = (Color *)scalloc(xres, sizeof(Color));
   }
+  ctx->alpha = image_alpha;
+  ctx->channels = image_alpha ? 4 : 3;
+  ctx->alphabuf = NULL;
+  if (image_alpha) {
+    ctx->alphabuf = (double **)smalloc(oversampl * sizeof(double *));
+    for (i = 0; i < oversampl; i++) {
+      ctx->alphabuf[i] = (double *)scalloc(xres, sizeof(double));
+    }
+  }
   pixels_setup(&ctx->pb, xres);
   if (shading_per_pixel && render_mode == PHONG) {
     shade_cache_setup(&ctx->pb, xres / oversampl);
   }
   ctx->image = NULL;
   ctx->xres_out = xres / oversampl;
-  ctx->storage_mode = 0;
+  ctx->storage_mode = IMAGE_FILE;
   ctx->deliver_rows = FALSE;
 }
 
@@ -1021,6 +1040,12 @@ static void ctx_free(Render_ctx *ctx) {
     sfree(ctx->linebuf[i]);
   }
   sfree(ctx->linebuf);
+  if (ctx->alphabuf != NULL) {
+    for (i = 0; i < ctx->oversampl; i++) {
+      sfree(ctx->alphabuf[i]);
+    }
+    sfree(ctx->alphabuf);
+  }
   pixels_free(&ctx->pb);
 }
 
@@ -1453,6 +1478,49 @@ static void render_scanline(Render_ctx *ctx) {
 }
 
 /*
+ * The alpha of a sub-sample: the largest opacity of its color bands.
+ * A single alpha cannot represent a surface that lets different
+ * amounts of the three bands through; the largest keeps the straight
+ * colors (the premultiplied ones divided by alpha) within range.
+ */
+static double opacity_max(Color *opacity) {
+  double a = opacity->red;
+
+  if (opacity->grn > a) {
+    a = opacity->grn;
+  }
+  if (opacity->blu > a) {
+    a = opacity->blu;
+  }
+  return a;
+}
+
+static unsigned char byte_of(double v) {
+  if (v <= 0.0) {
+    return 0;
+  }
+  if (v >= 1.0) {
+    return 255;
+  }
+  return (unsigned char)(v * 255.0 + 0.5);
+}
+
+/*
+ * Turn the sums over the N2 sub-samples of a pixel, SUM of the
+ * premultiplied colors and ASUM of alpha, into straight 8 bit RGB and
+ * alpha at P.
+ */
+static void store_rgba(unsigned char *p, Color *sum, double asum, int n2) {
+  double alpha = asum / n2;
+  double scale = (alpha > 0.0) ? 1.0 / (alpha * n2) : 0.0;
+
+  p[0] = byte_of(sum->red * scale);
+  p[1] = byte_of(sum->grn * scale);
+  p[2] = byte_of(sum->blu * scale);
+  p[3] = byte_of(alpha);
+}
+
+/*
  * Clear the fragment lists of a scanline.
  */
 static void buffer_clear(int res, int *scanline) {
@@ -1470,7 +1538,10 @@ static void buffer_clear(int res, int *scanline) {
 static void band_render(Render_ctx *ctx, int k0, int k1, Edge **list,
                         int nlist) {
   unsigned char *row;
+  Color *col;
+  Color opacity;
   Color sum;
+  double asum;
   int y, k, curr_line, number;
   int i, j, l;
   int over = ctx->oversampl;
@@ -1499,10 +1570,22 @@ static void band_render(Render_ctx *ctx, int k0, int k1, Edge **list,
       render_scanline(ctx);
 
       for (i = 0; i < ctx->xres; i++) {
+        col = ctx->linebuf[curr_line] + i;
         pixel_collect(
-            &ctx->pb, ctx->pixel_line[i], ctx->linebuf[curr_line] + i,
-            ctx->render_mode,
+            &ctx->pb, ctx->pixel_line[i], col, &opacity, ctx->render_mode,
             (shading_per_pixel && ctx->render_mode == PHONG) ? i / over : -1);
+        if (ctx->alpha) {
+          ctx->alphabuf[curr_line][i] = opacity_max(&opacity);
+        } else {
+          /* Let the background through where the surfaces are not
+             opaque. */
+          col->red +=
+              ((opacity.red >= 1.0) ? 0.0 : 1.0 - opacity.red) * sipp_bgcol.red;
+          col->grn +=
+              ((opacity.grn >= 1.0) ? 0.0 : 1.0 - opacity.grn) * sipp_bgcol.grn;
+          col->blu +=
+              ((opacity.blu >= 1.0) ? 0.0 : 1.0 - opacity.blu) * sipp_bgcol.blu;
+        }
         if (ctx->call_update) {
           UPDATE_CALLBACK;
         }
@@ -1520,19 +1603,27 @@ static void band_render(Render_ctx *ctx, int k0, int k1, Edge **list,
         /*
          * Average the sub-samples into the output row.
          */
-        row = ctx->image + (size_t)k * ctx->xres_out * 3;
+        row = ctx->image + (size_t)k * ctx->xres_out * ctx->channels;
         for (i = 0; i < ctx->xres_out; i++) {
           sum.red = sum.grn = sum.blu = 0.0;
+          asum = 0.0;
           for (j = i * over; j < i * over + over; j++) {
             for (l = 0; l < over; l++) {
               sum.red += (ctx->linebuf[l] + j)->red;
               sum.grn += (ctx->linebuf[l] + j)->grn;
               sum.blu += (ctx->linebuf[l] + j)->blu;
+              if (ctx->alpha) {
+                asum += ctx->alphabuf[l][j];
+              }
             }
           }
-          row[i * 3] = (unsigned char)(sum.red / n2 * 255.0 + 0.5);
-          row[i * 3 + 1] = (unsigned char)(sum.grn / n2 * 255.0 + 0.5);
-          row[i * 3 + 2] = (unsigned char)(sum.blu / n2 * 255.0 + 0.5);
+          if (!ctx->alpha) {
+            row[i * 3] = (unsigned char)(sum.red / n2 * 255.0 + 0.5);
+            row[i * 3 + 1] = (unsigned char)(sum.grn / n2 * 255.0 + 0.5);
+            row[i * 3 + 2] = (unsigned char)(sum.blu / n2 * 255.0 + 0.5);
+          } else {
+            store_rgba(row + i * 4, &sum, asum, n2);
+          }
         }
         pixels_reinit(&ctx->pb);
         shade_cache_clear(&ctx->pb);
@@ -1576,18 +1667,30 @@ static void depthmap_band(Render_ctx *ctx, int k0, int k1, Edge **list,
  * user's pixel function.
  */
 static void store_line(unsigned char *buf, int npixels, int line,
-                       int storage_mode) {
+                       Storage_mode storage_mode) {
+  int channels = image_alpha ? 4 : 3;
   int i, j;
 
   switch (storage_mode) {
-  case PPM_FILE:
-    fwrite(buf, sizeof(unsigned char), npixels * 3, image_file);
-    fflush(image_file);
+  case IMAGE_FILE:
+    if (image_format == IMAGE_PNG) {
+      /* PNG is written when all rows are known, see file_end(). */
+      if (png_nrows < png_lines) {
+        memcpy(png_rows + (size_t)png_nrows * png_rowbytes, buf,
+               png_rowbytes);
+        png_nrows++;
+      }
+    } else {
+      fwrite(buf, sizeof(unsigned char), (size_t)npixels * channels,
+             image_file);
+      fflush(image_file);
+    }
     break;
 
   case FUNCTION:
-    for (i = 0, j = 0; j < npixels; j++, i += 3) {
-      (*pixel_set)(im_data, j, line, buf[i], buf[i + 1], buf[i + 2]);
+    for (i = 0, j = 0; j < npixels; j++, i += channels) {
+      (*pixel_set)(im_data, j, line, buf[i], buf[i + 1], buf[i + 2],
+                   (channels == 4) ? buf[i + 3] : 255);
     }
     break;
 
@@ -1597,27 +1700,67 @@ static void store_line(unsigned char *buf, int npixels, int line,
 }
 
 /*
- * Write the image header for PPM output.
+ * The number of lines an image of YRES_OUT lines has when only FIELD
+ * of it is rendered.
  */
-static void write_ppm_header(int xres_out, int yres_out, int field) {
-  fprintf(image_file, "P6\n");
-  fprintf(image_file, "#Image rendered with SIPP %s\n", SIPP_VERSION);
-
+static int field_lines(int yres_out, int field) {
   switch (field) {
-  case BOTH:
-    fprintf(image_file, "%d\n%d\n255\n", xres_out, yres_out);
-    break;
+  case EVEN:
+    return (yres_out & 1) ? (yres_out >> 1) + 1 : yres_out >> 1;
+  case ODD:
+    return yres_out >> 1;
+  default:
+    return yres_out;
+  }
+}
 
+/*
+ * Begin the image file: write the header of a PPM or PAM file, or set
+ * up the row buffer of a PNG file.
+ */
+static void file_begin(int xres_out, int yres_out, int field) {
+  int nlines = field_lines(yres_out, field);
+  size_t nbytes;
+
+  if (image_format == IMAGE_PNG) {
+    png_rowbytes = xres_out * (image_alpha ? 4 : 3);
+    png_lines = nlines;
+    png_nrows = 0;
+    nbytes = (size_t)png_rowbytes * nlines;
+    png_rows = (unsigned char *)scalloc(nbytes > 0 ? nbytes : 1, 1);
+    return;
+  }
+
+  fprintf(image_file, image_alpha ? "P7\n" : "P6\n");
+  fprintf(image_file, "#Image rendered with SIPP %s\n", SIPP_VERSION);
+  switch (field) {
   case EVEN:
     fprintf(image_file, "#Image field containing EVEN lines\n");
-    fprintf(image_file, "%d\n%d\n255\n", xres_out,
-            (yres_out & 1) ? (yres_out >> 1) + 1 : yres_out >> 1);
     break;
-
   case ODD:
     fprintf(image_file, "#Image field containing ODD lines\n");
-    fprintf(image_file, "%d\n%d\n255\n", xres_out, yres_out >> 1);
     break;
+  }
+  if (image_alpha) {
+    fprintf(image_file,
+            "WIDTH %d\nHEIGHT %d\nDEPTH 4\nMAXVAL 255\n"
+            "TUPLTYPE RGB_ALPHA\nENDHDR\n",
+            xres_out, nlines);
+  } else {
+    fprintf(image_file, "%d\n%d\n255\n", xres_out, nlines);
+  }
+}
+
+/*
+ * Finish the image file.  Rows that were never delivered (after an
+ * abort) are left black, or transparent.
+ */
+static void file_end(int xres_out) {
+  if (image_format == IMAGE_PNG) {
+    sipp_png_write(image_file, xres_out, png_lines, image_alpha ? 4 : 3,
+                   png_rows);
+    sfree(png_rows);
+    png_rows = NULL;
   }
 }
 
@@ -1735,7 +1878,7 @@ static void run_bands(Render_job *job, Render_ctx *ctx, int nthreads,
  * Render the whole image: split it into bands, render them (with
  * several threads if asked to), and deliver the rows in scan order.
  */
-static void scan_and_render(int xres, int yres, int storage_mode,
+static void scan_and_render(int xres, int yres, Storage_mode storage_mode,
                             int render_mode, int oversampl, int field) {
   Render_job job;
   Render_ctx *ctx;
@@ -1744,13 +1887,14 @@ static void scan_and_render(int xres, int yres, int storage_mode,
   int yres_out = yres / oversampl;
   int nthreads, nbands, t, k, number;
 
-  if (storage_mode == PPM_FILE) {
-    write_ppm_header(xres_out, yres_out, field);
+  if (storage_mode == IMAGE_FILE) {
+    file_begin(xres_out, yres_out, field);
   }
 
   choose_bands(yres_out, &nthreads, &nbands);
 
-  image = (unsigned char *)scalloc((size_t)xres_out * yres_out * 3, 1);
+  image = (unsigned char *)scalloc(
+      (size_t)xres_out * yres_out * (image_alpha ? 4 : 3), 1);
 
   ctx = (Render_ctx *)smalloc(nthreads * sizeof(Render_ctx));
   for (t = 0; t < nthreads; t++) {
@@ -1783,10 +1927,13 @@ static void scan_and_render(int xres, int yres, int storage_mode,
     for (k = 0; k < k_done; k++) {
       number = OUTLINE_NUMBER(&ctx[0], k);
       if (field == BOTH || (number & 1) == field) {
-        store_line(image + (size_t)k * xres_out * 3, xres_out, number,
-                   storage_mode);
+        store_line(image + (size_t)k * xres_out * ctx[0].channels, xres_out,
+                   number, storage_mode);
       }
     }
+  }
+  if (storage_mode == IMAGE_FILE) {
+    file_end(xres_out);
   }
   sfree(job.band_done);
   sfree(ctx);
@@ -2102,8 +2249,8 @@ void shadowmaps_destruct(void) { depthmaps_destruct(); }
  * into viewing coordinates, make edges and sort them into the y-bucket.
  * Call scan_and_render to do the real work.
  */
-static void render_main(int xres, int yres, int storage_mode, int render_mode,
-                        int oversampling, int field) {
+static void render_main(int xres, int yres, Storage_mode storage_mode,
+                        int render_mode, int oversampling, int field) {
   Transf_mat view_mat;
 
   get_view_transf(&view_mat, sipp_current_camera, render_mode);
@@ -2111,7 +2258,7 @@ static void render_main(int xres, int yres, int storage_mode, int render_mode,
   abort_render = FALSE;
   switch (render_mode) {
   case LINE:
-    if (storage_mode == PBM_FILE) {
+    if (storage_mode == IMAGE_FILE) {
       im_data = sipp_bitmap_create(xres, yres);
       line_set = bitmap_line;
     }
@@ -2135,8 +2282,12 @@ static void render_main(int xres, int yres, int storage_mode, int render_mode,
 
   switch (render_mode) {
   case LINE:
-    if (storage_mode == PBM_FILE) {
-      sipp_bitmap_write(image_file, im_data);
+    if (storage_mode == IMAGE_FILE) {
+      if (image_format == IMAGE_PNG) {
+        sipp_bitmap_write_png(image_file, im_data);
+      } else {
+        sipp_bitmap_write(image_file, im_data);
+      }
       sipp_bitmap_destruct(im_data);
     }
     break;
@@ -2165,47 +2316,80 @@ static void render_main(int xres, int yres, int storage_mode, int render_mode,
   arena_release(&vcoord_arena);
 }
 
-void render_image_file(int xres, int yres, FILE *im_file, int render_mode,
-                       int oversampling) {
-  image_file = im_file;
-
-  if (render_mode == LINE) {
-    render_main(xres, yres, PBM_FILE, render_mode, oversampling, BOTH);
-  } else {
-    render_main(xres, yres, PPM_FILE, render_mode, oversampling, BOTH);
+/*
+ * Take the file format and the alpha flag out of FORMAT (see sipp.h).
+ * Returns FALSE, after a message, if the format is unknown.
+ */
+static bool set_format(const char *caller, Image_format format) {
+  image_format = (Image_format)(format & ~IMAGE_ALPHA);
+  image_alpha = (format & IMAGE_ALPHA) != 0;
+  if (image_format != IMAGE_PPM && image_format != IMAGE_PNG) {
+    fprintf(stderr, "%s: unknown image format %d\n", caller, format);
+    return FALSE;
   }
+  return TRUE;
+}
+
+void render_image_file(int xres, int yres, FILE *im_file, Image_format format,
+                       int render_mode, int oversampling) {
+  if (!set_format("render_image_file", format)) {
+    return;
+  }
+  image_file = im_file;
+  render_main(xres, yres, IMAGE_FILE, render_mode, oversampling, BOTH);
 }
 
 void render_image_func(int xres, int yres, Pixel_func *pixel_func, void *data,
-                       int render_mode, int oversampling) {
+                       Image_format format, int render_mode, int oversampling) {
+  if (!set_format("render_image_func", format)) {
+    return;
+  }
   im_data = data;
   pixel_set = pixel_func;
   line_set = (Line_func *)(void (*)(void))pixel_func; /* LINE mode only */
   render_main(xres, yres, FUNCTION, render_mode, oversampling, BOTH);
 }
 
-void render_field_file(int xres, int yres, FILE *im_file, int render_mode,
-                       int oversampling, int field) {
-  image_file = im_file;
-
+void render_field_file(int xres, int yres, FILE *im_file, Image_format format,
+                       int render_mode, int oversampling, int field) {
   if (render_mode == LINE) {
     fprintf(stderr, "render_field_file: Can't render line fields\n");
     return;
-  } else {
-    render_main(xres, yres, PPM_FILE, render_mode, oversampling, field);
   }
+  if (!set_format("render_field_file", format)) {
+    return;
+  }
+  image_file = im_file;
+  render_main(xres, yres, IMAGE_FILE, render_mode, oversampling, field);
 }
 
 void render_field_func(int xres, int yres, Pixel_func *pixel_func, void *data,
-                       int render_mode, int oversampling, int field) {
+                       Image_format format, int render_mode, int oversampling,
+                       int field) {
   if (render_mode == LINE) {
     fprintf(stderr, "render_field_func: Can't render line fields\n");
     return;
   }
-
+  if (!set_format("render_field_func", format)) {
+    return;
+  }
   im_data = data;
   pixel_set = pixel_func;
   render_main(xres, yres, FUNCTION, render_mode, oversampling, field);
+}
+
+/*
+ * The customary file name extension of an image rendered with FORMAT
+ * in RENDER_MODE: "ppm", "pbm", "pam" or "png".
+ */
+const char *sipp_image_extension(Image_format format, int render_mode) {
+  if ((format & ~IMAGE_ALPHA) == IMAGE_PNG) {
+    return "png";
+  }
+  if (render_mode == LINE) {
+    return "pbm";
+  }
+  return (format & IMAGE_ALPHA) ? "pam" : "ppm";
 }
 
 /*============= Functions that handles global initializations==============*/
@@ -2267,7 +2451,6 @@ void sipp_render_threads(int n) {
 #endif
   }
   render_threads = (n > 0) ? n : 1;
-  printf("Num threads: %d\n", render_threads);
 }
 
 void sipp_shading_per_pixel(bool flag) { shading_per_pixel = flag; }

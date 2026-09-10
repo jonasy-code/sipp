@@ -118,21 +118,24 @@ extern char *optarg;
 int main(int argc, char **argv) {
   bool shade_once = FALSE;
   int nthreads = 1;
+  Image_format format = IMAGE_PPM;
+  bool alpha = FALSE;
   Object *scroll;
   Surface *scrollsurf;
   int i;
 
   FILE *image;
-  char *imfile_name;
+  char imfile_name[64];
+  const char *imbase;
   int mode;
   int c;
   int size;
 
-  imfile_name = "scroll.ppm";
+  imbase = "scroll";
   mode = PHONG;
   size = 256;
 
-  while ((c = getopt(argc, argv, "aj:pgfls:")) != EOF) {
+  while ((c = getopt(argc, argv, "aj:pgfls:PA")) != EOF) {
     switch (c) {
     case 'a':
       shade_once = TRUE;
@@ -142,29 +145,39 @@ int main(int argc, char **argv) {
       break;
     case 'p':
       mode = PHONG;
-      imfile_name = "scroll.ppm";
       break;
 
     case 'g':
       mode = GOURAUD;
-      imfile_name = "scroll.ppm";
       break;
 
     case 'f':
       mode = FLAT;
-      imfile_name = "scroll.ppm";
       break;
 
     case 'l':
       mode = LINE;
-      imfile_name = "scroll.pbm";
       break;
 
     case 's':
       size = atoi(optarg);
       break;
+
+    case 'P':
+      format = IMAGE_PNG;
+      break;
+
+    case 'A':
+      alpha = TRUE;
+      break;
     }
   }
+
+  if (alpha) {
+    format = (Image_format)(format | IMAGE_ALPHA);
+  }
+  snprintf(imfile_name, sizeof(imfile_name), "%s.%s", imbase,
+           sipp_image_extension(format, mode));
 
   sipp_init();
   sipp_shading_per_pixel(shade_once);
@@ -209,7 +222,7 @@ int main(int argc, char **argv) {
 
   image = fopen(imfile_name, "w");
   scroll_texture_load();
-  render_image_file(size, size, image, mode, 3);
+  render_image_file(size, size, image, format, mode, 3);
   printf("Done.\n");
 
   exit(0);

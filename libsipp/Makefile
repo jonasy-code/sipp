@@ -32,19 +32,20 @@ RM = rm -f
 
 IHDRS = arena.h bezier.h lightsource.h noise.h objects.h rendering.h smalloc.h \
         viewpoint.h pixelbuf.h
-EHDRS = sipp.h geometric.h shaders.h primitives.h sipp_pixmap.h sipp_bitmap.h
+EHDRS = sipp.h geometric.h shaders.h primitives.h sipp_pixmap.h sipp_bitmap.h \
+        sipp_png.h
 HDRS = $(IHDRS) $(EHDRS)
 SRCS =  rendering.c geometric.c lightsource.c objects.c smalloc.c arena.c \
         transforms.c viewpoint.c pixelbuf.c \
 	basic_shader.c mask.c marble.c granite.c noise.c bozo.c bumpy.c \
 	planet.c wood.c phong.c strauss.c\
 	prism.c cone.c ellipsoid.c torus.c bezier.c bezier_lex.c \
-        sipp_pixmap.c sipp_bitmap.c teapot.c
+        sipp_pixmap.c sipp_bitmap.c sipp_png.c teapot.c
 OBJS = rendering.o geometric.o lightsource.o objects.o smalloc.o arena.o \
        transforms.o viewpoint.o basic_shader.o marble.o granite.o mask.o\
        bozo.o bumpy.o planet.o noise.o bezier.o bezier_lex.o pixelbuf.o\
        torus.o cone.o ellipsoid.o prism.o sipp_pixmap.o sipp_bitmap.o\
-       wood.o xalloca.o phong.o strauss.o teapot.o
+       wood.o xalloca.o phong.o strauss.o teapot.o sipp_png.o
 
 
 # These are used if no other values are given at the command line:

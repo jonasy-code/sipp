@@ -124,12 +124,6 @@ int pixel_insert(Pixel_buffer *pb, int pixel, Vector *worldstep,
   }
 }
 
-/*
- * Sum the resulting color in a pixel and store it in the Color
- * struct pointed to by RESULT.
- * If there are no visible polygons in this pixel,  return the
- * background color.
- */
 void shade_cache_setup(Pixel_buffer *pb, int npixels) {
   pb->shade_cache =
       (Shade_entry *)smalloc(npixels * SHADE_SLOTS * sizeof(Shade_entry));
@@ -187,7 +181,11 @@ static void shade_cache_insert(Pixel_buffer *pb, int slot, int polygon,
 
 /*
  * Walk the fragments of PIXEL front to back, shading and compositing
- * them into RESULT.
+ * them.  COLOR receives the light from the surfaces, each weighted by
+ * how much of it gets through the surfaces in front (so it is
+ * premultiplied by opacity), and OPACITY the total opacity of the
+ * surfaces, at most 1.0 in each band.  The caller mixes in the
+ * background, or turns the two into color and alpha.
  *
  * CACHE_SLOT is the index of the output pixel this sub-sample belongs
  * to, or -1.  When it is >= 0, shader results are looked up in and
@@ -196,9 +194,10 @@ static void shade_cache_insert(Pixel_buffer *pb, int slot, int polygon,
  * sub-samples.  Depth sorting and transparency are still resolved per
  * sub-sample; only the shader call is shared.
  */
-void pixel_collect(Pixel_buffer *pb, int pixel, Color *result, int render_mode,
-                   int cache_slot) {
+void pixel_collect(Pixel_buffer *pb, int pixel, Color *color, Color *opacity,
+                   int render_mode, int cache_slot) {
   Pixel_info *pixbuf = pb->pixbuf;
+  Color *result = color;
   Color frac;
   Color opacity_sum;
   Color surf_color;
@@ -209,13 +208,11 @@ void pixel_collect(Pixel_buffer *pb, int pixel, Color *result, int render_mode,
   Vector normal;
   Vector viewer;
   int pixref;
-  bool pixel_full;
 
   result->red = result->grn = result->blu = 0.0;
   opacity_sum.red = opacity_sum.grn = opacity_sum.blu = 0.0;
 
   pixref = pixel;
-  pixel_full = FALSE;
 
   while (pixref != -1) {
     /*
@@ -312,18 +309,10 @@ void pixel_collect(Pixel_buffer *pb, int pixel, Color *result, int render_mode,
 
     if (opacity_sum.red >= 1.0 && opacity_sum.grn >= 1.0 &&
         opacity_sum.blu >= 1.0) {
-      pixel_full = TRUE;
       break;
     }
     pixref = pixbuf[pixref].next;
   }
 
-  if (!pixel_full) {
-    result->red += ((opacity_sum.red >= 1.0) ? 0.0 : 1.0 - opacity_sum.red) *
-                   sipp_bgcol.red;
-    result->grn += ((opacity_sum.grn >= 1.0) ? 0.0 : 1.0 - opacity_sum.grn) *
-                   sipp_bgcol.grn;
-    result->blu += ((opacity_sum.blu >= 1.0) ? 0.0 : 1.0 - opacity_sum.blu) *
-                   sipp_bgcol.blu;
-  }
+  *opacity = opacity_sum;
 }

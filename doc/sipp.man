@@ -623,11 +623,13 @@ Set all parameters of a camera in one call.
 
 .SH Rendering
 
-.IP \fIvoid\ render_image_file(width,\ height,\ file,\ mode,\ oversampling)\fR
+.IP \fIvoid\ render_image_file(width,\ height,\ file,\ format,\ mode,\ oversampling)\fR
 .br
 \fIint\    width, height;\fR
 .br
 \fIFILE\ *file;\fR
+.br
+\fIImage_format\ format;\fR
 .br
 \fIint\    mode;\fR
 .br
@@ -635,12 +637,19 @@ Set all parameters of a camera in one call.
 .sp
 Render an image of the current scene into a file. \fImode\fR should be one of
 \fIPHONG,\ GOURAUD,\ FLAT\fR or \fILINE\fR.
+\fIformat\fR is \fIIMAGE_PPM\fR or \fIIMAGE_PNG\fR, optionally or:ed with
+\fIIMAGE_ALPHA\fR to give the image an alpha channel (a transparent
+background and the opacity of the surfaces as alpha; a PPM then becomes
+a PAM).
+In \fILINE\fR mode a PBM file, or a 1 bit PNG file, is written.
 
-.IP \fIvoid\ render_field_file(width,\ height,\ file,\ mode,\ oversampling,\ field)\fR
+.IP \fIvoid\ render_field_file(width,\ height,\ file,\ format,\ mode,\ oversampling,\ field)\fR
 .br
 \fIint\    width, height;\fR
 .br
 \fIFILE\ *file;\fR
+.br
+\fIImage_format\ format;\fR
 .br
 \fIint\    mode;\fR
 .br
@@ -649,32 +658,43 @@ Render an image of the current scene into a file. \fImode\fR should be one of
 \fIint\    field;\fR
 .sp
 Render the current scene as a field (half frame) into a file. \fImode\fR
-should be one of \fIPHONG,\ GOURAUD,\ FLAT\fR or \fILINE\fR and \fIfield\fR
-should be either \fIODD\fR or \fIEVEN\fR.
+should be one of \fIPHONG,\ GOURAUD\fR or \fIFLAT\fR and \fIfield\fR
+should be either \fIODD\fR or \fIEVEN\fR. \fIformat\fR is as in
+\fIrender_image_file()\fR.
 
-.IP \fIvoid\ render_image_func(width,\ height,\ pix_func,\ data,\ mode,\ oversampling)\fR
+.IP \fIvoid\ render_image_func(width,\ height,\ pix_func,\ data,\ format,\ mode,\ oversampling)\fR
 .br
 \fIint\    width, height;\fR
 .br
-\fIvoid\ (*pix_func)();\fR
+\fIPixel_func\ *pix_func;\fR
 .br
 \fIvoid\ *data;\fR
+.br
+\fIImage_format\ format;\fR
 .br
 \fIint\    mode;\fR
 .br
 \fIint\    oversampling;\fR
 .sp
 Render an image of the current scene into any device. \fImode\fR should be one
-of \fIPHONG,\ GOURAUD,\ FLAT\fR or \fILINE\fR.
+of \fIPHONG,\ GOURAUD,\ FLAT\fR or \fILINE\fR. \fIpix_func\fR is called
+as \fIpix_func(data, x, y, red, grn, blu, alpha)\fR for each pixel, with
+the color components as \fIunsigned char\fR; \fIalpha\fR is 255 unless
+\fIformat\fR includes \fIIMAGE_ALPHA\fR, the only part of \fIformat\fR
+this function looks at. In \fILINE\fR mode a \fILine_func\fR,
+\fIline_func(data, x1, y1, x2, y2)\fR, is passed instead, cast to
+\fI(Pixel_func *)\fR.
 
 
-.IP \fIvoid\ render_field_func(width,\ height,\ pix_func,\ data,\ mode,\ oversampling,\ field)\fR
+.IP \fIvoid\ render_field_func(width,\ height,\ pix_func,\ data,\ format,\ mode,\ oversampling,\ field)\fR
 .br
 \fIint\    width, height;\fR
 .br
-\fIvoid\ (*pix_func)();\fR
+\fIPixel_func\ *pix_func;\fR
 .br
 \fIvoid\ *data;\fR
+.br
+\fIImage_format\ format;\fR
 .br
 \fIint\    mode;\fR
 .br
@@ -683,8 +703,18 @@ of \fIPHONG,\ GOURAUD,\ FLAT\fR or \fILINE\fR.
 \fIint\    field;\fR
 .sp
 Render the current scene as a field (half frame) into any device. \fImode\fR
-should be one of \fIPHONG,\ GOURAUD,\ FLAT\fR or \fILINE\fR and \fIfield\fR
-should be either \fIODD\fR or \fIEVEN\fR.
+should be one of \fIPHONG,\ GOURAUD\fR or \fIFLAT\fR and \fIfield\fR
+should be either \fIODD\fR or \fIEVEN\fR. \fIformat\fR and
+\fIpix_func\fR are as in \fIrender_image_func()\fR.
+
+.IP \fIconst\ char\ *sipp_image_extension(format,\ mode)\fR
+.br
+\fIImage_format\ format;\fR
+.br
+\fIint\    mode;\fR
+.sp
+Return the customary file name extension of an image rendered with
+\fIformat\fR in \fImode\fR: "ppm", "pbm", "pam" or "png".
 
 .IP \fIvoid\ sipp_render_terminate()\fR
 .sp

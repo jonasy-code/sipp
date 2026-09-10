@@ -45,4 +45,6 @@ EXTERN void sipp_bitmap_line(Sipp_bitmap *bm, int x1, int y1, int x2, int y2);
 
 EXTERN void sipp_bitmap_write(FILE *file, Sipp_bitmap *bm);
 
+EXTERN void sipp_bitmap_write_png(FILE *file, Sipp_bitmap *bm);
+
 #endif /* BITMAP_H */

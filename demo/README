@@ -15,10 +15,15 @@ All the testprograms takes the following switches:
                 sub-sample (see sipp_shading_per_pixel() in sipp.h).
                 Faster with expensive shaders; edges are anti-aliased
                 as before, texture detail is sampled once per pixel.
+        -P      Write a PNG file instead of a PPM (PBM) file.
+        -A      Give the image an alpha channel: the background is
+                transparent and the opacity of the surfaces becomes
+                alpha.  The file is a PNG with "-P", otherwise a PAM.
 
 If no switches are given, the default is to render a (256 X 256) pixels
-big image with PHONG shading. Note that if "-l" is used, the resulting
-image will be a bitmap and have ".pbm" as extension instead of ".ppm".
+big image with PHONG shading. The extension of the image file follows
+its format: ".ppm", ".pbm" for a line image, ".pam" with an alpha
+channel, or ".png".
 
 
 Test image              Created by      Explanation
