@@ -111,6 +111,7 @@ int main(int argc, char **argv) {
                      &QCoreApplication::quit);
   }
 
+  std::printf("Drag to orbit, scroll to zoom, R to reset the view.\n");
   view.show();
   renderer.start();
 

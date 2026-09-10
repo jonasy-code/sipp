@@ -8,6 +8,7 @@
 
 #include <QElapsedTimer>
 #include <QImage>
+#include <QPoint>
 #include <QString>
 #include <QTimer>
 #include <QWidget>
@@ -25,13 +26,24 @@ public:
 
 protected:
   void paintEvent(QPaintEvent *event) override;
+  void mousePressEvent(QMouseEvent *event) override;
+  void mouseMoveEvent(QMouseEvent *event) override;
+  void wheelEvent(QWheelEvent *event) override;
+  void keyPressEvent(QKeyEvent *event) override;
 
 private slots:
   void collectFrame();
   void updateTitle();
 
 private:
+  void resetView();
+  void applyView();
+
   RenderThread *m_renderer;
+  double m_azimuth = 0.0; /* The view, see anim_scene_view() */
+  double m_elevation = 0.0;
+  double m_distance = 0.0;
+  QPoint m_dragPos; /* Where the mouse was last seen while dragging */
   QString m_description;
   QImage m_image; /* The frame on screen */
   int m_frame = 0;

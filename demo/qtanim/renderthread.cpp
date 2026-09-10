@@ -46,6 +46,16 @@ QImage RenderThread::takeFrame(int *frame, double *time, double *renderMs) {
   return m_latest;
 }
 
+void RenderThread::setView(double azimuth, double elevation,
+                           double distance) {
+  QMutexLocker lock(&m_mutex);
+
+  m_viewAzimuth = azimuth;
+  m_viewElevation = elevation;
+  m_viewDistance = distance;
+  m_viewChanged = true;
+}
+
 void RenderThread::setPixel(void *data, int x, int y, unsigned char red,
                             unsigned char grn, unsigned char blu,
                             unsigned char alpha) {
@@ -62,7 +72,22 @@ void RenderThread::drawLine(void *data, int x1, int y1, int x2, int y2) {
 
 void RenderThread::renderFrame(QImage &image, double time) {
   const int size = m_settings.size;
+  double azimuth = 0.0, elevation = 0.0, distance = 0.0;
+  bool moveCamera;
 
+  {
+    QMutexLocker lock(&m_mutex);
+    moveCamera = m_viewChanged;
+    if (moveCamera) {
+      azimuth = m_viewAzimuth;
+      elevation = m_viewElevation;
+      distance = m_viewDistance;
+      m_viewChanged = false;
+    }
+  }
+  if (moveCamera) {
+    anim_scene_view(azimuth, elevation, distance);
+  }
   anim_scene_place(time);
 
   if (m_settings.mode == LINE) {

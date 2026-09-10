@@ -36,4 +36,17 @@ EXTERN void anim_scene_create(int shadow_size);
  */
 EXTERN void anim_scene_place(double time);
 
+/*
+ * The camera looks at the point the teapot jumps from, from a position
+ * given by an azimuth (degrees around the z axis, counterclockwise from
+ * the x axis seen from above), an elevation (degrees above the floor)
+ * and a distance.  anim_scene_create() sets up the default view;
+ * anim_scene_default_view() tells what it is (without touching the
+ * camera), and anim_scene_view() moves the camera to another one.
+ */
+EXTERN void anim_scene_default_view(double *azimuth, double *elevation,
+                                    double *distance);
+EXTERN void anim_scene_view(double azimuth, double elevation,
+                            double distance);
+
 #endif /* ANIM_SCENE_H */

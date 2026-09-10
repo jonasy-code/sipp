@@ -40,6 +40,10 @@ static Floor_desc floor_surf = {
 
 static Object *teapot; /* The teapot, with its bottom as a subobject */
 
+/* The default camera, and the point it looks at. */
+static const Vector camera_pos = {16.0, -24.0, 4.0};
+static const Vector camera_at = {0.0, 0.0, 1.4};
+
 /*
  * A shader to produce a checkered floor.
  */
@@ -106,10 +110,31 @@ void anim_scene_create(int shadow_size) {
   sipp_shadows(TRUE, shadow_size);
 
   /* Viewing parameters. */
-  camera_position(sipp_camera, 16.0, -24.0, 4.0);
-  camera_look_at(sipp_camera, 0.0, 0.0, 1.4);
+  camera_position(sipp_camera, camera_pos.x, camera_pos.y, camera_pos.z);
+  camera_look_at(sipp_camera, camera_at.x, camera_at.y, camera_at.z);
   camera_up(sipp_camera, 0.0, 0.0, 1.0);
   camera_focal(sipp_camera, 0.0625);
+}
+
+void anim_scene_default_view(double *azimuth, double *elevation,
+                             double *distance) {
+  Vector d;
+
+  VecSub(d, camera_pos, camera_at);
+  *distance = VecLen(d);
+  *azimuth = atan2(d.y, d.x) * 180.0 / M_PI;
+  *elevation = asin(d.z / *distance) * 180.0 / M_PI;
+}
+
+void anim_scene_view(double azimuth, double elevation, double distance) {
+  double az = azimuth * M_PI / 180.0;
+  double el = elevation * M_PI / 180.0;
+
+  camera_position(sipp_camera, camera_at.x + distance * cos(el) * cos(az),
+                  camera_at.y + distance * cos(el) * sin(az),
+                  camera_at.z + distance * sin(el));
+  camera_look_at(sipp_camera, camera_at.x, camera_at.y, camera_at.z);
+  camera_up(sipp_camera, 0.0, 0.0, 1.0);
 }
 
 /*

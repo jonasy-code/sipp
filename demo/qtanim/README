@@ -24,6 +24,13 @@ rather than queueing them.  The title bar shows the rendering and
 display rates once a second, and each completed loop is reported on
 standard output.
 
+The camera can be moved while the animation runs, which shows that the
+frames are rendered on the spot and not played back: drag with the left
+mouse button to orbit around the teapot, scroll to zoom, and press R to
+return to the default view.  The window records the wanted view and the
+render thread moves the SIPP camera before its next frame, so SIPP is
+still only ever called from the render thread.
+
 Building
 --------
 

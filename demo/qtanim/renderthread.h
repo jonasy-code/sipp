@@ -59,6 +59,10 @@ public:
   /* Frames rendered so far.  Any thread. */
   long framesRendered() const { return m_rendered.load(); }
 
+  /* Move the camera (see anim_scene_view()) from the next frame on.
+     Any thread. */
+  void setView(double azimuth, double elevation, double distance);
+
 signals:
   /* A new frame can be collected with takeFrame(). */
   void frameReady();
@@ -89,6 +93,11 @@ private:
   int m_latestFrame = 0;
   double m_latestTime = 0.0;
   double m_latestMs = 0.0;
+
+  double m_viewAzimuth = 0.0; /* Requested view, valid when */
+  double m_viewElevation = 0.0; /* m_viewChanged is set */
+  double m_viewDistance = 0.0;
+  bool m_viewChanged = false; /* Guarded by m_mutex */
 
   std::atomic<bool> m_stop{false};
   std::atomic<bool> m_notified{false}; /* frameReady() sent, not collected */
