@@ -1,0 +1,39 @@
+# Build products
+*.o
+*.a
+*.so
+*.dylib
+
+# Demo and test binaries
+demo/torustest
+demo/conetest
+demo/ellipsoid
+demo/prismtest
+demo/chain
+demo/scroll
+demo/geombench
+demo/teapot
+demo/structure
+demo/planettest
+demo/isy90
+demo/strausstest
+demo/woodtest
+demo/animation/animation
+
+# Qt demo build products (qmake generated)
+demo/qtanim/qtanim
+demo/qtanim/Makefile
+demo/qtanim/.qmake.stash
+demo/qtanim/moc_*
+demo/qtanim/*.moc
+
+# Rendered images
+*.ppm
+*.pbm
+*.pam
+*.png
+
+# Editor and OS files
+*~
+.DS_Store
+TAGS

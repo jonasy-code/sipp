@@ -1,0 +1,60 @@
+qtanim - the animation demo, live in a window
+=============================================
+
+This program renders the somersaulting marble teapot of ../animation
+over and over, into a window, instead of into image files.  It shows how
+fast SIPP renders when nothing is written to disk.
+
+The scene is the very same code (../animation/scene.c); only the output
+differs.  By default the animation runs in real time: one loop takes a
+fixed number of seconds (one, unless --period says otherwise), and
+after each frame the renderer looks at the clock and renders the next
+frame for the moment it will be shown.  A fast machine gets a smooth
+animation of many frames per loop, a slow one fewer frames of the same
+motion.  With --period 0 the animation's own 25 frames are rendered one
+after the other as fast as possible, which is the mode for comparing
+with the files ../animation writes.
+
+Rendering runs on a background thread, with SIPP's own worker threads
+under it; the window thread never calls SIPP.  Frames go into a
+ring of three QImages.  A finished frame is published as the latest one
+and the window is signalled; the window fetches the latest frame when
+it gets round to it, so a display that cannot keep up skips frames
+rather than queueing them.  The title bar shows the rendering and
+display rates once a second, and each completed loop is reported on
+standard output.
+
+Building
+--------
+
+Qt 6 is needed (on macOS: brew install qt), and the SIPP library must
+be built first.  From the top of the source tree:
+
+    make qtanim
+
+or by hand:
+
+    cd demo/qtanim
+    qmake
+    make
+
+qmake is /opt/homebrew/bin/qmake with Homebrew; "make qtanim" takes
+QMAKE=/path/to/qmake if it is not on the path.
+
+Options
+-------
+
+    -s, --size n          Image size in pixels (256)
+    -j, --threads n       Rendering threads, 0 = one per core (0)
+    -o, --oversampling n  Oversampling factor (2)
+    -a, --shade-once      Shade each polygon once per pixel
+    -p, -g, -f, -l        PHONG (default), GOURAUD, FLAT or LINE rendering
+    -t, --period s        Seconds per loop of the animation (1.0);
+                          0 = step through the animation's own frames
+    --max-fps n           Render at most n frames per second (0 = no limit)
+    --loops n             Quit after n loops, 0 = run until closed (0)
+    --dump dir            Write the first loop's frames into dir as PNG
+
+Example, a quick benchmark that does not need to be watched:
+
+    ./qtanim -s 512 --period 0 --loops 5

@@ -18,14 +18,16 @@ endif
 CFLAGS = -pipe -O3 $(ARCHFLAGS) -I$(LIBDIR) -std=gnu99 -Wall -Wstrict-prototypes -Wold-style-definition
 
 PROGS = animation
+OBJS = animation.o scene.o
 
 
 all:	$(PROGS)
 
 clean:
-	rm -f *.o *~ $(PROGS) anim??.p?m core
- 
+	rm -f *.o *~ $(PROGS) anim??.p?m anim??.png core
 
-animation: animation.o
-	$(CC) -o $@ animation.o -L$(LIBDIR) -lsipp -lm $(LIBS)
 
+animation: $(OBJS)
+	$(CC) -o $@ $(OBJS) -L$(LIBDIR) -lsipp -lm $(LIBS)
+
+animation.o scene.o: scene.h

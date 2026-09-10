@@ -101,6 +101,10 @@ ANIMMAKEOPTS = CC="$(CC)" \
 	LIBS="$(LIBS)"
         
 
+# The interactive animation demo (demo/qtanim) needs Qt 6 and qmake, so
+# it is not part of "all".  Set QMAKE if qmake is not on the path.
+QMAKE = qmake
+
 all: library demos
 
 library:
@@ -109,6 +113,10 @@ library:
 demos:  library
 	cd demo; $(MAKE) $(MAKEOPTS) programs
 	cd demo/animation; $(MAKE) $(ANIMMAKEOPTS) all
+
+
+qtanim: library
+	cd demo/qtanim; $(QMAKE) && $(MAKE)
 
 
 install: library
@@ -124,6 +132,7 @@ clean:
 	cd libsipp; $(MAKE) clean;
 	cd demo; $(MAKE) clean;
 	cd demo/animation; $(MAKE) clean;
+	cd demo/qtanim; [ -f Makefile ] && $(MAKE) distclean; $(RM) .qmake.stash; true
 	cd doc; ls -1 | egrep -v \
         \(\\.man$$\)\|\(\\.tex$$\)\|\(\\.texinfo$$\)\|\(\\.ps$$\) | xargs $(RM)
 

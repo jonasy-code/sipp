@@ -1,5 +1,7 @@
 This directory contains test programs and demonstration programs for
-the SIPP library. The images here can be divided into two
+the SIPP library.  The subdirectory "animation" renders a short
+animation as image files, and "qtanim" renders the same animation live
+in a window (it needs Qt, see qtanim/README). The images here can be divided into two
 categories: the mere test images (boring) and the demonstrations
 images (impressive).
 

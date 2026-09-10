@@ -1,0 +1,156 @@
+/**
+ ** scene.c - The somersaulting marble teapot of the animation demo.
+ **           See scene.h.
+ **/
+
+#include <math.h>
+
+#include <sipp.h>
+
+#include <geometric.h>
+#include <primitives.h>
+#include <shaders.h>
+
+#include "scene.h"
+
+enum { RESOLUTION = 5 };
+static const double FLOORSIZE = 15.0;
+
+const double anim_time_stop = 1.0;
+const double anim_time_step = 0.04;
+
+static Marble_desc teapot_surf = {0.4,
+                                  0.5,
+                                  0.05,
+                                  8.0,
+                                  {0.90, 0.80, 0.65},
+                                  {0.30, 0.08, 0.08},
+                                  {1.0, 1.0, 1.0}};
+
+typedef struct {
+  double sqsize;
+  Surf_desc col1;
+  Surf_desc col2;
+} Floor_desc;
+
+static Floor_desc floor_surf = {
+    1.0,
+    {0.3, 0.0, 0.1, {0.9900, 0.9000, 0.7900}, {1.0, 1.0, 1.0}},
+    {0.3, 0.0, 0.1, {0.8300, 0.2400, 0.1000}, {1.0, 1.0, 1.0}}};
+
+static Object *teapot; /* The teapot, with its bottom as a subobject */
+
+/*
+ * A shader to produce a checkered floor.
+ */
+static void floor_shader(Vector *pos, Vector *normal, Vector *texture,
+                         Vector *view_vec, Lightsource *lights, void *fd_,
+                         Color *color, Color *transp) {
+  Floor_desc *fd = (Floor_desc *)fd_;
+  Surf_desc *col;
+  int intu;
+  int intv;
+
+  intu = floor(texture->x / fd->sqsize);
+  if (intu < 0)
+    intu = -intu;
+
+  intv = floor(texture->y / fd->sqsize);
+  if (intv < 0)
+    intv = -intv;
+
+  if ((intu ^ intv) & 1)
+    col = &fd->col1;
+  else
+    col = &fd->col2;
+
+  basic_shader(pos, normal, texture, view_vec, lights, col, color, transp);
+}
+
+int anim_frames(void) {
+  int frame = 0;
+
+  while (frame * anim_time_step < anim_time_stop) {
+    frame++;
+  }
+  return frame;
+}
+
+void anim_scene_create(int shadow_size) {
+  Object *floor;
+  Object *bottom;
+
+  /* Create the floor. */
+  floor =
+      sipp_block(FLOORSIZE, FLOORSIZE, 1.0, &floor_surf, floor_shader, WORLD);
+  object_move(floor, 0.0, 0.0, -0.5);
+  object_add_subobj(sipp_world, floor);
+
+  /* Create the teapot and its bottom. */
+  teapot = sipp_teapot(RESOLUTION, &teapot_surf, marble_shader, WORLD);
+  bottom = sipp_cylinder(0.375, 0.01, RESOLUTION * 4, &teapot_surf,
+                         marble_shader, WORLD);
+  object_add_subobj(teapot, bottom);
+  object_add_subobj(sipp_world, teapot);
+
+  /*
+   * Lit the stage!  A soft spotlight high up on the camera's left
+   * throws the teapot's shadow on the floor to the right of it, where
+   * the camera sees it even at the top of the jump; a weak directional
+   * light fills in the rest.  The teapot moves every frame, so the
+   * depth map of the spotlight is rendered anew for every image.
+   */
+  spotlight_create(-12.0, -7.0, 20.0, 0.0, 0.0, 1.0, 45.0, 1.0, 1.0, 1.0,
+                   SPOT_SOFT, TRUE);
+  lightsource_create(1.0, 0.0, 0.5, 0.2, 0.2, 0.2, LIGHT_DIRECTION);
+  sipp_shadows(TRUE, shadow_size);
+
+  /* Viewing parameters. */
+  camera_position(sipp_camera, 16.0, -24.0, 4.0);
+  camera_look_at(sipp_camera, 0.0, 0.0, 1.4);
+  camera_up(sipp_camera, 0.0, 0.0, 1.0);
+  camera_focal(sipp_camera, 0.0625);
+}
+
+/*
+ * The following code is quite ugly and full of magic numbers.
+ * It is basically two parabolas that describe the teapots jump
+ * and its "squashing" when it lands.
+ */
+void anim_scene_place(double time) {
+  double t_jump;
+  double height;
+  double t_scale;
+  double xyscaling;
+  double zscaling;
+  double angle;
+
+  if (time < 0.65) {
+    /* During the jump */
+    t_jump = time * 1.94464;
+    height = 6.2 * t_jump - 9.81 * t_jump * t_jump / 2.0;
+    angle = 2.0 * M_PI * time / 0.65;
+    xyscaling = 1.0;
+    zscaling = 1.0;
+
+  } else {
+    /* During the squashing phase. */
+    height = 0.0;
+    angle = 0.0;
+    t_scale = (time - 0.65) * 0.64533;
+    zscaling = 1.0 - 6.2 * t_scale + 54.9 * t_scale * t_scale / 2.0;
+    xyscaling = 1.0 + (1.0 - zscaling) * M_SQRT1_2;
+  }
+
+  /*
+   * It is easier to recreate the proper position from scratch
+   * for each new frame than to calculate the difference between
+   * one image and the next.
+   */
+  object_clear_transf(teapot);
+  object_scale(teapot, xyscaling, xyscaling, zscaling);
+  object_move(teapot, 0.0, 0.0, -0.4);
+  object_rot_y(teapot, -angle);
+  object_move(teapot, 0.0, 0.0, 0.4);
+  object_move(teapot, 0.0, 0.0, height);
+}

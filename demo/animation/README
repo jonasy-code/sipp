@@ -1,7 +1,7 @@
 This directory contains a small demonstration of how one can create an
 animation using the SIPP library. When run, it will produce a sequence of 24
 images which is an animation of a somersaulting marble teapot on top of a
-checkered floor.
+checkered floor, lit by a soft spotlight that casts shadows.
 
 The motions are designed to be a "closed loop", i.e. the sequence can be shown
 many consecutive times and the motions should still look continuous.
