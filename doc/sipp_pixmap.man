@@ -153,6 +153,35 @@ Write the bitmap \fIbm\fR to the open file \fIfile\fR.  The image is
 written in the Portable Bitmap format (pbm), the same format sipp is
 using when rendering a line drawing to a file.
 
+.SH TEXTURES
+A \fISipp_texture\fR (sipp_texture.h) is an image of 1 to 4 channels
+kept with a pyramid of half-size copies (a mipmap), for shaders to look
+up filtered over the area their sample covers: the level whose texels
+are about the size of the sample is interpolated (trilinear filtering),
+and an elongated sample is averaged over several points along its long
+axis (anisotropic filtering).  A texture is read-only once created, so
+any number of rendering threads may sample it at once.  The member
+\fIwrap\fR (default TRUE) repeats the image outside [0, 1]; FALSE
+clamps to the edge.
+
+.IP \fISipp_texture\ *sipp_texture_create(width,\ height,\ channels,\ pixels)\fR
+.sp
+Create a texture from \fIheight\fR rows of \fIwidth\fR texels of
+\fIchannels\fR bytes each, top row first; the pixels are copied.
+\fIsipp_texture_from_pixmap(pm)\fR and \fIsipp_texture_from_bitmap(bm)\fR
+make a 3 channel texture from a pixmap and a 1 channel one (1.0 where
+white) from a bitmap.  \fIsipp_texture_destruct(tex)\fR frees one.
+
+.IP \fIvoid\ sipp_texture_sample(tex,\ u,\ v,\ dudx,\ dvdx,\ dudy,\ dvdy,\ values)\fR
+.sp
+Look the texture up at (\fIu\fR, \fIv\fR), (0, 0) the upper left and
+(1, 1) the lower right corner, filtered over the parallelogram spanned
+by (\fIdudx\fR, \fIdvdx\fR) and (\fIdudy\fR, \fIdvdy\fR), the change of
+(u, v) over one sample in x and y.  \fIvalues\fR receives one value in
+[0, 1] per channel.  \fIsipp_texture_lookup(tex, sp, values)\fR does the
+same with the first two texture coordinates of a \fIShade_point\fR and
+its derivatives.
+
 .SH SEE ALSO
 sipp(3X) - simple polygon processor, a 3d-graphics library
 .br

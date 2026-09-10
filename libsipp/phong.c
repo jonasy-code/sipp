@@ -27,8 +27,7 @@
 #include <geometric.h>
 #include <shaders.h>
 
-void phong_shader(Vector *pos, Vector *normal, Vector *texture,
-                  Vector *view_vec, Lightsource *lights, void *pd_,
+void phong_shader(const Shade_point *sp, Lightsource *lights, void *pd_,
                   Color *color, Color *opacity) {
   Phong_desc *pd = (Phong_desc *)pd_;
   Vector unit_norm;
@@ -42,14 +41,15 @@ void phong_shader(Vector *pos, Vector *normal, Vector *texture,
   double spec_factor;
   Lightsource *lp;
 
-  VecCopy(unit_norm, *normal);
+  VecCopy(unit_norm, sp->normal);
   vecnorm(&unit_norm);
+
   diffsum.red = diffsum.grn = diffsum.blu = 0.0;
   specsum.red = specsum.grn = specsum.blu = 0.0;
 
   for (lp = lights; lp != (Lightsource *)0; lp = lp->next) {
 
-    light_fraction = light_eval(lp, pos, &light_dir);
+    light_fraction = light_eval(lp, &sp->pos, &light_dir);
 
     if (light_fraction > 0.0001) {
       cos_theta = VecDot(light_dir, unit_norm);
@@ -61,7 +61,7 @@ void phong_shader(Vector *pos, Vector *normal, Vector *texture,
 
       cos_theta *= 2.0;
       VecComb(specular, -1.0, light_dir, cos_theta, unit_norm);
-      cos_alpha = VecDot(specular, *view_vec);
+      cos_alpha = VecDot(specular, sp->view_vec);
       if (cos_alpha > 0) {
         spec_factor = light_fraction * exp(pd->spec_exp * log(cos_alpha));
         specsum.red += lp->color.red * spec_factor;
@@ -88,12 +88,10 @@ void phong_shader(Vector *pos, Vector *normal, Vector *texture,
                 pd->specular * specsum.red);
   if (color->red > 1.0)
     color->red = 1.0;
-
   color->grn = (pd->color.grn * (pd->ambient + pd->diffuse * diffsum.grn) +
                 pd->specular * specsum.grn);
   if (color->grn > 1.0)
     color->grn = 1.0;
-
   color->blu = (pd->color.blu * (pd->ambient + pd->diffuse * diffsum.blu) +
                 pd->specular * specsum.blu);
   if (color->blu > 1.0)

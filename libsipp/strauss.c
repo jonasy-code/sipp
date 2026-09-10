@@ -67,8 +67,7 @@ static const double Kg = 1.031;
     1.0 / ((1.0 - (x) - Kg) * (1.0 - (x) - Kg))) /                             \
    (1.0 / ((1.0 - Kg) * (1.0 - Kg)) - 1.0 / (Kg * Kg)))
 
-void strauss_shader(Vector *pos, Vector *normal, Vector *texture,
-                    Vector *view_vec, Lightsource *lights, void *sd_,
+void strauss_shader(const Shade_point *sp, Lightsource *lights, void *sd_,
                     Color *color, Color *opacity) {
   Strauss_desc *sd = (Strauss_desc *)sd_;
   Vector unit_normal;  /* Normalized surface normal */
@@ -88,37 +87,34 @@ void strauss_shader(Vector *pos, Vector *normal, Vector *texture,
   Color col;           /* Resulting color */
   Lightsource *lp;
 
-  VecCopy(unit_normal, *normal);
+  VecCopy(unit_normal, sp->normal);
   vecnorm(&unit_normal);
-  c_gamma = VecDot(unit_normal, *view_vec);
+  c_gamma = VecDot(unit_normal, sp->view_vec);
+
   col.red = col.grn = col.blu = 0.0;
   rd = 1.0 - sd->smoothness * sd->smoothness * sd->smoothness;
 
   for (lp = lights; lp != (Lightsource *)0; lp = lp->next) {
-
     /*
      * light_factor accounts for shadows and spotlight attenuation
      * (1.0 for an unobstructed directional or point light).
      */
-    light_factor = light_eval(lp, pos, &light_dir);
+    light_factor = light_eval(lp, &sp->pos, &light_dir);
     if (light_factor <= 0.0001) {
       continue;
     }
 
     c_alpha = VecDot(unit_normal, light_dir);
-
     if (c_alpha >= 0) {
-
       VecScalMul(highlight, 2 * c_alpha, unit_normal);
       VecSub(highlight, highlight, light_dir);
-      c_beta = VecDot(highlight, *view_vec);
+      c_beta = VecDot(highlight, sp->view_vec);
 
       MakeVector(qd, sd->color.red, sd->color.grn, sd->color.blu);
       VecScalMul(qd, (c_alpha * rd * (1.0 - sd->metalness * sd->smoothness)),
                  qd);
 
       if (c_beta >= 0) {
-
         h = 3 / (1.0 - sd->smoothness);
         rn = 1.0 - rd;
         rj = rn + (rn + 0.1) * FR(c_alpha) * GA(c_alpha) * GA(c_gamma);
@@ -133,13 +129,12 @@ void strauss_shader(Vector *pos, Vector *normal, Vector *texture,
         qs.x += 1.0;
         qs.y += 1.0;
         qs.z += 1.0;
-
         VecScalMul(qs, rs, qs);
+
         VecAdd(qd, qd, qs);
       }
 
       VecScalMul(qd, light_factor, qd);
-
       qd.x = lp->color.red * qd.x;
       qd.y = lp->color.grn * qd.y;
       qd.z = lp->color.blu * qd.z;

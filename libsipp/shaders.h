@@ -111,19 +111,21 @@ typedef struct {
 } Granite_desc;
 
 /*
- * Mask shader. It uses mask image (ususally a bitmap) to
- * choose between two other shaders. When a
- * surface is shaded it calls masker() to check the
- * u, v coordinate in the mask and calls one of two other
- * shaders depending of the outcome of that test.
+ * Mask shader. It uses a mask (usually an image) to choose between
+ * two other shaders.  When a surface is shaded it calls masker() with
+ * the point, which returns the fraction, 0.0 to 1.0, of the shading
+ * sample that the mask covers; t_shader is used where the mask is
+ * set, f_shader where it is not, and the two are blended in between
+ * (a filtered mask, e.g. sipp_texture_lookup() on a one channel
+ * texture, gives anti-aliased mask edges).
  */
 typedef struct {
-  Shader *t_shader; /* Shader to call if mask(x, y) != 0 */
-  void *t_surface;  /* Surface description for fg_shader */
-  Shader *f_shader; /* Shader to call if mask(x, y) == 0 */
-  void *f_surface;  /* Surface description for bg_shader */
+  Shader *t_shader; /* Shader to call where the mask is set */
+  void *t_surface;  /* Surface description for t_shader */
+  Shader *f_shader; /* Shader to call where the mask is not set */
+  void *f_surface;  /* Surface description for f_shader */
   void *mask_data;  /* Pointer to data for masking function */
-  bool (*masker)(void *mask_data, Vector *texture); /* Tests a pixel value */
+  double (*masker)(void *mask_data, const Shade_point *sp); /* Coverage */
 } Mask_desc;
 
 /*
@@ -143,48 +145,39 @@ typedef struct {
 /*
  * Declarations of the actual shading functions.
  */
-extern void phong_shader(Vector *pos, Vector *normal, Vector *texture,
-                         Vector *view_vec, Lightsource *lights,
+extern void phong_shader(const Shade_point *sp, Lightsource *lights,
                          void *pd, /* Phong_desc * */
                          Color *color, Color *opacity);
 
-extern void strauss_shader(Vector *pos, Vector *normal, Vector *texture,
-                           Vector *view_vec, Lightsource *lights,
+extern void strauss_shader(const Shade_point *sp, Lightsource *lights,
                            void *sd, /* Strauss_desc * */
                            Color *color, Color *opacity);
 
-extern void marble_shader(Vector *pos, Vector *normal, Vector *texture,
-                          Vector *view_vec, Lightsource *lights,
+extern void marble_shader(const Shade_point *sp, Lightsource *lights,
                           void *md, /* Marble_desc * */
                           Color *color, Color *opacity);
 
-extern void granite_shader(Vector *pos, Vector *normal, Vector *texture,
-                           Vector *view_vec, Lightsource *lights,
+extern void granite_shader(const Shade_point *sp, Lightsource *lights,
                            void *gd, /* Granite_desc * */
                            Color *color, Color *opacity);
 
-extern void bozo_shader(Vector *pos, Vector *normal, Vector *texture,
-                        Vector *view_vec, Lightsource *lights,
+extern void bozo_shader(const Shade_point *sp, Lightsource *lights,
                         void *bd, /* Bozo_desc * */
                         Color *color, Color *opacity);
 
-extern void mask_shader(Vector *pos, Vector *normal, Vector *texture,
-                        Vector *view_vec, Lightsource *lights,
+extern void mask_shader(const Shade_point *sp, Lightsource *lights,
                         void *md, /* Mask_desc * */
                         Color *color, Color *opacity);
 
-extern void bumpy_shader(Vector *pos, Vector *normal, Vector *texture,
-                         Vector *view_vec, Lightsource *lights,
+extern void bumpy_shader(const Shade_point *sp, Lightsource *lights,
                          void *bd, /* Bumpy_desc * */
                          Color *color, Color *opacity);
 
-extern void planet_shader(Vector *pos, Vector *normal, Vector *texture,
-                          Vector *view_vec, Lightsource *lights,
+extern void planet_shader(const Shade_point *sp, Lightsource *lights,
                           void *sd, /* Surf_desc * */
                           Color *color, Color *opacity);
 
-extern void wood_shader(Vector *pos, Vector *normal, Vector *texture,
-                        Vector *view_vec, Lightsource *lights,
+extern void wood_shader(const Shade_point *sp, Lightsource *lights,
                         void *wd, /* Wood_desc * */
                         Color *color, Color *opacity);
 

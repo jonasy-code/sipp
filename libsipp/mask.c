@@ -24,14 +24,25 @@
 #include <shaders.h>
 #include <sipp.h>
 
-void mask_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
-                 Lightsource *lights, void *md_, Color *color, Color *opacity) {
+void mask_shader(const Shade_point *sp, Lightsource *lights, void *md_,
+                 Color *color, Color *opacity) {
   Mask_desc *md = (Mask_desc *)md_;
-  if (md->masker(md->mask_data, texture)) {
-    md->t_shader(pos, normal, texture, view_vec, lights, md->t_surface, color,
-                 opacity);
+  Color f_color, f_opacity;
+  double t;
+
+  t = md->masker(md->mask_data, sp);
+  if (t >= 1.0) {
+    md->t_shader(sp, lights, md->t_surface, color, opacity);
+  } else if (t <= 0.0) {
+    md->f_shader(sp, lights, md->f_surface, color, opacity);
   } else {
-    md->f_shader(pos, normal, texture, view_vec, lights, md->f_surface, color,
-                 opacity);
+    md->t_shader(sp, lights, md->t_surface, color, opacity);
+    md->f_shader(sp, lights, md->f_surface, &f_color, &f_opacity);
+    color->red = f_color.red + t * (color->red - f_color.red);
+    color->grn = f_color.grn + t * (color->grn - f_color.grn);
+    color->blu = f_color.blu + t * (color->blu - f_color.blu);
+    opacity->red = f_opacity.red + t * (opacity->red - f_opacity.red);
+    opacity->grn = f_opacity.grn + t * (opacity->grn - f_opacity.grn);
+    opacity->blu = f_opacity.blu + t * (opacity->blu - f_opacity.blu);
   }
 }

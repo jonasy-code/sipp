@@ -28,25 +28,29 @@
 #include <noise.h>
 #include <shaders.h>
 
-void bozo_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
-                 Lightsource *lights, void *bd_, Color *color, Color *opacity) {
+void bozo_shader(const Shade_point *sp, Lightsource *lights, void *bd_,
+                 Color *color, Color *opacity) {
   Bozo_desc *bd = (Bozo_desc *)bd_;
+  Vector taps[4];
   Vector tmp;
   Surf_desc surface;
-  double noiseval;
-  int i;
+  double noiseval, width;
+  int ntaps, k, i;
 
   noise_init();
 
-  VecScalMul(tmp, bd->scale, *texture);
-  noiseval = noise(&tmp);
-
+  /* See marble_shader() on the taps. */
+  ntaps = shade_texture_taps(sp, 4, taps, &width);
+  noiseval = 0.0;
+  for (k = 0; k < ntaps; k++) {
+    VecScalMul(tmp, bd->scale, taps[k]);
+    noiseval += noise_filtered(&tmp, width * bd->scale) / ntaps;
+  }
   i = (noiseval + 1) * bd->no_of_cols / 2.0;
   surface.color = bd->colors[i];
   surface.ambient = bd->ambient;
   surface.specular = bd->specular;
   surface.c3 = bd->c3;
   surface.opacity = bd->opacity;
-  basic_shader(pos, normal, texture, view_vec, lights, &surface, color,
-               opacity);
+  basic_shader(sp, lights, &surface, color, opacity);
 }

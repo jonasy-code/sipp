@@ -3802,41 +3802,44 @@ the color entry in the description is ignored.
 As mentioned earlier, SIPP calls a shading function for every point that
 is rendered. To be able to perform all necessary calculations, the
 shader needs quite a lot of information of the state the rendering is
-in. All information are sent to the shader as pointers to the data used
-internally in SIPP. It is very important that this information is left
-unchanged. If any processing of the values is needed, e.g. normalization
-of the surface normal, the result must be stored in local variables in
-the shader.
+in. The description of the point is passed as a pointer to a
+@code{Shade_point}, which must be left unchanged. If any processing of
+the values is needed, e.g. normalization of the surface normal, the
+result must be stored in local variables in the shader (or in a copy of
+the @code{Shade_point}).
 
 The shading functions have the following interface:
 @smallexample
 void
-my_shader(world, normal, texture, view_vec, lights, surface, color, opacity)
-        Vector        *world;
-        Vector        *normal;
-        Vector        *texture;
-        Vector        *view_vec;
-        Lightsource   *lights;
-        void          *surface;
-        Color         *color;
-        Color         *opacity;
+my_shader(const Shade_point *sp, Lightsource *lights, void *surface,
+          Color *color, Color *opacity)
 @end smallexample
 @itemize
 @item 
-@code{world} is the position in world coordinates of the point that is
-rendered. 
-
+@code{sp} describes the point that is rendered:
+@itemize
 @item
-@code{normal} is the surface normal in the point. Note: this vector is NOT
-normalized. 
-
+@code{sp->pos} is its position in world coordinates.
 @item
-@code{texture} contains the interpolated values of the texture
+@code{sp->normal} is the surface normal in the point. Note: this vector
+is NOT normalized.
+@item
+@code{sp->texture} contains the interpolated values of the texture
 coordinates.
-
 @item
-@code{view_vec} is a vector pointing from the rendered point at the
-viewpoint, i.e. the currently active camera.
+@code{sp->view_vec} is a unit vector pointing from the rendered point at
+the viewpoint, i.e. the currently active camera.
+@item
+@code{sp->dtdx} and @code{sp->dtdy} are how much the texture coordinates
+change from this shading sample to the next one in the x and y
+directions of the image, and @code{sp->dpdx}, @code{sp->dpdy} the same
+for the world position. Together they describe the area of the surface
+that the sample covers; @xref{Filtering textures}. A sample is one
+sub-pixel when oversampling, or a whole pixel when shading once per
+pixel (@code{sipp_shading_per_pixel()}). In @code{GOURAUD} and
+@code{FLAT} shading, where the shader is called at the vertices, the
+derivatives are zero: nothing is known about the footprint.
+@end itemize
 
 @item
 @code{lights} points to the linked list holding all lights.
@@ -3866,6 +3869,49 @@ whatever, and then calls another shader, like @code{phong_shader()}, to
 do the actual shading. This is the way most of the shaders provided in
 SIPP work (see @ref{Provided shaders}).
 
+@anchor{Filtering textures}
+@subsection Filtering textures
+
+A texture that varies faster than the shading samples are spaced
+aliases: at a distance a fine pattern turns into noise, and it flickers
+in animations. Oversampling helps, but only by as much as the number of
+samples. The right cure is for the shader to leave out the detail that
+is finer than the sample, and the derivatives in the @code{Shade_point}
+tell it how fine that is. @code{shade_texture_width(sp)} gives the
+width of the area the sample covers in texture coordinate units (the
+larger of the two derivatives; scale it as you scale the texture
+coordinates). The noise functions have filtered forms which take that
+width: @code{noise_filtered()} and @code{turbulence_filtered()} weight,
+and stop, the octaves of noise that a sample of that width would
+alias, and @code{noise_weight()} gives the weight itself for use in
+other constructions. The provided procedural textures work this way.
+Patterns that are not noise can often be averaged over the sample
+analytically; @file{filter.h} has such averaged forms of the usual
+building blocks: @code{filter_step()}, @code{filter_pulse()},
+@code{filter_square_wave()} and @code{filter_checker()}. The checkered
+floor of the teapot demo uses the last one, and turns into a smooth
+grey at the horizon; the holes in its teapot get anti-aliased edges
+from @code{filter_step()} applied to the noise that cuts them, with
+the noise gradient times the sample width as the filter width.
+
+A sample seen at a grazing angle covers a long, thin sliver of the
+surface, and filtering it with the single width above blurs it across
+the sliver. @code{shade_texture_footprint()} gives the footprint as an
+ellipse, and @code{shade_texture_taps()} spreads a few points along its
+long axis, each to be filtered with the short one, for a texture to be
+averaged over (anisotropic filtering); the provided textures do this
+with four points.
+
+Image textures are handled by a @code{Sipp_texture}
+(@file{sipp_texture.h}): an image of one to four channels kept with a
+pyramid of half-size copies, looked up with
+@code{sipp_texture_lookup()} at the level whose texels are about the
+size of the sample, interpolated between levels and averaged along the
+long axis of the footprint. The scroll demo shows its text this way.
+The masker function of the mask shader returns the fraction of the
+sample the mask covers, so such a lookup on a one channel texture
+gives an anti-aliased mask.
+
 If one wants to implement a new shading model, things get slightly more
 complicated. Lightsources and possible shadows must be considered. The
 heart of such a shader must contain a loop over all lightsources, which
@@ -3875,15 +3921,8 @@ point. Here is an skeleton example of how the code could look:
 
 @smallexample
 void
-my_shader(world, normal, texture, view_vec, lights, surface, color, opacity)
-        Vector        *world;
-        Vector        *normal;
-        Vector        *texture;
-        Vector        *view_vec;
-        Lightsource   *lights;
-        void          *surface;
-        Color         *color;
-        Color         *opacity;
+my_shader(const Shade_point *sp, Lightsource *lights, void *surface,
+          Color *color, Color *opacity)
 @{
         Lightsource  *lp;            /* Current lightsource */
         Vector        light_vec;     /* Direction to current lightsource */
@@ -3905,7 +3944,7 @@ my_shader(world, normal, texture, view_vec, lights, surface, color, opacity)
                 /* Find out where the lightsource are and */
                 /* how much light from it that reaches us. */
 
-                light_factor = light_eval(lp, world, &light_vec);
+                light_factor = light_eval(lp, &sp->pos, &light_vec);
 
                 /* Calculate contributed light from the lightsource */
 

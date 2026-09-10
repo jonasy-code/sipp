@@ -148,13 +148,38 @@ typedef struct {
 } Color;
 
 /*
- * Interface to shader functions.  SURFACE is the surface description the
- * shader was installed with (see surface_create()); each shader casts it
- * to its own descriptor type.
+ * What a shader is told about the point it shades.
+ *
+ * The derivatives describe the area of the surface that the shading
+ * sample covers: dtdx and dtdy are how much the texture coordinates
+ * change from this sample to the next one in the x and y directions of
+ * the image, dpdx and dpdy the same for the world position.  A sample
+ * is one sub-pixel when oversampling, or a whole pixel when shading
+ * once per pixel (sipp_shading_per_pixel()).  A shader can use them to
+ * leave out detail finer than the sample, so that textures do not alias
+ * (see shade_texture_width() and the filtered functions in noise.h).
+ * In GOURAUD and FLAT shading, where the shader is called at vertices,
+ * the derivatives are zero: nothing is known about the footprint.
+ */
+typedef struct {
+  Vector pos;      /* Position in world coordinates */
+  Vector normal;   /* Surface normal, not normalized */
+  Vector texture;  /* Texture coordinates */
+  Vector view_vec; /* Unit vector from pos towards the camera */
+  Vector dtdx;     /* Change of texture over one sample, in x ... */
+  Vector dtdy;     /* ... and in y */
+  Vector dpdx;     /* Change of pos over one sample, in x ... */
+  Vector dpdy;     /* ... and in y */
+} Shade_point;
+
+/*
+ * Interface to shader functions.  SP describes the point, and must not
+ * be changed (a shader that alters, say, the normal makes a copy).
+ * SURFACE is the surface description the shader was installed with (see
+ * surface_create()); each shader casts it to its own descriptor type.
  */
 struct lightsource_t;
-typedef void Shader(Vector *pos, Vector *normal, Vector *texture,
-                    Vector *view_vec, struct lightsource_t *lights,
+typedef void Shader(const Shade_point *sp, struct lightsource_t *lights,
                     void *surface, Color *color, Color *opacity);
 
 /*
@@ -471,7 +496,7 @@ EXTERN void light_color(Lightsource *lp, double red, double grn, double blu);
 
 EXTERN void light_active(Lightsource *lp, bool flag);
 
-EXTERN double light_eval(Lightsource *lp, Vector *pos, Vector *vec);
+EXTERN double light_eval(Lightsource *lp, const Vector *pos, Vector *vec);
 
 /* Functions for handling the viewpoint and virtual cameras. */
 
@@ -522,10 +547,39 @@ EXTERN void shadowmaps_create(int size);
 EXTERN void shadowmaps_destruct(void);
 
 /* The basic shader. */
-EXTERN void basic_shader(Vector *pos, Vector *normal, Vector *texture,
-                         Vector *view_vec, Lightsource *lights,
+EXTERN void basic_shader(const Shade_point *sp, Lightsource *lights,
                          void *sd, /* Surf_desc * */
                          Color *color, Color *opacity);
+
+/*
+ * The width of the area a shading sample covers, in texture coordinate
+ * units (shade_texture_width) or world units (shade_world_width): the
+ * larger of the two derivatives.  0.0 when no footprint is known.
+ */
+EXTERN double shade_texture_width(const Shade_point *sp);
+
+EXTERN double shade_world_width(const Shade_point *sp);
+
+/*
+ * The footprint of the sample in texture space as an ellipse: MAJOR
+ * receives the vector along its longer axis, as long as that axis, and
+ * MINOR the length of the shorter one.  A sample seen at a grazing
+ * angle is long and thin; filtering it with shade_texture_width()
+ * blurs it across its thin side.
+ */
+EXTERN void shade_texture_footprint(const Shade_point *sp, Vector *major,
+                                    double *minor);
+
+/*
+ * Anisotropic filtering: up to MAX_TAPS points spread along the longer
+ * axis of the footprint, at which a texture is to be evaluated and
+ * averaged, each filtered to the width returned in WIDTH (the shorter
+ * axis, or more if MAX_TAPS is too few).  Returns the number of points
+ * put in POINTS; 1, at the sample itself, when the footprint is round
+ * or unknown.
+ */
+EXTERN int shade_texture_taps(const Shade_point *sp, int max_taps,
+                              Vector *points, double *width);
 
 /*
  * The following functions & macros are provided for backward compatibility.

@@ -81,6 +81,37 @@ may affect existing programs:
   is needed.  sipp_pixmap_write_png() and sipp_bitmap_write_png() write
   a pixmap or bitmap as PNG.
 
+* The shader interface has changed: a shader is now
+
+      void my_shader(const Shade_point *sp, Lightsource *lights,
+                     void *surface, Color *color, Color *opacity);
+
+  where sp holds what used to be the first four arguments (pos, normal,
+  texture, view_vec) and, new, the derivatives dtdx, dtdy, dpdx, dpdy:
+  how much the texture coordinates and the world position change from
+  one shading sample to the next in x and y, i.e. the area the sample
+  covers.  Shaders use them to filter their textures; the provided
+  procedural textures do, and noise.h has noise_filtered(),
+  turbulence_filtered() and noise_weight() for writing such shaders.
+  shade_texture_width(sp) gives the width of the footprint in texture
+  units (0.0 when unknown: GOURAUD and FLAT shading).  A shader that
+  passes a changed normal or texture on to another shader makes a copy
+  of the Shade_point.  The masker function of the mask shader now
+  takes the Shade_point and returns a double: the fraction of the
+  sample the mask covers (0.0 or 1.0 for an unfiltered mask), and the
+  two shaders are blended by it.  Converting an old shader:
+      old: my_shader(pos, normal, texture, view_vec, lights, sd, c, o)
+      new: my_shader(sp, lights, sd, c, o), with sp->pos, sp->normal,
+           sp->texture and sp->view_vec in place of the four vectors,
+           and basic_shader(sp, lights, ...) instead of
+           basic_shader(pos, normal, texture, view_vec, lights, ...).
+  Images rendered with the filtered textures differ from before in
+  PHONG mode (that is the point); GOURAUD and FLAT images are unchanged.
+  New for writing such shaders: shade_texture_footprint() and
+  shade_texture_taps() (anisotropic filtering, sipp.h), the filtered
+  pattern functions of filter.h, and image textures with mipmaps in
+  sipp_texture.h.
+
 * The option constants are enumerations instead of #defines, and the
   parameters that carry them have the enumeration types:
       Render_mode     PHONG, GOURAUD, FLAT, LINE

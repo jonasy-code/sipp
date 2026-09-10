@@ -310,7 +310,7 @@ void mat_mul(Transf_mat *res, Transf_mat *a, Transf_mat *b) {
  *               [j  k  l  1]
  */
 
-void point_transform(Vector *res, Vector *vec, Transf_mat *mat) {
+void point_transform(Vector *res, const Vector *vec, const Transf_mat *mat) {
   res->x = mat->mat[0][0] * vec->x + mat->mat[1][0] * vec->y +
            mat->mat[2][0] * vec->z + mat->mat[3][0];
   res->y = mat->mat[0][1] * vec->x + mat->mat[1][1] * vec->y +

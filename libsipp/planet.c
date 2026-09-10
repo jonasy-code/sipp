@@ -20,14 +20,20 @@ static Color cloud = {1.0, 1.0, 1.0};
  * This was designed to work with a unit sphere.
  *
  * Thanks to Jon Buller       jonb@vector.dallas.tx.us
+ *
+ * WIDTH is the size of the area the sample covers, in the units of LOC;
+ * octaves finer than that are left out (see noise.h).
  */
-static double turb(int size, double scale_factor, Vector loc) {
-  double cur_scale, result;
+static double turb(int size, double scale_factor, Vector loc, double width) {
+  double cur_scale, result, weight;
   int cur;
 
-  result = noise(&loc);
+  weight = noise_weight(width);
+  if (weight <= 0.0) {
+    return 0.0;
+  }
+  result = weight * noise(&loc);
   cur_scale = 1.0;
-
   cur = 1;
   while (cur < size) {
     cur <<= 1;
@@ -35,39 +41,55 @@ static double turb(int size, double scale_factor, Vector loc) {
     loc.x *= 2.0;
     loc.y *= 2.0;
     loc.z *= 2.0;
-    result += noise(&loc) * cur_scale;
+    weight = noise_weight(width * cur);
+    if (weight <= 0.0) {
+      break;
+    }
+    result += weight * noise(&loc) * cur_scale;
   }
   return result;
 }
 
-void planet_shader(Vector *pos, Vector *normal, Vector *texture,
-                   Vector *view_vec, Lightsource *lights, void *sd_,
+void planet_shader(const Shade_point *sp, Lightsource *lights, void *sd_,
                    Color *color, Color *opacity) {
   Surf_desc surf = *(Surf_desc *)sd_; /* Local copy: the shader
                                          must not write into the
                                          shared description */
   Surf_desc *sd = &surf;
+  Vector taps[4];
   Vector tmp;
+  Color c;
+  double width;
   double amt;
+  int ntaps, i;
 
   noise_init();
 
-  VecCopy(tmp, *texture);
+  /*
+   * Average the texture over a few points along the long axis of the
+   * sample, each filtered to its short axis (anisotropic filtering).
+   */
+  ntaps = shade_texture_taps(sp, 4, taps, &width);
+  sd->color.red = sd->color.grn = sd->color.blu = 0.0;
+  for (i = 0; i < ntaps; i++) {
+    VecCopy(tmp, taps[i]);
+    if (turb(430, 0.7, tmp, width) > 0.15)
+      c = land;
+    else
+      c = sea;
 
-  if (turb(430, 0.7, tmp) > 0.15)
-    sd->color = land;
-  else
-    sd->color = sea;
-
-  VecScalMul(tmp, 12.0, tmp)
-
-      amt = turb(18, 0.6, tmp);
-  if (amt > -0.25) {
-    amt += 0.25;
-    sd->color.red += amt * (cloud.red - sd->color.red);
-    sd->color.grn += amt * (cloud.grn - sd->color.grn);
-    sd->color.blu += amt * (cloud.blu - sd->color.blu);
+    VecScalMul(tmp, 12.0, tmp);
+    amt = turb(18, 0.6, tmp, width * 12.0);
+    if (amt > -0.25) {
+      amt += 0.25;
+      c.red += amt * (cloud.red - c.red);
+      c.grn += amt * (cloud.grn - c.grn);
+      c.blu += amt * (cloud.blu - c.blu);
+    }
+    sd->color.red += c.red / ntaps;
+    sd->color.grn += c.grn / ntaps;
+    sd->color.blu += c.blu / ntaps;
   }
 
-  basic_shader(pos, normal, texture, view_vec, lights, sd, color, opacity);
+  basic_shader(sp, lights, sd, color, opacity);
 }

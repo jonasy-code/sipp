@@ -292,3 +292,52 @@ double turbulence(Vector *p, int octaves) {
   }
   return t;
 }
+
+/*
+ * An octave of noise is kept whole while a sample covers no more than
+ * NOISE_KEEP lattice units of it, dropped from NOISE_DROP units on, and
+ * faded linearly in between.  noise() varies over about one lattice
+ * unit, so a sample one unit wide is about what it takes to represent
+ * an octave without aliasing.  Measured against a 12x12 supersampled
+ * reference, 1.0/2.0 gave the smallest error of 0.5/1.0, 0.75/1.5,
+ * 1.0/2.0, 1.5/3.0 and 2.0/4.0 (the last two are as good, and slower);
+ * 0.5/1.0 blurs noticeably.
+ */
+static const double NOISE_KEEP = 1.0;
+static const double NOISE_DROP = 2.0;
+
+double noise_weight(double width) {
+  if (width <= NOISE_KEEP) {
+    return 1.0;
+  }
+  if (width >= NOISE_DROP) {
+    return 0.0;
+  }
+  return (NOISE_DROP - width) / (NOISE_DROP - NOISE_KEEP);
+}
+
+double noise_filtered(Vector *v, double width) {
+  double weight = noise_weight(width);
+
+  return (weight > 0.0) ? weight * noise(v) : 0.0;
+}
+
+double turbulence_filtered(Vector *p, int octaves, double width) {
+  Vector tmp;
+  double scale = 1.0;
+  double t = 0.0;
+  double weight;
+
+  while (octaves-- > 0) {
+    weight = noise_weight(width * scale);
+    if (weight <= 0.0) {
+      break;
+    }
+    tmp.x = p->x * scale;
+    tmp.y = p->y * scale;
+    tmp.z = p->z * scale;
+    t += weight * noise(&tmp) / scale;
+    scale *= 2.0;
+  }
+  return t;
+}

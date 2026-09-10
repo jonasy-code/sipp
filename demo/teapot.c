@@ -3,6 +3,7 @@
 
 #include <sipp.h>
 
+#include <filter.h>
 #include <geometric.h>
 #include <noise.h>
 #include <primitives.h>
@@ -25,58 +26,69 @@ Floor_desc floor_surf = {
     {0.4, 0.0, 0.1, {0.9900, 0.9000, 0.7900}, {1.0, 1.0, 1.0}},
     {0.4, 0.0, 0.1, {0.8300, 0.2400, 0.1000}, {1.0, 1.0, 1.0}}};
 
-static void hole_shader(Vector *pos, Vector *normal, Vector *texture,
-                        Vector *view_vec, Lightsource *lights, void *sd_,
+static void hole_shader(const Shade_point *sp, Lightsource *lights, void *sd_,
                         Color *color, Color *transp) {
   Surf_desc surf = *(Surf_desc *)sd_; /* Local copy: a shader must
                                          not write into the shared
                                          surface description */
   Surf_desc *sd = &surf;
-  Vector tmp;
+  Vector tmp, grad;
+  double width, n, solid;
 
   noise_init();
 
-  VecCopy(tmp, *texture);
+  VecCopy(tmp, sp->texture);
   VecScalMul(tmp, 35.0, tmp);
+  width = shade_texture_width(sp) * 35.0;
 
-  if (noise(&tmp) < -0.1) {
-    sd->opacity.red = 0.0;
-    sd->opacity.grn = 0.0;
-    sd->opacity.blu = 0.0;
-  } else {
-    sd->opacity.red = 1.0;
-    sd->opacity.grn = 1.0;
-    sd->opacity.blu = 1.0;
-  }
+  /*
+   * The surface has a hole where the noise is below -0.1.  Noise finer
+   * than the sample is left out, and the edge of a hole is anti-aliased
+   * by taking the fraction of the sample that is solid: the step at
+   * -0.1, filtered over how much the noise changes across the sample.
+   */
+  n = noise_filtered(&tmp, width);
+  grad = Dnoise(&tmp);
+  solid = filter_step(-0.1, n, VecLen(grad) * width);
+  sd->opacity.red = solid;
+  sd->opacity.grn = solid;
+  sd->opacity.blu = solid;
 
-  basic_shader(pos, normal, texture, view_vec, lights, sd, color, transp);
+  basic_shader(sp, lights, sd, color, transp);
 }
 
 /*
- * A shader to produce a checkered floor.
+ * A shader to produce a checkered floor.  The board is averaged over
+ * the area the sample covers (filter_checker()), so that it turns into
+ * an even grey at a distance instead of a moire pattern; the sample's
+ * extent in u and v is the size of the box around its footprint.
  */
-static void floor_shader(Vector *pos, Vector *normal, Vector *texture,
-                         Vector *view_vec, Lightsource *lights, void *fd_,
+static void floor_shader(const Shade_point *sp, Lightsource *lights, void *fd_,
                          Color *color, Color *transp) {
   Floor_desc *fd = (Floor_desc *)fd_;
-  Surf_desc *col;
-  int intu;
-  int intv;
+  Surf_desc surf;
+  double mix;
 
-  intu = floor(texture->x / fd->sqsize);
-  if (intu < 0)
-    intu = -intu;
+  /* The fraction of the sample that is col1: squares of odd parity. */
+  mix = filter_checker(sp->texture.x / fd->sqsize, sp->texture.y / fd->sqsize,
+                       (fabs(sp->dtdx.x) + fabs(sp->dtdy.x)) / fd->sqsize,
+                       (fabs(sp->dtdx.y) + fabs(sp->dtdy.y)) / fd->sqsize);
 
-  intv = floor(texture->y / fd->sqsize);
-  if (intv < 0)
-    intv = -intv;
+  if (mix >= 1.0) {
+    surf = fd->col1;
+  } else if (mix <= 0.0) {
+    surf = fd->col2;
+  } else {
+    surf = fd->col1;
+    surf.color.red =
+        fd->col2.color.red + mix * (fd->col1.color.red - fd->col2.color.red);
+    surf.color.grn =
+        fd->col2.color.grn + mix * (fd->col1.color.grn - fd->col2.color.grn);
+    surf.color.blu =
+        fd->col2.color.blu + mix * (fd->col1.color.blu - fd->col2.color.blu);
+  }
 
-  if ((intu ^ intv) & 1)
-    col = &fd->col1;
-  else
-    col = &fd->col2;
-
-  basic_shader(pos, normal, texture, view_vec, lights, col, color, transp);
+  basic_shader(sp, lights, &surf, color, transp);
 }
 
 extern char *optarg;

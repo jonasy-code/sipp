@@ -32,25 +32,19 @@
 static const double BOARDSIZE =
     45.0; /* "Log" or "board" size in texture coordinates */
 
-void wood_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
-                 Lightsource *lights, void *wd_, Color *color, Color *opacity) {
-  Wood_desc *wd = (Wood_desc *)wd_;
-  Vector tpos;
+/*
+ * The color of the wood at TPOS, in scaled texture coordinates; WIDTH
+ * is the size of the area the sample covers, in the same units.
+ */
+static void wood(Wood_desc *wd, Vector tpos, double width, Color *color) {
   Vector tmp;
-  Surf_desc surface;
   double chaos;
   double val;
   double val2;
   double skewoff;
   double t;
   double rad;
-
-  noise_init();
-
-  /*
-   * Scale the texture coordinates.
-   */
-  VecScalMul(tpos, wd->scale, *texture);
+  double stem = tpos.x; /* Along the stem, before it is squeezed */
 
   /*
    * Get some noise values. Drag out the texture in
@@ -58,8 +52,8 @@ void wood_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
    * pattern should vary less along that direction.
    */
   tpos.x *= 0.08;
-  chaos = turbulence(&tpos, 5) * 0.5;
-  val2 = noise(&tpos);
+  chaos = turbulence_filtered(&tpos, 5, width) * 0.5;
+  val2 = noise_filtered(&tpos, width);
 
   /*
    * Make the pattern "semi"-periodic so it looks as if
@@ -87,8 +81,8 @@ void wood_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
    */
   tmp.x = 0.0;
   skewoff = noise(&tmp);
-  tpos.z -= (0.05 + 0.03 * skewoff) * (texture->x * wd->scale - 2.0);
-  tpos.y -= (0.05 + 0.03 * skewoff) * (texture->x * wd->scale - 2.0);
+  tpos.z -= (0.05 + 0.03 * skewoff) * (stem - 2.0);
+  tpos.y -= (0.05 + 0.03 * skewoff) * (stem - 2.0);
 
   /*
    * Calculate the distance from the middle of the "stem" and
@@ -102,18 +96,18 @@ void wood_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
    * Choose a color dependent on the distorted distance.
    */
   if (val < 0.1) {
-    surface.color.red = wd->base.red;
-    surface.color.grn = wd->base.grn;
-    surface.color.blu = wd->base.blu;
+    color->red = wd->base.red;
+    color->grn = wd->base.grn;
+    color->blu = wd->base.blu;
   } else if (val < 0.9) {
     t = 1.0 - pow(val / 0.8 - 0.1, 6.0);
-    surface.color.red = wd->ring.red + t * (wd->base.red - wd->ring.red);
-    surface.color.grn = wd->ring.grn + t * (wd->base.grn - wd->ring.grn);
-    surface.color.blu = wd->ring.blu + t * (wd->base.blu - wd->ring.blu);
+    color->red = wd->ring.red + t * (wd->base.red - wd->ring.red);
+    color->grn = wd->ring.grn + t * (wd->base.grn - wd->ring.grn);
+    color->blu = wd->ring.blu + t * (wd->base.blu - wd->ring.blu);
   } else {
-    surface.color.red = wd->ring.red;
-    surface.color.grn = wd->ring.grn;
-    surface.color.blu = wd->ring.blu;
+    color->red = wd->ring.red;
+    color->grn = wd->ring.grn;
+    color->blu = wd->ring.blu;
   }
 
   /*
@@ -122,15 +116,43 @@ void wood_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
    * in the wood.
    */
   if (val2 < 0.01 && val2 > 0.0) {
-    surface.color.red = wd->ring.red;
-    surface.color.grn = wd->ring.grn;
-    surface.color.blu = wd->ring.blu;
+    color->red = wd->ring.red;
+    color->grn = wd->ring.grn;
+    color->blu = wd->ring.blu;
+  }
+}
+
+void wood_shader(const Shade_point *sp, Lightsource *lights, void *wd_,
+                 Color *color, Color *opacity) {
+  Wood_desc *wd = (Wood_desc *)wd_;
+  Vector taps[4];
+  Vector tpos;
+  Color c;
+  Surf_desc surface;
+  double width;
+  int ntaps, i;
+
+  noise_init();
+
+  /*
+   * Average the texture over a few points along the long axis of the
+   * sample, each filtered to its short axis (anisotropic filtering);
+   * the texture coordinates are scaled, and the sample size with them.
+   */
+  ntaps = shade_texture_taps(sp, 4, taps, &width);
+  surface.color.red = surface.color.grn = surface.color.blu = 0.0;
+  for (i = 0; i < ntaps; i++) {
+    VecScalMul(tpos, wd->scale, taps[i]);
+    wood(wd, tpos, width * wd->scale, &c);
+    surface.color.red += c.red / ntaps;
+    surface.color.grn += c.grn / ntaps;
+    surface.color.blu += c.blu / ntaps;
   }
 
   surface.ambient = wd->ambient;
   surface.specular = wd->specular;
   surface.c3 = wd->c3;
   surface.opacity = wd->opacity;
-  basic_shader(pos, normal, texture, view_vec, lights, &surface, color,
-               opacity);
+
+  basic_shader(sp, lights, &surface, color, opacity);
 }

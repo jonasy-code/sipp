@@ -30,20 +30,29 @@
 #include <noise.h>
 #include <shaders.h>
 
-static void granite(Vector *p, Color *color, Granite_desc *gd) {
+/*
+ * WIDTH is the size of the area the sample covers, in the units of P;
+ * the octaves of noise finer than that are left out (see noise.h).
+ */
+static void granite(Vector *p, double width, Color *color, Granite_desc *gd) {
   int i;
   Vector v;
   double temp, n = 0.5, freq = 1.0;
+  double cover = width, weight;
 
   v = *p;
-
   for (i = 0; i < 6; freq *= 2.0, i++) {
     v.x *= 4.0 * freq;
     v.y *= 4.0 * freq;
     v.z *= 4.0 * freq;
+    cover *= 4.0 * freq;
+    weight = noise_weight(cover);
+    if (weight <= 0.0) {
+      break;
+    }
     temp = 0.5 * noise(&v);
     /*        temp = fabs(temp);*/
-    n += temp / freq;
+    n += weight * temp / freq;
   }
 
   color->red = gd->col1.red * n + gd->col2.red * (1.0 - n);
@@ -51,21 +60,31 @@ static void granite(Vector *p, Color *color, Granite_desc *gd) {
   color->blu = gd->col1.blu * n + gd->col2.blu * (1.0 - n);
 }
 
-void granite_shader(Vector *pos, Vector *normal, Vector *texture,
-                    Vector *view_vec, Lightsource *lights, void *gd_,
+void granite_shader(const Shade_point *sp, Lightsource *lights, void *gd_,
                     Color *color, Color *opacity) {
   Granite_desc *gd = (Granite_desc *)gd_;
+  Vector taps[4];
   Vector tmp;
+  Color c;
   Surf_desc surface;
+  double width;
+  int ntaps, i;
 
   noise_init();
 
-  VecScalMul(tmp, gd->scale, *texture);
-  granite(&tmp, &surface.color, gd);
+  /* See marble_shader() on the taps. */
+  ntaps = shade_texture_taps(sp, 4, taps, &width);
+  surface.color.red = surface.color.grn = surface.color.blu = 0.0;
+  for (i = 0; i < ntaps; i++) {
+    VecScalMul(tmp, gd->scale, taps[i]);
+    granite(&tmp, width * gd->scale, &c, gd);
+    surface.color.red += c.red / ntaps;
+    surface.color.grn += c.grn / ntaps;
+    surface.color.blu += c.blu / ntaps;
+  }
   surface.ambient = gd->ambient;
   surface.specular = gd->specular;
   surface.c3 = gd->c3;
   surface.opacity = gd->opacity;
-  basic_shader(pos, normal, texture, view_vec, lights, &surface, color,
-               opacity);
+  basic_shader(sp, lights, &surface, color, opacity);
 }

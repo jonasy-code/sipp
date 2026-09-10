@@ -24,6 +24,21 @@ shaders described here, except \fIstrauss_shader()\fR and \fIphong_shader()\fR
 provide some kind of special effect on a surface and call \fIbasic_shader()\fR
 to do the actual shading calculations. See the user manual for a detailed
 description of the shaders.
+.sp
+The procedural textures (\fImarble, granite, wood, bozo, bumpy\fR and
+\fIplanet\fR) are filtered: from the derivatives in the \fIShade_point\fR
+they know how large an area of the texture the shading sample covers,
+and leave out the octaves of noise that are finer than that (see
+\fInoise_filtered()\fR and \fIturbulence_filtered()\fR in noise.h).  At
+a distance they turn smooth instead of aliasing.  A sample seen at a
+grazing angle is long and thin; the textures are then averaged over a
+few points along its long axis (\fIshade_texture_taps()\fR), so that they
+stay sharp across it.
+.sp
+The mask shader's \fImasker\fR function returns the fraction of the sample
+that the mask covers, and the two shaders are blended accordingly; a
+mask kept in a \fISipp_texture\fR and looked up with
+\fIsipp_texture_lookup()\fR gives anti-aliased mask edges.
 
 .SH SHADERS AND SURFACE DESCRIPTORS
 The following shader functions are provided with the SIPP library. 

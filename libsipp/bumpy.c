@@ -29,27 +29,30 @@
 #include <noise.h>
 #include <shaders.h>
 
-void bumpy_shader(Vector *pos, Vector *normal, Vector *texture,
-                  Vector *view_vec, Lightsource *lights, void *bd_,
+void bumpy_shader(const Shade_point *sp, Lightsource *lights, void *bd_,
                   Color *color, Color *opacity) {
   Bumpy_desc *bd = (Bumpy_desc *)bd_;
+  Shade_point bumped = *sp; /* The point with its normal disturbed */
   Vector tmp;
-  Vector norm;
   double no;
+  double weight;
 
   noise_init();
 
-  VecCopy(norm, *normal);
-  vecnorm(&norm);
-  VecScalMul(tmp, bd->scale, *texture);
+  vecnorm(&bumped.normal);
+  VecScalMul(tmp, bd->scale, sp->texture);
 
-  if ((bd->bumpflag && bd->holeflag) ||
-      ((no = noise(&tmp)) < 0.0 && bd->bumpflag) ||
-      (no > 0.0 && bd->holeflag)) {
+  /*
+   * Bumps finer than the sample are smoothed away, so that they do
+   * not alias into a sparkling surface at a distance.
+   */
+  weight = noise_weight(shade_texture_width(sp) * bd->scale);
+  if (weight > 0.0 && ((bd->bumpflag && bd->holeflag) ||
+                       ((no = noise(&tmp)) < 0.0 && bd->bumpflag) ||
+                       (no > 0.0 && bd->holeflag))) {
     tmp = Dnoise(&tmp);
-    VecAdd(norm, norm, tmp);
+    VecAddS(bumped.normal, weight, tmp, bumped.normal);
   }
 
-  bd->shader(pos, &norm, texture, view_vec, lights, bd->surface, color,
-             opacity);
+  bd->shader(&bumped, lights, bd->surface, color, opacity);
 }

@@ -29,12 +29,14 @@
 #include <noise.h>
 #include <shaders.h>
 
-static void marble(Vector *p, Color *color, Marble_desc *md);
-
-static void marble(Vector *p, Color *color, Marble_desc *md) {
+/*
+ * WIDTH is the size of the area the sample covers, in the units of P;
+ * turbulence finer than that is left out (see noise.h).
+ */
+static void marble(Vector *p, double width, Color *color, Marble_desc *md) {
   double x, t;
 
-  x = p->x + turbulence(p, 7) * 5;
+  x = p->x + turbulence_filtered(p, 7, width) * 5;
   x = sin(x);
   if (x > -0.1 && x < 0.1) {
     color->red = md->strip.red;
@@ -53,21 +55,34 @@ static void marble(Vector *p, Color *color, Marble_desc *md) {
   }
 }
 
-void marble_shader(Vector *pos, Vector *normal, Vector *texture,
-                   Vector *view_vec, Lightsource *lights, void *md_,
+void marble_shader(const Shade_point *sp, Lightsource *lights, void *md_,
                    Color *color, Color *opacity) {
   Marble_desc *md = (Marble_desc *)md_;
+  Vector taps[4];
   Vector tmp;
+  Color c;
   Surf_desc surface;
+  double width;
+  int ntaps, i;
 
   noise_init();
 
-  VecScalMul(tmp, md->scale, *texture);
-  marble(&tmp, &surface.color, md);
+  /*
+   * Average the texture over a few points along the long axis of the
+   * sample, each filtered to its short axis (anisotropic filtering).
+   */
+  ntaps = shade_texture_taps(sp, 4, taps, &width);
+  surface.color.red = surface.color.grn = surface.color.blu = 0.0;
+  for (i = 0; i < ntaps; i++) {
+    VecScalMul(tmp, md->scale, taps[i]);
+    marble(&tmp, width * md->scale, &c, md);
+    surface.color.red += c.red / ntaps;
+    surface.color.grn += c.grn / ntaps;
+    surface.color.blu += c.blu / ntaps;
+  }
   surface.ambient = md->ambient;
   surface.specular = md->specular;
   surface.c3 = md->c3;
   surface.opacity = md->opacity;
-  basic_shader(pos, normal, texture, view_vec, lights, &surface, color,
-               opacity);
+  basic_shader(sp, lights, &surface, color, opacity);
 }

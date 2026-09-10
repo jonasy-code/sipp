@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include <sipp.h>
+#include <sipp_texture.h>
 
 Surf_desc scroll_surf = {
     0.3, 0.0, 0.1, {0.85, 0.85, 0.35}, {1.0, 1.0, 1.0},
@@ -13,6 +14,14 @@ Surf_desc scroll_surf = {
  * onto the scroll. We map it on the middle flat part.
  */
 unsigned char scrolltexture[360][113];
+
+/*
+ * The text as a one channel Sipp_texture (1.0 where the bitmap is
+ * white), looked up filtered over the area the sample covers, so that
+ * its edges are anti-aliased however small it gets.  It is spread over
+ * the middle 60% of the paper.
+ */
+static Sipp_texture *scroll_tex;
 /*
  * Read the bitmap used as texture.  Done once, before rendering: the
  * shader may run in several threads at once and must not load it.
@@ -57,34 +66,36 @@ static void scroll_texture_load(void) {
     exit(1);
   }
   fclose(texture_file);
+
+  {
+    Sipp_bitmap bm;
+
+    bm.width = 900;
+    bm.height = 360;
+    bm.width_bytes = 113;
+    bm.buffer = &scrolltexture[0][0];
+    scroll_tex = sipp_texture_from_bitmap(&bm);
+    scroll_tex->wrap = FALSE;
+  }
 }
 
-static void scroll_shader(Vector *pos, Vector *normal, Vector *texture,
-                          Vector *view_vec, Lightsource *lights, void *foo,
+static void scroll_shader(const Shade_point *sp, Lightsource *lights, void *foo,
                           Color *color, Color *opacity) {
   Surf_desc sd;
-  int x, y;
+  double white;
 
   sd = scroll_surf;
 
-  if (texture->x > 0.2 && texture->x < 0.8) {
-    x = (texture->x - 0.2) / 0.6 * 900;
-    y = texture->y * 360;
-    /* Interpolated coordinates can land exactly on the far edge. */
-    if (x < 0)
-      x = 0;
-    if (x > 899)
-      x = 899;
-    if (y < 0)
-      y = 0;
-    if (y > 359)
-      y = 359;
-    if (scrolltexture[y][x / 8] & (1 << (7 - (x % 8)))) {
-      sd.color.red = sd.color.grn = sd.color.blu = 0.0;
-    }
+  if (sp->texture.x > 0.2 && sp->texture.x < 0.8) {
+    sipp_texture_sample(scroll_tex, (sp->texture.x - 0.2) / 0.6, sp->texture.y,
+                        sp->dtdx.x / 0.6, sp->dtdx.y, sp->dtdy.x / 0.6,
+                        sp->dtdy.y, &white);
+    sd.color.red *= white;
+    sd.color.grn *= white;
+    sd.color.blu *= white;
   }
 
-  basic_shader(pos, normal, texture, view_vec, lights, &sd, color, opacity);
+  basic_shader(sp, lights, &sd, color, opacity);
 }
 
 /*

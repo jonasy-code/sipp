@@ -736,15 +736,9 @@ Delete all active depthmaps.
 
 .SH The basic shader
 
-.IP \fIvoid\ basic_shader(world,\ normal,\ texture,\ view_vec,\ lights,\ surface,\ color,\ opacity)\fR
+.IP \fIvoid\ basic_shader(sp,\ lights,\ surface,\ color,\ opacity)\fR
 .br
-\fIVector\ *world;\fR
-.br
-\fIVector\ *normal;\fR
-.br
-\fIVector\ *texture;\fR
-.br
-\fIVector\ *view_vec;\fR
+\fIconst\ Shade_point\ *sp;\fR
 .br
 \fILightsource *lights;\fR
 .br
@@ -754,7 +748,78 @@ Delete all active depthmaps.
 .br
 \fIColor\ *opacity;\fR
 .sp
-The basic shader function that is provided with the library.
+The basic shader function that is provided with the library.  All
+shaders have this interface (the type \fIShader\fR).  \fIsp\fR describes
+the point being shaded: its world position \fIpos\fR, the (unnormalized)
+surface normal \fInormal\fR, the texture coordinates \fItexture\fR, the
+unit vector \fIview_vec\fR from the point towards the camera, and the
+derivatives \fIdtdx, dtdy\fR and \fIdpdx, dpdy\fR: how much the texture
+coordinates and the position change from this shading sample to the next
+one in the x and y directions of the image.  Shaders use the derivatives
+to leave out texture detail finer than the sample, so that textures do
+not alias; the derivatives are zero when the footprint is unknown (GOURAUD
+and FLAT shading).
+
+.IP \fIdouble\ shade_texture_width(sp)\fR
+.br
+\fIconst\ Shade_point\ *sp;\fR
+.sp
+The width of the area the shading sample covers, in texture coordinate
+units: the larger of the two texture derivatives.  0.0 when unknown.
+\fIshade_world_width()\fR gives the same for the world position.
+
+.IP \fIvoid\ shade_texture_footprint(sp,\ major,\ minor)\fR
+.br
+\fIconst\ Shade_point\ *sp;\fR
+.br
+\fIVector\ *major;\fR
+.br
+\fIdouble\ *minor;\fR
+.sp
+The footprint of the sample in texture space as an ellipse: \fImajor\fR
+receives the vector along its longer axis, as long as that axis, and
+\fIminor\fR the length of the shorter one.
+
+.IP \fIint\ shade_texture_taps(sp,\ max_taps,\ points,\ width)\fR
+.br
+\fIconst\ Shade_point\ *sp;\fR
+.br
+\fIint\ max_taps;\fR
+.br
+\fIVector\ *points;\fR
+.br
+\fIdouble\ *width;\fR
+.sp
+Anisotropic filtering: up to \fImax_taps\fR points spread along the
+longer axis of the footprint, at which a texture is to be evaluated and
+averaged, each filtered to the width returned in \fIwidth\fR.  Returns
+the number of points; 1, at the sample itself, when the footprint is
+round or unknown.
+
+.SH Filtered pattern functions
+These (declared in filter.h) are the building blocks of procedural
+textures, averaged over an interval of length \fIwidth\fR around their
+argument, so that a shader can anti-alias a pattern from the sample's
+derivatives instead of relying on oversampling.  With \fIwidth\fR 0.0
+each is its unfiltered self.
+
+.IP \fIdouble\ filter_step(edge,\ x,\ width)\fR
+.sp
+A step from 0.0 to 1.0 at \fIedge\fR: the fraction of the sample above
+\fIedge\fR.
+
+.IP \fIdouble\ filter_pulse(edge0,\ edge1,\ x,\ width)\fR
+.sp
+A pulse that is 1.0 between \fIedge0\fR and \fIedge1\fR.
+
+.IP \fIdouble\ filter_square_wave(x,\ width)\fR
+.sp
+A square wave of period 2.0, +1.0 on [0, 1) and -1.0 on [1, 2).
+
+.IP \fIdouble\ filter_checker(u,\ v,\ wu,\ wv)\fR
+.sp
+A checkerboard with unit squares: the fraction of a sample \fIwu\fR by
+\fIwv\fR that lies on squares where floor(u) + floor(v) is odd.
 
 
 .SH SEE ALSO

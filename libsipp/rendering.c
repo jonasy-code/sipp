@@ -269,6 +269,83 @@ static void calc_normals(Polygon *pstart, Vector eyepoint) {
 }
 
 /*
+ * Gradient over the screen of an attribute that is affine in screen
+ * space, from its values A0, A1, A2 at three vertices; (X1, Y1) and
+ * (X2, Y2) are the positions of the last two relative to the first, and
+ * INV_DET is 1 / (X1 * Y2 - X2 * Y1).
+ */
+static void plane_gradient(double a0, double a1, double a2, double x1,
+                           double y1, double x2, double y2, double inv_det,
+                           double *gx, double *gy) {
+  double d1 = a1 - a0, d2 = a2 - a0;
+
+  *gx = (d1 * y2 - d2 * y1) * inv_det;
+  *gy = (d2 * x1 - d1 * x2) * inv_det;
+}
+
+/*
+ * Compute the gradients (see Poly_grad) of the polygon VIEW_VERT, a
+ * circular list of vertices in screen coordinates whose texture and
+ * world are already divided by w.  Three vertices spanning as large a
+ * triangle as possible are used, for precision; a polygon that is
+ * degenerate on the screen gets zero gradients.
+ */
+static void poly_gradients(View_coord *view_vert, Poly_grad *g) {
+  View_coord *v, *v0, *v1, *v2;
+  double dx, dy, d, best, det, inv_det;
+  double x1, y1, x2, y2;
+
+  v0 = view_vert;
+  v1 = v2 = NULL;
+  best = -1.0;
+  for (v = v0->next; v != v0; v = v->next) {
+    dx = v->view.x - v0->view.x;
+    dy = v->view.y - v0->view.y;
+    d = dx * dx + dy * dy;
+    if (d > best) {
+      best = d;
+      v1 = v;
+    }
+  }
+  best = 0.0;
+  if (v1 != NULL) {
+    x1 = v1->view.x - v0->view.x;
+    y1 = v1->view.y - v0->view.y;
+    for (v = v0->next; v != v0; v = v->next) {
+      det = x1 * (v->view.y - v0->view.y) - (v->view.x - v0->view.x) * y1;
+      if (fabs(det) > best) {
+        best = fabs(det);
+        v2 = v;
+      }
+    }
+  }
+  if (v2 == NULL || best < 1e-9) {
+    memset(g, 0, sizeof(*g));
+    return;
+  }
+  x1 = v1->view.x - v0->view.x;
+  y1 = v1->view.y - v0->view.y;
+  x2 = v2->view.x - v0->view.x;
+  y2 = v2->view.y - v0->view.y;
+  inv_det = 1.0 / (x1 * y2 - x2 * y1);
+
+  plane_gradient(v0->texture.x, v1->texture.x, v2->texture.x, x1, y1, x2, y2,
+                 inv_det, &g->dtex_dx.x, &g->dtex_dy.x);
+  plane_gradient(v0->texture.y, v1->texture.y, v2->texture.y, x1, y1, x2, y2,
+                 inv_det, &g->dtex_dx.y, &g->dtex_dy.y);
+  plane_gradient(v0->texture.z, v1->texture.z, v2->texture.z, x1, y1, x2, y2,
+                 inv_det, &g->dtex_dx.z, &g->dtex_dy.z);
+  plane_gradient(v0->world.x, v1->world.x, v2->world.x, x1, y1, x2, y2, inv_det,
+                 &g->dworld_dx.x, &g->dworld_dy.x);
+  plane_gradient(v0->world.y, v1->world.y, v2->world.y, x1, y1, x2, y2, inv_det,
+                 &g->dworld_dx.y, &g->dworld_dy.y);
+  plane_gradient(v0->world.z, v1->world.z, v2->world.z, x1, y1, x2, y2, inv_det,
+                 &g->dworld_dx.z, &g->dworld_dy.z);
+  plane_gradient(v0->hden, v1->hden, v2->hden, x1, y1, x2, y2, inv_det,
+                 &g->dhden_dx, &g->dhden_dy);
+}
+
+/*
  * Walk around a polygon, create the surrounding
  * edges and sort them into the y-bucket.
  */
@@ -276,6 +353,7 @@ static void create_edges(View_coord *view_vert, int polygon, Surface *surface,
                          Render_mode render_mode) {
   Edge *edge;
   Edge *first_edge, *last_edge;
+  Poly_grad *grad = NULL;
   View_coord *view_ref, *last;
   int nderiv, y1, y2;
   double deltay;
@@ -287,6 +365,11 @@ static void create_edges(View_coord *view_vert, int polygon, Surface *surface,
 
   view_ref = last = view_vert;
   first_edge = last_edge = NULL;
+
+  if (render_mode == PHONG) {
+    grad = (Poly_grad *)arena_alloc(&edge_arena, sizeof(Poly_grad));
+    poly_gradients(view_vert, grad);
+  }
 
   do {
     view_ref = view_ref->next;
@@ -398,6 +481,7 @@ static void create_edges(View_coord *view_vert, int polygon, Surface *surface,
       }
       edge->polygon = polygon;
       edge->surface = surface;
+      edge->grad = grad;
       edge->id = edge_count++;
       edge->next = y_bucket[edge->ystart];
       y_bucket[edge->ystart] = edge;
@@ -656,6 +740,24 @@ static View_coord *polygon_clip(View_coord *vlist, Clip_plane plane,
 }
 
 /*
+ * Call the shader of SURFACE at the vertex V, as FLAT and GOURAUD
+ * shading do.  No sample footprint is known there: the derivatives
+ * are zero.
+ */
+static void shade_vertex(Surface *surface, View_coord *v, Color *color,
+                         Color *opacity) {
+  Shade_point sp;
+
+  memset(&sp, 0, sizeof(sp));
+  sp.pos = v->world;
+  sp.normal = v->normal;
+  sp.texture = v->texture;
+  VecSub(sp.view_vec, sipp_current_camera->position, v->world);
+  vecnorm(&sp.view_vec);
+  (*surface->shader)(&sp, lightsrc_stack, surface->surface, color, opacity);
+}
+
+/*
  * Transform vertices into view coordinates. The transform is
  * defined in MATRIX. Store the transformed vertices in a
  * temporary list, create edges in the y_bucket.
@@ -764,13 +866,7 @@ static void transf_vertices(Vertex *vertex[], int nvertices, Surface *surface,
    * an averaged normal of the surrounding polygons)
    */
   if (render_mode == FLAT) {
-    Vector view_vec;
-
-    VecSub(view_vec, sipp_current_camera->position, nhead->world);
-    vecnorm(&view_vec);
-    (*surface->shader)(&nhead->world, &nhead->normal, &nhead->texture,
-                       &view_vec, lightsrc_stack, surface->surface, &color,
-                       &opacity);
+    shade_vertex(surface, nhead, &color, &opacity);
   }
 
   /*
@@ -805,13 +901,7 @@ static void transf_vertices(Vertex *vertex[], int nvertices, Surface *surface,
      * in the normal and texture vectors, ugly ugly...)
      */
     case GOURAUD: {
-      Vector view_vec;
-
-      VecSub(view_vec, sipp_current_camera->position, view_ref->world);
-      vecnorm(&view_vec);
-      (*surface->shader)(&view_ref->world, &view_ref->normal,
-                         &view_ref->texture, &view_vec, lightsrc_stack,
-                         surface->surface, &color, &opacity);
+      shade_vertex(surface, view_ref, &color, &opacity);
       MakeVector(view_ref->normal, color.red, color.grn, color.blu);
       MakeVector(view_ref->texture, opacity.red, opacity.grn, opacity.blu);
       VecScalMul(view_ref->texture, view_ref->hden, view_ref->texture);
@@ -1575,9 +1665,13 @@ static void band_render(Render_ctx *ctx, int k0, int k1, Edge **list,
 
       for (i = 0; i < ctx->xres; i++) {
         col = ctx->linebuf[curr_line] + i;
-        pixel_collect(
-            &ctx->pb, ctx->pixel_line[i], col, &opacity, ctx->render_mode,
-            (shading_per_pixel && ctx->render_mode == PHONG) ? i / over : -1);
+        if (shading_per_pixel && ctx->render_mode == PHONG) {
+          pixel_collect(&ctx->pb, ctx->pixel_line[i], col, &opacity,
+                        ctx->render_mode, i / over, over);
+        } else {
+          pixel_collect(&ctx->pb, ctx->pixel_line[i], col, &opacity,
+                        ctx->render_mode, -1, 1);
+        }
         if (ctx->alpha) {
           ctx->alphabuf[curr_line][i] = opacity_max(&opacity);
         } else {

@@ -180,6 +180,30 @@ static void shade_cache_insert(Pixel_buffer *pb, int slot, int polygon,
 }
 
 /*
+ * Fill in the derivatives of SP from the gradients G of its polygon,
+ * for a sample SAMPLE_SIZE sub-pixels wide.  With T = Th / h, where Th
+ * and h are the homogeneous texture and 1/w, dT/dx = (dTh/dx - T dh/dx)
+ * / h; the world position likewise.  HDEN is h at the point.
+ */
+static void shade_derivatives(Shade_point *sp, const Poly_grad *g, double hden,
+                              int sample_size) {
+  double inv;
+
+  if (g == NULL) {
+    MakeVector(sp->dtdx, 0.0, 0.0, 0.0);
+    MakeVector(sp->dtdy, 0.0, 0.0, 0.0);
+    MakeVector(sp->dpdx, 0.0, 0.0, 0.0);
+    MakeVector(sp->dpdy, 0.0, 0.0, 0.0);
+    return;
+  }
+  inv = (double)sample_size / hden;
+  VecComb(sp->dtdx, inv, g->dtex_dx, -inv * g->dhden_dx, sp->texture);
+  VecComb(sp->dtdy, inv, g->dtex_dy, -inv * g->dhden_dy, sp->texture);
+  VecComb(sp->dpdx, inv, g->dworld_dx, -inv * g->dhden_dx, sp->pos);
+  VecComb(sp->dpdy, inv, g->dworld_dy, -inv * g->dhden_dy, sp->pos);
+}
+
+/*
  * Walk the fragments of PIXEL front to back, shading and compositing
  * them.  COLOR receives the light from the surfaces, each weighted by
  * how much of it gets through the surfaces in front (so it is
@@ -192,10 +216,13 @@ static void shade_cache_insert(Pixel_buffer *pb, int slot, int polygon,
  * stored into the shading cache, so that each polygon is shaded once
  * per output pixel and the result reused for all of the pixel's
  * sub-samples.  Depth sorting and transparency are still resolved per
- * sub-sample; only the shader call is shared.
+ * sub-sample; only the shader call is shared.  SAMPLE_SIZE is the
+ * width of one shading sample in sub-pixels: 1, or the oversampling
+ * factor when shading per pixel; the shaders are told the area their
+ * sample covers.
  */
 void pixel_collect(Pixel_buffer *pb, int pixel, Color *color, Color *opacity,
-                   Render_mode render_mode, int cache_slot) {
+                   Render_mode render_mode, int cache_slot, int sample_size) {
   Pixel_info *pixbuf = pb->pixbuf;
   Color *result = color;
   Color frac;
@@ -203,10 +230,9 @@ void pixel_collect(Pixel_buffer *pb, int pixel, Color *color, Color *opacity,
   Color surf_color;
   Color surf_opacity;
   Active_edge *edge;
-  Vector world;
+  Shade_point sp;
   Vector texture;
   Vector normal;
-  Vector viewer;
   int pixref;
 
   result->red = result->grn = result->blu = 0.0;
@@ -227,24 +253,26 @@ void pixel_collect(Pixel_buffer *pb, int pixel, Color *color, Color *opacity,
      * and normal and call the shader.
      */
     case PHONG:
-      VecAddS(world, pixbuf[pixref].offset, pixbuf[pixref].worldstep,
+      VecAddS(sp.pos, pixbuf[pixref].offset, pixbuf[pixref].worldstep,
               edge->world);
-      VecScalMul(world, 1.0 / pixbuf[pixref].hden, world);
-      VecAddS(texture, pixbuf[pixref].offset, pixbuf[pixref].texturestep,
+      VecScalMul(sp.pos, 1.0 / pixbuf[pixref].hden, sp.pos);
+      VecAddS(sp.texture, pixbuf[pixref].offset, pixbuf[pixref].texturestep,
               edge->texture);
-      VecScalMul(texture, 1.0 / pixbuf[pixref].hden, texture);
-      VecAddS(normal, pixbuf[pixref].offset, pixbuf[pixref].normalstep,
+      VecScalMul(sp.texture, 1.0 / pixbuf[pixref].hden, sp.texture);
+      VecAddS(sp.normal, pixbuf[pixref].offset, pixbuf[pixref].normalstep,
               edge->normal);
       if (cache_slot >= 0 &&
           shade_cache_lookup(pb, cache_slot, edge->edge->polygon, &surf_color,
                              &surf_opacity)) {
         break;
       }
-      VecSub(viewer, sipp_current_camera->position, world);
-      vecnorm(&viewer);
-      edge->edge->surface->shader(&world, &normal, &texture, &viewer,
-                                  lightsrc_stack, edge->edge->surface->surface,
-                                  &surf_color, &surf_opacity);
+      VecSub(sp.view_vec, sipp_current_camera->position, sp.pos);
+      vecnorm(&sp.view_vec);
+      shade_derivatives(&sp, edge->edge->grad, pixbuf[pixref].hden,
+                        sample_size);
+      edge->edge->surface->shader(&sp, lightsrc_stack,
+                                  edge->edge->surface->surface, &surf_color,
+                                  &surf_opacity);
       if (cache_slot >= 0) {
         shade_cache_insert(pb, cache_slot, edge->edge->polygon, &surf_color,
                            &surf_opacity);

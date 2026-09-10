@@ -47,6 +47,21 @@ typedef struct view_coord_3d {
 } View_coord;
 
 /*
+ * The rates of change over the image of a polygon's homogeneous
+ * attributes: texture * 1/w, world * 1/w and 1/w are affine functions
+ * of the screen position over a planar polygon, so their gradients are
+ * constant and are computed once, when the edges are created.  From
+ * them the renderer derives, per fragment, how much the texture
+ * coordinates and the world position change from one sample to the
+ * next, which the shaders use to filter their textures.
+ */
+typedef struct {
+  Vector dtex_dx, dtex_dy;
+  Vector dworld_dx, dworld_dy;
+  double dhden_dx, dhden_dy;
+} Poly_grad;
+
+/*
  * Entry in the edge list used in rendering.
  */
 /*
@@ -70,6 +85,7 @@ typedef struct edge_t {
   Vector texturestep;
   int polygon;            /* Id of the polygon the edge belongs to */
   Surface *surface;       /* Surface that the edge belongs to */
+  Poly_grad *grad;        /* Gradients of the polygon (PHONG), or NULL */
   int id;                 /* Index of the edge, unique in a pass */
   struct edge_t *next;    /* Next edge in the same y_bucket */
   struct edge_t *sibling; /* Ring of all edges of the same polygon */

@@ -181,6 +181,7 @@ EXTERN void mat_mirror_plane(Transf_mat *mat, Vector *point, Vector *norm);
 
 EXTERN void mat_mul(Transf_mat *res, Transf_mat *a, Transf_mat *b);
 
-EXTERN void point_transform(Vector *res, Vector *vec, Transf_mat *mat);
+EXTERN void point_transform(Vector *res, const Vector *vec,
+                            const Transf_mat *mat);
 
 #endif /* _GEOMETRIC_H_ */

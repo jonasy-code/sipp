@@ -7,6 +7,7 @@
 
 #include <sipp.h>
 
+#include <filter.h>
 #include <geometric.h>
 #include <primitives.h>
 #include <shaders.h>
@@ -45,30 +46,37 @@ static const Vector camera_pos = {16.0, -24.0, 4.0};
 static const Vector camera_at = {0.0, 0.0, 1.4};
 
 /*
- * A shader to produce a checkered floor.
+ * A shader to produce a checkered floor.  The board is averaged over
+ * the area the sample covers (filter_checker()), so that it turns into
+ * an even grey at a distance instead of a moire pattern; the sample's
+ * extent in u and v is the size of the box around its footprint.
  */
-static void floor_shader(Vector *pos, Vector *normal, Vector *texture,
-                         Vector *view_vec, Lightsource *lights, void *fd_,
+static void floor_shader(const Shade_point *sp, Lightsource *lights, void *fd_,
                          Color *color, Color *transp) {
   Floor_desc *fd = (Floor_desc *)fd_;
-  Surf_desc *col;
-  int intu;
-  int intv;
+  Surf_desc surf;
+  double mix;
 
-  intu = floor(texture->x / fd->sqsize);
-  if (intu < 0)
-    intu = -intu;
+  /* The fraction of the sample that is col1: squares of odd parity. */
+  mix = filter_checker(sp->texture.x / fd->sqsize, sp->texture.y / fd->sqsize,
+                       (fabs(sp->dtdx.x) + fabs(sp->dtdy.x)) / fd->sqsize,
+                       (fabs(sp->dtdx.y) + fabs(sp->dtdy.y)) / fd->sqsize);
 
-  intv = floor(texture->y / fd->sqsize);
-  if (intv < 0)
-    intv = -intv;
+  if (mix >= 1.0) {
+    surf = fd->col1;
+  } else if (mix <= 0.0) {
+    surf = fd->col2;
+  } else {
+    surf = fd->col1;
+    surf.color.red =
+        fd->col2.color.red + mix * (fd->col1.color.red - fd->col2.color.red);
+    surf.color.grn =
+        fd->col2.color.grn + mix * (fd->col1.color.grn - fd->col2.color.grn);
+    surf.color.blu =
+        fd->col2.color.blu + mix * (fd->col1.color.blu - fd->col2.color.blu);
+  }
 
-  if ((intu ^ intv) & 1)
-    col = &fd->col1;
-  else
-    col = &fd->col2;
-
-  basic_shader(pos, normal, texture, view_vec, lights, col, color, transp);
+  basic_shader(sp, lights, &surf, color, transp);
 }
 
 int anim_frames(void) {

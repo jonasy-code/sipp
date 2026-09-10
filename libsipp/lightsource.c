@@ -43,7 +43,7 @@ extern int depthmap_size;
 static _Thread_local int rand_index = 0;
 static double rand_no[256];
 
-static double shadow_sample(Shadow_info *sh, Vector *pos);
+static double shadow_sample(Shadow_info *sh, const Vector *pos);
 
 /*
  * Restart the jitter sequence used for soft shadows.  The renderer
@@ -237,7 +237,7 @@ void light_active(Lightsource *lp, bool flag) { lp->active = flag; }
  * account.
  * In VEC we return a vector pointing from POS to LP.
  */
-double light_eval(Lightsource *lp, Vector *pos, Vector *vec) {
+double light_eval(Lightsource *lp, const Vector *pos, Vector *vec) {
   double fov_factor;
 
   switch (lp->type) {
@@ -303,7 +303,7 @@ double light_eval(Lightsource *lp, Vector *pos, Vector *vec) {
  * see how much shadowed POS is.
  */
 static const double BOXRES = 0.002;
-static double shadow_sample(Shadow_info *sh, Vector *pos) {
+static double shadow_sample(Shadow_info *sh, const Vector *pos) {
   Vector lp_view;
   int lit;
   int ns;
