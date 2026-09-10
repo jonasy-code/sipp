@@ -20,54 +20,44 @@
  ** smalloc.c - "Safe" malloc and calloc.
  **/
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <sipp.h>
 #include <smalloc.h>
 
+void *smalloc(int size) {
+  char *p;
 
-void *
-smalloc(int size)
-{
-    char *p;
+  p = malloc(size);
+  if (p == NULL) {
+    fprintf(stderr, "smalloc(): Out of memory.\n");
+    exit(1);
+  }
 
-    p = malloc(size);
-    if (p == NULL) {
-        fprintf(stderr, "smalloc(): Out of memory.\n");
-        exit(1);
-    }
-
-    return p;
+  return p;
 }
 
+void *scalloc(int size, int itemsize) {
+  char *p;
 
-void *
-scalloc(int size, int itemsize)
-{
-    char *p;
+  p = (char *)calloc(size, itemsize);
+  if (p == NULL) {
+    fprintf(stderr, "scalloc(): Out of memory.\n");
+    exit(1);
+  }
 
-    p = (char *)calloc(size, itemsize);
-    if (p == NULL) {
-        fprintf(stderr, "scalloc(): Out of memory.\n");
-        exit(1);
-    }
-
-    return p;
+  return p;
 }
 
+void *srealloc(void *ptr, int size) {
+  char *p;
 
-void *
-srealloc(void *ptr, int size)
-{
-    char *p;
- 
-    p = realloc(ptr, size);
-    if (p == NULL) {
-        fprintf(stderr, "srealloc(): Out of memory.\n");
-        exit(1);
-    }
+  p = realloc(ptr, size);
+  if (p == NULL) {
+    fprintf(stderr, "srealloc(): Out of memory.\n");
+    exit(1);
+  }
 
-    return p;
+  return p;
 }
-

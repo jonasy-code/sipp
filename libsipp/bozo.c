@@ -24,31 +24,29 @@
 #include <stdio.h>
 
 #include <sipp.h>
+
 #include <noise.h>
 #include <shaders.h>
 
+void bozo_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
+                 Lightsource *lights, void *bd_, Color *color, Color *opacity) {
+  Bozo_desc *bd = (Bozo_desc *)bd_;
+  Vector tmp;
+  Surf_desc surface;
+  double noiseval;
+  int i;
 
+  noise_init();
 
-void
-bozo_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *bd_, Color *color, Color *opacity)
-{
-    Bozo_desc    *bd = (Bozo_desc *)bd_;
-    Vector     tmp;
-    Surf_desc  surface;
-    double     noiseval;
-    int        i;
+  VecScalMul(tmp, bd->scale, *texture);
+  noiseval = noise(&tmp);
 
-    noise_init();
-
-    VecScalMul(tmp, bd->scale, *texture);
-    noiseval = noise(&tmp);
-
-    i = (noiseval + 1) * bd->no_of_cols / 2.0;
-    surface.color    = bd->colors[i];
-    surface.ambient  = bd->ambient;
-    surface.specular = bd->specular;
-    surface.c3       = bd->c3;
-    surface.opacity  = bd->opacity;
-    basic_shader(pos, normal, texture, view_vec, lights, &surface, 
-                 color, opacity);
+  i = (noiseval + 1) * bd->no_of_cols / 2.0;
+  surface.color = bd->colors[i];
+  surface.ambient = bd->ambient;
+  surface.specular = bd->specular;
+  surface.c3 = bd->c3;
+  surface.opacity = bd->opacity;
+  basic_shader(pos, normal, texture, view_vec, lights, &surface, color,
+               opacity);
 }

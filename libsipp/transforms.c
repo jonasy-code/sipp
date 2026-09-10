@@ -16,7 +16,7 @@
  ** Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-/** 
+/**
  ** transforms.c - Functions that handles object transformations.
  **/
 
@@ -24,116 +24,74 @@
 
 #include <sipp.h>
 
-
 /*
  * Set the transformation matrix of OBJ to MATRIX.
  */
-void
-object_set_transf(Object *obj, Transf_mat *matrix)
-{
-    MatCopy(&obj->transf, matrix);
+void object_set_transf(Object *obj, Transf_mat *matrix) {
+  MatCopy(&obj->transf, matrix);
 }
-
 
 /*
  * Retrieve the transformation matrix of OBJ
  */
-Transf_mat *
-object_get_transf(Object *obj, Transf_mat *matrix)
-{
-    Transf_mat *tmp;
+Transf_mat *object_get_transf(Object *obj, Transf_mat *matrix) {
+  Transf_mat *tmp;
 
-    if (matrix != NULL) {
-        MatCopy(matrix, &obj->transf);
-        return matrix;
-    } else {
-        tmp = transf_mat_create(NULL);
-        MatCopy(tmp, &obj->transf);
-        return tmp;
-    }
+  if (matrix != NULL) {
+    MatCopy(matrix, &obj->transf);
+    return matrix;
+  } else {
+    tmp = transf_mat_create(NULL);
+    MatCopy(tmp, &obj->transf);
+    return tmp;
+  }
 }
-
 
 /*
  * Set the transformation matrix of OBJ to the identity matrix.
  */
-void
-object_clear_transf(Object *obj)
-{
-    MatCopy(&obj->transf, &ident_matrix);
-}
-
+void object_clear_transf(Object *obj) { MatCopy(&obj->transf, &ident_matrix); }
 
 /*
  * Post multiply MATRIX into the transformation matrix of OBJ.
  */
-void
-object_transform(Object *obj, Transf_mat *matrix)
-{
-    mat_mul(&obj->transf, &obj->transf, matrix);
+void object_transform(Object *obj, Transf_mat *matrix) {
+  mat_mul(&obj->transf, &obj->transf, matrix);
 }
-
 
 /*
  * Rotate the object OBJ ANG radians about the x-axis.
  */
-void
-object_rot_x(Object *obj, double ang)
-{
-    mat_rotate_x(&obj->transf, ang);
-}
-
+void object_rot_x(Object *obj, double ang) { mat_rotate_x(&obj->transf, ang); }
 
 /*
  * Rotate the object OBJ ANG radians about the y-axis.
  */
-void
-object_rot_y(Object *obj, double ang)
-{
-    mat_rotate_y(&obj->transf, ang);
-}
-
+void object_rot_y(Object *obj, double ang) { mat_rotate_y(&obj->transf, ang); }
 
 /*
  * Rotate the object OBJ ANG radians about the z-axis.
  */
-void
-object_rot_z(Object *obj, double ang)
-{
-    mat_rotate_z(&obj->transf, ang);
-}
-
+void object_rot_z(Object *obj, double ang) { mat_rotate_z(&obj->transf, ang); }
 
 /*
  * Rotate the object OBJ ANG radians about the line defined
  * by POINT and VEC.
  */
-void
-object_rot(Object *obj, Vector *point, Vector *vec, double ang)
-{
-    mat_rotate(&obj->transf, point, vec, ang);
+void object_rot(Object *obj, Vector *point, Vector *vec, double ang) {
+  mat_rotate(&obj->transf, point, vec, ang);
 }
-
 
 /*
  * Scale the object OBJ with respect to the origin.
  */
-void
-object_scale(Object *obj, double xscale, double yscale, double zscale)
-{
-    mat_scale(&obj->transf, xscale, yscale, zscale);
+void object_scale(Object *obj, double xscale, double yscale, double zscale) {
+  mat_scale(&obj->transf, xscale, yscale, zscale);
 }
-
 
 /*
  * Translate the object OBJ.
  */
-void
-object_move(Object *obj, double dx, double dy, double dz)
-{
-    mat_translate(&obj->transf, dx, dy, dz);
+void object_move(Object *obj, double dx, double dy, double dz) {
+  mat_translate(&obj->transf, dx, dy, dz);
 }
-
-
-
-

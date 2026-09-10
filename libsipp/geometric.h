@@ -17,7 +17,7 @@
  **/
 
 /**
- ** geometric.h - All kinds of stuff with matrixes, transformations, 
+ ** geometric.h - All kinds of stuff with matrixes, transformations,
  **               coordinates
  **/
 
@@ -30,14 +30,11 @@
 #include <memory.h>
 #endif
 
-
 /* #define PI    3.1415926535897932384626 */
 
-
 typedef struct {
-    double x, y, z;
+  double x, y, z;
 } Vector;
-
 
 /*
  * NOTE:
@@ -46,71 +43,98 @@ typedef struct {
  */
 
 /* V = Vec(x, y, z) */
-#define MakeVector(V, xx, yy, zz)  { (V).x=(xx); \
-                                     (V).y=(yy); \
-                                     (V).z=(zz); }
+#define MakeVector(V, xx, yy, zz)                                              \
+  {                                                                            \
+    (V).x = (xx);                                                              \
+    (V).y = (yy);                                                              \
+    (V).z = (zz);                                                              \
+  }
 
 /* A = -A */
-#define VecNegate(A)	         { (A).x=0-(A).x; \
-			           (A).y=0-(A).y; \
-			           (A).z=0-(A).z; }
+#define VecNegate(A)                                                           \
+  {                                                                            \
+    (A).x = 0 - (A).x;                                                         \
+    (A).y = 0 - (A).y;                                                         \
+    (A).z = 0 - (A).z;                                                         \
+  }
 
 /* return A . B */
-#define VecDot(A, B)	((A).x*(B).x+(A).y*(B).y+(A).z*(B).z)
+#define VecDot(A, B) ((A).x * (B).x + (A).y * (B).y + (A).z * (B).z)
 
 /* return length(A) */
-#define VecLen(A)	(sqrt((double)VecDot(A, A)))
+#define VecLen(A) (sqrt((double)VecDot(A, A)))
 
 /* B = A */
-#define VecCopy(B, A)	((B) = (A))
+#define VecCopy(B, A) ((B) = (A))
 
 /* C = A + B */
-#define VecAdd(C, A, B)	 { (C).x=(A).x+(B).x; \
-			   (C).y=(A).y+(B).y; \
-			   (C).z=(A).z+(B).z; }
+#define VecAdd(C, A, B)                                                        \
+  {                                                                            \
+    (C).x = (A).x + (B).x;                                                     \
+    (C).y = (A).y + (B).y;                                                     \
+    (C).z = (A).z + (B).z;                                                     \
+  }
 
 /* C = A - B */
-#define VecSub(C, A, B)	 { (C).x=(A).x-(B).x; \
-			   (C).y=(A).y-(B).y; \
-			   (C).z=(A).z-(B).z; }
+#define VecSub(C, A, B)                                                        \
+  {                                                                            \
+    (C).x = (A).x - (B).x;                                                     \
+    (C).y = (A).y - (B).y;                                                     \
+    (C).z = (A).z - (B).z;                                                     \
+  }
 
 /* C = a*A */
-#define VecScalMul(C, a, A)	 { (C).x=(a)*(A).x; \
-				   (C).y=(a)*(A).y; \
-				   (C).z=(a)*(A).z; }
+#define VecScalMul(C, a, A)                                                    \
+  {                                                                            \
+    (C).x = (a) * (A).x;                                                       \
+    (C).y = (a) * (A).y;                                                       \
+    (C).z = (a) * (A).z;                                                       \
+  }
 
 /* C = a*A + B */
-#define VecAddS(C, a, A, B)	 { (C).x=(a)*(A).x+(B).x; \
-				   (C).y=(a)*(A).y+(B).y; \
-				   (C).z=(a)*(A).z+(B).z; }
+#define VecAddS(C, a, A, B)                                                    \
+  {                                                                            \
+    (C).x = (a) * (A).x + (B).x;                                               \
+    (C).y = (a) * (A).y + (B).y;                                               \
+    (C).z = (a) * (A).z + (B).z;                                               \
+  }
 
 /* C = a*A + b*B */
-#define VecComb(C, a, A, b, B)	 { (C).x=(a)*(A).x+(b)*(B).x; \
-				   (C).y=(a)*(A).y+(b)*(B).y; \
-			 	   (C).z=(a)*(A).z+(b)*(B).z; }
+#define VecComb(C, a, A, b, B)                                                 \
+  {                                                                            \
+    (C).x = (a) * (A).x + (b) * (B).x;                                         \
+    (C).y = (a) * (A).y + (b) * (B).y;                                         \
+    (C).z = (a) * (A).z + (b) * (B).z;                                         \
+  }
 
 /* C = A X B */
-#define VecCross(C, A, B)   	 { (C).x=(A).y*(B).z-(A).z*(B).y; \
-                                   (C).y=(A).z*(B).x-(A).x*(B).z; \
-			           (C).z=(A).x*(B).y-(A).y*(B).x; }
+#define VecCross(C, A, B)                                                      \
+  {                                                                            \
+    (C).x = (A).y * (B).z - (A).z * (B).y;                                     \
+    (C).y = (A).z * (B).x - (A).x * (B).z;                                     \
+    (C).z = (A).x * (B).y - (A).y * (B).x;                                     \
+  }
 
+#define VecMax(C, A, B)                                                        \
+  {                                                                            \
+    (C).x = (((A).x > (B).x) ? (A).x : (B).x);                                 \
+    (C).y = (((A).y > (B).y) ? (A).y : (B).y);                                 \
+    (C).z = (((A).z > (B).z) ? (A).z : (B).z);                                 \
+  }
 
-#define VecMax(C, A, B)        	 { (C).x=(((A).x>(B).x)?(A).x:(B).x); \
-                                   (C).y=(((A).y>(B).y)?(A).y:(B).y); \
-                                   (C).z=(((A).z>(B).z)?(A).z:(B).z); }
-
-
-#define VecMin(C, A, B)        	 { (C).x=(((A).x<(B).x)?(A).x:(B).x); \
-                                   (C).y=(((A).y<(B).y)?(A).y:(B).y); \
-                                   (C).z=(((A).z<(B).z)?(A).z:(B).z); }
+#define VecMin(C, A, B)                                                        \
+  {                                                                            \
+    (C).x = (((A).x < (B).x) ? (A).x : (B).x);                                 \
+    (C).y = (((A).y < (B).y) ? (A).y : (B).y);                                 \
+    (C).z = (((A).z < (B).z) ? (A).z : (B).z);                                 \
+  }
 
 /* ================================================================ */
 /*                         Matrix operations                        */
 
-
 /*
- * Define a homogenous transformation matrix. The first row (vector) 
- * is the new X axis, i.e. the X axis in the transformed coordinate 
+ * Define a homogenous transformation matrix. The first row (vector)
+ * is the new X axis, i.e. the X axis in the transformed coordinate
  * system. The second row is the new Y axis, and so on. The last row
  * is the translation, for a transformed point.
  *
@@ -121,75 +145,42 @@ typedef struct {
  */
 
 typedef struct {
-    double   mat[4][3];
+  double mat[4][3];
 } Transf_mat;
 
-
-extern Transf_mat   ident_matrix;
-
+extern Transf_mat ident_matrix;
 
 /* *A = *B    N.b. A and B are pointers! */
-#define MatCopy(A, B)		 (*A) = (*B)
-
+#define MatCopy(A, B) (*A) = (*B)
 
 /*----------------------------------------------------------------------*/
 
-
 /* Function declarations for the functions in geometric.c */
 
-EXTERN void
-vecnorm(Vector  *vec);
+EXTERN void vecnorm(Vector *vec);
 
-EXTERN Transf_mat *
-transf_mat_create(Transf_mat  *initmat);
+EXTERN Transf_mat *transf_mat_create(Transf_mat *initmat);
 
-EXTERN void
-transf_mat_destruct(Transf_mat  *mat);
+EXTERN void transf_mat_destruct(Transf_mat *mat);
 
-EXTERN void
-mat_translate(Transf_mat  *mat,
-                           double       dx,
-                           double       dy, 
-                           double       dz);
+EXTERN void mat_translate(Transf_mat *mat, double dx, double dy, double dz);
 
-EXTERN void
-mat_rotate_x(Transf_mat  *mat,
-                          double       ang);
+EXTERN void mat_rotate_x(Transf_mat *mat, double ang);
 
-EXTERN void
-mat_rotate_y(Transf_mat  *mat,
-                          double       ang);
+EXTERN void mat_rotate_y(Transf_mat *mat, double ang);
 
-EXTERN void
-mat_rotate_z(Transf_mat  *mat,
-                          double       ang);
+EXTERN void mat_rotate_z(Transf_mat *mat, double ang);
 
-EXTERN void
-mat_rotate(Transf_mat  *mat,
-                        Vector      *point,
-                        Vector      *vector,
-                        double       ang);
+EXTERN void mat_rotate(Transf_mat *mat, Vector *point, Vector *vector,
+                       double ang);
 
-EXTERN void
-mat_scale(Transf_mat  *mat,
-                       double       xscale,
-                       double       yscale,
-                       double       zscale);
+EXTERN void mat_scale(Transf_mat *mat, double xscale, double yscale,
+                      double zscale);
 
-EXTERN void
-mat_mirror_plane(Transf_mat  *mat,
-                              Vector      *point,
-                              Vector      *norm);
+EXTERN void mat_mirror_plane(Transf_mat *mat, Vector *point, Vector *norm);
 
-EXTERN void
-mat_mul(Transf_mat  *res,
-                     Transf_mat  *a,
-                     Transf_mat  *b);
+EXTERN void mat_mul(Transf_mat *res, Transf_mat *a, Transf_mat *b);
 
-EXTERN void
-point_transform(Vector      *res,
-                             Vector      *vec,
-                             Transf_mat  *mat);
+EXTERN void point_transform(Vector *res, Vector *vec, Transf_mat *mat);
 
-
-#endif  /* _GEOMETRIC_H_ */
+#endif /* _GEOMETRIC_H_ */

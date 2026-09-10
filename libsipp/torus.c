@@ -20,15 +20,19 @@
  ** torus.c - Creating a torus as a sipp object.
  **/
 
-#include <xalloca.h>
 #include <math.h>
+#include <xalloca.h>
 
-#include <sipp.h>
 #include <primitives.h>
+#include <sipp.h>
 
-
-#define SWAPARR(a, b) {Vector *tmp; tmp = a; a = b; b = tmp;}
-
+#define SWAPARR(a, b)                                                          \
+  {                                                                            \
+    Vector *tmp;                                                               \
+    tmp = a;                                                                   \
+    a = b;                                                                     \
+    b = tmp;                                                                   \
+  }
 
 static Vector *arr1;
 static Vector *arr2;
@@ -38,167 +42,153 @@ static Vector *tx2;
 /*
  * Prototypes of internal functions.
  */
-static void
-arr_rot(int    len,
-                     double angle,
-                     int    texture);
+static void arr_rot(int len, double angle, int texture);
 
-static void
-push_band(int    len);
+static void push_band(int len);
 
+static void arr_rot(int len, double angle, int texture) {
+  int i;
+  double sa, ca;
 
-static void
-arr_rot(int len, double angle, int texture)
-{
-    int    i;
-    double sa, ca;
-
-    sa = sin(angle);
-    ca = cos(angle);
-    for (i = 0; i < len; i++) {
-        arr2[i].x = arr1[i].x * ca - arr1[i].y * sa;
-        arr2[i].y = arr1[i].x * sa + arr1[i].y * ca;
-        arr2[i].z = arr1[i].z;
-        switch (texture) {
-          case NATURAL:
-          case CYLINDRICAL:
-          case SPHERICAL:
-            tx2[i].x = tx1[i].x + angle / (2.0 * M_PI);
-            tx2[i].y = tx1[i].y;
-            tx2[i].z = tx1[i].z;
-            break;
-
-          case WORLD:
-          default:
-            tx2[i] = arr2[i];
-            break;
-        }
-    }
+  sa = sin(angle);
+  ca = cos(angle);
+  for (i = 0; i < len; i++) {
+    arr2[i].x = arr1[i].x * ca - arr1[i].y * sa;
+    arr2[i].y = arr1[i].x * sa + arr1[i].y * ca;
+    arr2[i].z = arr1[i].z;
     switch (texture) {
-      case NATURAL:
-      case CYLINDRICAL:
-      case SPHERICAL:
-        tx2[i].x = tx1[i].x + angle / (2.0 * M_PI);
-        tx2[i].y = tx1[i].y;
-        tx2[i].z = tx1[i].z;
-        break;
+    case NATURAL:
+    case CYLINDRICAL:
+    case SPHERICAL:
+      tx2[i].x = tx1[i].x + angle / (2.0 * M_PI);
+      tx2[i].y = tx1[i].y;
+      tx2[i].z = tx1[i].z;
+      break;
 
-      case WORLD:
-      default:
-        tx2[i] = tx2[0];
-        break;
+    case WORLD:
+    default:
+      tx2[i] = arr2[i];
+      break;
     }
+  }
+  switch (texture) {
+  case NATURAL:
+  case CYLINDRICAL:
+  case SPHERICAL:
+    tx2[i].x = tx1[i].x + angle / (2.0 * M_PI);
+    tx2[i].y = tx1[i].y;
+    tx2[i].z = tx1[i].z;
+    break;
+
+  case WORLD:
+  default:
+    tx2[i] = tx2[0];
+    break;
+  }
 }
 
+static void push_band(int len) {
+  int i, j;
 
-static void
-push_band(int len)
-{
-    int i, j;
-
-    for (i = 0; i < len; i++) {
-        j = (i + 1) % len;
-        vertex_tx_push(arr1[i].x, arr1[i].y, arr1[i].z, 
-                       tx1[i].x, tx1[i].y, tx1[i].z);
-        vertex_tx_push(arr2[i].x, arr2[i].y, arr2[i].z, 
-                       tx2[i].x, tx2[i].y, tx2[i].z);
-        vertex_tx_push(arr2[j].x, arr2[j].y, arr2[j].z, 
-                       tx2[i + 1].x, tx2[i + 1].y, tx2[i + 1].z);
-        vertex_tx_push(arr1[j].x, arr1[j].y, arr1[j].z, 
-                       tx1[i + 1].x, tx1[i + 1].y, tx1[i + 1].z);
-        polygon_push();
-    }
+  for (i = 0; i < len; i++) {
+    j = (i + 1) % len;
+    vertex_tx_push(arr1[i].x, arr1[i].y, arr1[i].z, tx1[i].x, tx1[i].y,
+                   tx1[i].z);
+    vertex_tx_push(arr2[i].x, arr2[i].y, arr2[i].z, tx2[i].x, tx2[i].y,
+                   tx2[i].z);
+    vertex_tx_push(arr2[j].x, arr2[j].y, arr2[j].z, tx2[i + 1].x, tx2[i + 1].y,
+                   tx2[i + 1].z);
+    vertex_tx_push(arr1[j].x, arr1[j].y, arr1[j].z, tx1[i + 1].x, tx1[i + 1].y,
+                   tx1[i + 1].z);
+    polygon_push();
+  }
 }
 
+Object *sipp_torus(double bigradius, double smallradius, int res1, int res2,
+                   void *surface, Shader *shader, int texture) {
+  Object *torus;
+  double angle;
+  int i;
+  bool old_user_refs;
 
+  /* Create two arrays to hold vertices around the tube */
+  arr1 = (Vector *)alloca(res2 * sizeof(Vector));
+  arr2 = (Vector *)alloca(res2 * sizeof(Vector));
 
-Object *
-sipp_torus(double bigradius, double smallradius, int res1, int res2, void *surface, Shader *shader, int texture)
-{
-    Object *torus;
-    double  angle;
-    int     i;
-    bool    old_user_refs;
+  /* Create two arrays to hold texture coordinates  around the tube */
+  tx1 = (Vector *)alloca((res2 + 1) * sizeof(Vector));
+  tx2 = (Vector *)alloca((res2 + 1) * sizeof(Vector));
 
-    /* Create two arrays to hold vertices around the tube */
-    arr1 = (Vector *)alloca(res2 * sizeof(Vector));
-    arr2 = (Vector *)alloca(res2 * sizeof(Vector));
-
-    /* Create two arrays to hold texture coordinates  around the tube */
-    tx1 = (Vector *)alloca((res2 + 1) * sizeof(Vector));
-    tx2 = (Vector *)alloca((res2 + 1) * sizeof(Vector));
-
-    for (i = 0; i < res2; i++) {
-        angle = i * 2.0 * M_PI / res2 - M_PI / 4.0;
-        arr1[i].x = bigradius + smallradius * cos(angle);
-        arr1[i].y = 0.0;
-        arr1[i].z = smallradius * sin(angle);
-        switch (texture) {
-          case NATURAL:
-            tx1[i].x = 0.0;
-            tx1[i].y = (double)i / (double)res2;
-            tx1[i].z = 0.0;
-            break;
-
-          case CYLINDRICAL:
-            tx1[i].x = 0.0;
-            tx1[i].y = (arr1[i].z + smallradius) / (2.0 * smallradius);
-            tx1[i].z = 0.0;
-            break;
-
-          case SPHERICAL:
-            tx1[i].x = 0.0;
-            tx1[i].y = atan(arr1[i].z / arr1[i].x) / M_PI + 0.5;
-            tx1[i].z = 0.0;
-            break;
-
-          case WORLD:
-          default:
-            tx1[i] = arr1[i];
-            break;
-        }
-    }
-
+  for (i = 0; i < res2; i++) {
+    angle = i * 2.0 * M_PI / res2 - M_PI / 4.0;
+    arr1[i].x = bigradius + smallradius * cos(angle);
+    arr1[i].y = 0.0;
+    arr1[i].z = smallradius * sin(angle);
     switch (texture) {
-      case NATURAL:
-        tx1[i].x = 0.0;
-        tx1[i].y = (double)i / (double)res2;
-        tx1[i].z = 0.0;
-        break;
-        
-      case CYLINDRICAL:
-        tx1[i].x = 0.0;
-        tx1[i].y = (arr1[0].z + smallradius) / (2.0 * smallradius);
-        tx1[i].z = 0.0;
-        break;
-        
-      case SPHERICAL:
-        tx1[i].x = 0.0;
-        tx1[i].y = atan(arr1[0].z / arr1[0].x) / M_PI + 0.5;
-        tx1[i].z = 0.0;
-        break;
-        
-      case WORLD:
-      default:
-        tx1[i] = tx1[0];
-        break;
+    case NATURAL:
+      tx1[i].x = 0.0;
+      tx1[i].y = (double)i / (double)res2;
+      tx1[i].z = 0.0;
+      break;
+
+    case CYLINDRICAL:
+      tx1[i].x = 0.0;
+      tx1[i].y = (arr1[i].z + smallradius) / (2.0 * smallradius);
+      tx1[i].z = 0.0;
+      break;
+
+    case SPHERICAL:
+      tx1[i].x = 0.0;
+      tx1[i].y = atan(arr1[i].z / arr1[i].x) / M_PI + 0.5;
+      tx1[i].z = 0.0;
+      break;
+
+    case WORLD:
+    default:
+      tx1[i] = arr1[i];
+      break;
     }
-    
-    /* Sweep out the torus by rotating the two perimeters */
-    /* defined in arr1 and arr2. */
-    for (i = 0; i < res1; i++) {
-        arr_rot(res2, 2.0 * M_PI / (double)res1, texture);
-        push_band(res2);
-        SWAPARR(arr1, arr2)
-        SWAPARR(tx1, tx2)
-    }
+  }
 
-    torus = object_create();
+  switch (texture) {
+  case NATURAL:
+    tx1[i].x = 0.0;
+    tx1[i].y = (double)i / (double)res2;
+    tx1[i].z = 0.0;
+    break;
 
-    old_user_refs = sipp_user_refcount (FALSE);
-    object_add_surface(torus, surface_create(surface, shader));
-    sipp_user_refcount (old_user_refs);
+  case CYLINDRICAL:
+    tx1[i].x = 0.0;
+    tx1[i].y = (arr1[0].z + smallradius) / (2.0 * smallradius);
+    tx1[i].z = 0.0;
+    break;
 
-    return torus;
+  case SPHERICAL:
+    tx1[i].x = 0.0;
+    tx1[i].y = atan(arr1[0].z / arr1[0].x) / M_PI + 0.5;
+    tx1[i].z = 0.0;
+    break;
+
+  case WORLD:
+  default:
+    tx1[i] = tx1[0];
+    break;
+  }
+
+  /* Sweep out the torus by rotating the two perimeters */
+  /* defined in arr1 and arr2. */
+  for (i = 0; i < res1; i++) {
+    arr_rot(res2, 2.0 * M_PI / (double)res1, texture);
+    push_band(res2);
+    SWAPARR(arr1, arr2)
+    SWAPARR(tx1, tx2)
+  }
+
+  torus = object_create();
+
+  old_user_refs = sipp_user_refcount(FALSE);
+  object_add_surface(torus, surface_create(surface, shader));
+  sipp_user_refcount(old_user_refs);
+
+  return torus;
 }
-

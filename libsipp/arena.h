@@ -36,31 +36,24 @@
 #include <stddef.h>
 
 typedef struct arena_block_t {
-    struct arena_block_t *next;
-    size_t                size;     /* Usable bytes in this block */
-    size_t                used;     /* Bytes handed out so far */
-    char                 *data;     /* Aligned start of usable memory */
+  struct arena_block_t *next;
+  size_t size; /* Usable bytes in this block */
+  size_t used; /* Bytes handed out so far */
+  char *data;  /* Aligned start of usable memory */
 } Arena_block;
 
 typedef struct {
-    Arena_block *first;             /* Head of the block chain */
-    Arena_block *curr;              /* Block currently being bumped */
-    size_t       block_size;        /* Default size of new blocks */
+  Arena_block *first; /* Head of the block chain */
+  Arena_block *curr;  /* Block currently being bumped */
+  size_t block_size;  /* Default size of new blocks */
 } Arena;
 
+EXTERN void arena_init(Arena *arena, size_t block_size);
 
-EXTERN void
-arena_init(Arena  *arena,
-                        size_t  block_size);
+EXTERN void *arena_alloc(Arena *arena, size_t size);
 
-EXTERN void *
-arena_alloc(Arena  *arena,
-                         size_t  size);
+EXTERN void arena_reset(Arena *arena);
 
-EXTERN void
-arena_reset(Arena  *arena);
-
-EXTERN void
-arena_release(Arena  *arena);
+EXTERN void arena_release(Arena *arena);
 
 #endif /* ARENA_H */

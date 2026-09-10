@@ -27,16 +27,10 @@
 
 #define sfree(x) free(x)
 
-extern void *
-smalloc(int size);
+extern void *smalloc(int size);
 
-extern void *
-scalloc(int size,
-                     int itemsize);
+extern void *scalloc(int size, int itemsize);
 
-extern void *
-srealloc(void *ptr,
-                      int   size);
-
+extern void *srealloc(void *ptr, int size);
 
 #endif /* SMALLOC_H */

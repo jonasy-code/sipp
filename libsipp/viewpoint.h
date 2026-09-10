@@ -26,20 +26,15 @@
 #include <geometric.h>
 #include <sipp.h>
 
-#define ZCLIPF 100.0        /* Magic number used when defining hither & yon */
+#define ZCLIPF 100.0 /* Magic number used when defining hither & yon */
 
+extern Camera *sipp_current_camera; /* Viewpoint of the scene  */
+extern double hither;               /* Hither z-clipping plane */
+extern double yon;                  /* Yonder z-clipping plane */
 
-extern Camera   *sipp_current_camera; /* Viewpoint of the scene  */
-extern double    hither;              /* Hither z-clipping plane */
-extern double    yon;                 /* Yonder z-clipping plane */
+extern void camera_init(void);
 
-extern void
-camera_init(void);
-
-extern void
-get_view_transf(Transf_mat *view_mat,
-                             Camera     *camera,
-                             int         render_mode);
-
+extern void get_view_transf(Transf_mat *view_mat, Camera *camera,
+                            int render_mode);
 
 #endif /* VIEWPOINT_H */

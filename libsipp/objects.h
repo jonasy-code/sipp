@@ -25,18 +25,14 @@
 
 #include <sipp.h>
 
-
 /*
  * Structure to keep a list of vertex references.
  */
 typedef struct vertex_ref_t {
-    Vertex              *vertex;
-    struct vertex_ref_t *next;
+  Vertex *vertex;
+  struct vertex_ref_t *next;
 } Vertex_ref;
 
-
-extern void
-objects_init(void);
-
+extern void objects_init(void);
 
 #endif /* OBJECT_H */

@@ -20,7 +20,6 @@
  ** sipp.h - Public inteface to the sipp rendering library.
  **/
 
-
 #ifndef _SIPP_H
 #define _SIPP_H
 
@@ -28,22 +27,22 @@
  * SIPP is written in standard C (C99 or later).  The macros below are
  * kept so that user code written against older releases keeps compiling.
  */
-#undef  _ANSI_ARGS_
-#define _ANSI_ARGS_(x)  x
+#undef _ANSI_ARGS_
+#define _ANSI_ARGS_(x) x
 #define _USING_PROTOTYPES_ 1
-#undef  CONST
+#undef CONST
 #define CONST const
 
 #undef EXTERN
 #ifdef __cplusplus
-#   define EXTERN extern "C"
+#define EXTERN extern "C"
 #else
-#   define EXTERN extern
+#define EXTERN extern
 #endif
 
+#include <geometric.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <geometric.h>
 
 /*
  * Enable experimantal ffd code.
@@ -58,14 +57,14 @@
  * bool, true and false are keywords from C23 on; before that they come
  * from <stdbool.h>.  TRUE and FALSE are kept for existing code.
  */
-#if !defined(__cplusplus) && \
+#if !defined(__cplusplus) &&                                                   \
     !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
 #include <stdbool.h>
 #endif
 #ifndef FALSE
-#define FALSE  0
-#define TRUE   1
-#endif 
+#define FALSE 0
+#define TRUE 1
+#endif
 
 /*
  * Customize for those that don't have memcpy() and friends, but
@@ -76,80 +75,67 @@
 #define memcpy(to, from, n) bcopy((from), (to), (n))
 #endif
 
-
 /*
  * The macro RANDOM() should return a random number
  * in the range [-1, 1].  drand48() is declared in <stdlib.h>.
  */
-#define RANDOM()  (2.0 * drand48() - 1.0)
-
+#define RANDOM() (2.0 * drand48() - 1.0)
 
 /*
  * Modes for rendering
  */
-#define PHONG      0
-#define GOURAUD    1
-#define FLAT       2
-#define LINE       3
-
+#define PHONG 0
+#define GOURAUD 1
+#define FLAT 2
+#define LINE 3
 
 /*
  * Direction for rendering
  */
-#define TOP_TO_BOTTOM  FALSE
-#define BOTTOM_TO_TOP  TRUE
-
+#define TOP_TO_BOTTOM FALSE
+#define BOTTOM_TO_TOP TRUE
 
 /*
  * Field definition.
  */
-#define EVEN   0
-#define ODD    1
-#define BOTH   2
-
+#define EVEN 0
+#define ODD 1
+#define BOTH 2
 
 /*
  * Types of lightsources.
  */
-#define LIGHT_DIRECTION    0
-#define LIGHT_POINT        1
+#define LIGHT_DIRECTION 0
+#define LIGHT_POINT 1
 
 /*
  * Types of spotlights (actually lightsource types too).
  */
-#define SPOT_SHARP   2
-#define SPOT_SOFT    3
-
-
-
+#define SPOT_SHARP 2
+#define SPOT_SOFT 3
 
 /*
  * FFD function interface.
  */
 #ifdef FFD
-typedef void FFD_func (void    *ffd_data,
-                                   Vector  *pos,
-                                   Vector  *texture,
-                                   Vector  *ffd_pos,
-                                   Vector  *ffd_texture);
+typedef void FFD_func(void *ffd_data, Vector *pos, Vector *texture,
+                      Vector *ffd_pos, Vector *ffd_texture);
 #endif
 
 /*
  * Update function interface.
  */
-typedef void Update_func (void  *client_data);
-
+typedef void Update_func(void *client_data);
 
 /*
  * Colors are handled as an rgb-triple
  * with values between 0 and 1.
  */
 typedef struct {
-    double   red;
-    double   grn;
-    double   blu;
+  double red;
+  double grn;
+  double blu;
 } Color;
-
 
 /*
  * Interface to shader functions.  SURFACE is the surface description the
@@ -157,14 +143,9 @@ typedef struct {
  * to its own descriptor type.
  */
 struct lightsource_t;
-typedef void Shader(Vector               *pos,
-                    Vector               *normal,
-                    Vector               *texture,
-                    Vector               *view_vec,
-                    struct lightsource_t *lights,
-                    void                 *surface,
-                    Color                *color,
-                    Color                *opacity);
+typedef void Shader(Vector *pos, Vector *normal, Vector *texture,
+                    Vector *view_vec, struct lightsource_t *lights,
+                    void *surface, Color *color, Color *opacity);
 
 /*
  * Interface to the user supplied output functions of render_image_func()
@@ -173,53 +154,42 @@ typedef void Shader(Vector               *pos,
  * segment in image coordinates; pass it as (Pixel_func *) to the
  * rendering function.
  */
-typedef void Pixel_func(void          *data,
-                        int            x,
-                        int            y,
-                        unsigned char  red,
-                        unsigned char  grn,
-                        unsigned char  blu);
+typedef void Pixel_func(void *data, int x, int y, unsigned char red,
+                        unsigned char grn, unsigned char blu);
 
-typedef void Line_func(void *data,
-                       int   x1,
-                       int   y1,
-                       int   x2,
-                       int   y2);
-
+typedef void Line_func(void *data, int x1, int y1, int x2, int y2);
 
 /*
  * Virtual camera definition
  */
 typedef struct {
-    Vector position;     /* camera position */
-    Vector lookat;       /* point to look at */
-    Vector up;           /* Up direction in the view */ 
-    double focal_ratio;
+  Vector position; /* camera position */
+  Vector lookat;   /* point to look at */
+  Vector up;       /* Up direction in the view */
+  double focal_ratio;
 } Camera;
-
 
 /*
  * Surface description used by the basic shader. This shader
  * does simple shading of surfaces of a single color.
  */
 typedef struct {
-    double  ambient;       /* Fraction of color visible in ambient light */
-    double  specular;      /* Fraction of colour specularly reflected */
-    double  c3;            /* "Shinyness" 0 = shiny,  1 = dull */
-    Color   color;         /* Colour of the surface */
-    Color   opacity;       /* Opacity of the surface */
+  double ambient;  /* Fraction of color visible in ambient light */
+  double specular; /* Fraction of colour specularly reflected */
+  double c3;       /* "Shinyness" 0 = shiny,  1 = dull */
+  Color color;     /* Colour of the surface */
+  Color opacity;   /* Opacity of the surface */
 } Surf_desc;
-
 
 #ifdef FFD
 /*
  * Structure for temporary vertex data after ffd.
  */
 typedef struct {
-    Vector  pos;
-    Vector  texture;
+  Vector pos;
+  Vector texture;
 } FFD_Vertex;
-#endif 
+#endif
 
 /*
  * Structure storing the vertices in surfaces. The vertices of a surface
@@ -230,29 +200,27 @@ typedef struct {
  * (objects.c reuses it as scratch space when copying a surface).
  */
 typedef struct vertex_t {
-    Vector            pos;    /* vertex position */
-    Vector            normal;    /* average normal at vertex */
-    Vector            texture;    /* texture parameters (if any) */
-    bool              fixed_normal; /* Normal is fixed (supplied by user) */
+  Vector pos;        /* vertex position */
+  Vector normal;     /* average normal at vertex */
+  Vector texture;    /* texture parameters (if any) */
+  bool fixed_normal; /* Normal is fixed (supplied by user) */
 #ifdef FFD
-    FFD_Vertex       *ffd_vertex;
-#endif 
-    struct vertex_t  *next;   /* next vertex in the surface */
-    struct vertex_t  *hnext;  /* next vertex in the same hash bucket */
+  FFD_Vertex *ffd_vertex;
+#endif
+  struct vertex_t *next;  /* next vertex in the surface */
+  struct vertex_t *hnext; /* next vertex in the same hash bucket */
 } Vertex;
-
 
 /*
  * Polygon definition. A polygon is defined by a list of
  * references to its vertices (counterclockwize order).
  */
 typedef struct polygon_t {
-    int         nvertices;
-    Vertex    **vertex;
-    bool        backface;   /* polygon is backfacing (used at rendering) */
-    struct polygon_t *next;
+  int nvertices;
+  Vertex **vertex;
+  bool backface; /* polygon is backfacing (used at rendering) */
+  struct polygon_t *next;
 } Polygon;
-
 
 /*
  * Optional header for a surface descriptor associated with a shader. This
@@ -265,44 +233,42 @@ typedef struct polygon_t {
  * descriptor.
  */
 typedef struct {
-    int         ref_count;       /* # of references surface description */
-    void      (*free_func)(void *); /* called with the header when no more refs */
-    void       *client_data;     /* arbitrary data for free_func to use  */
+  int ref_count;             /* # of references surface description */
+  void (*free_func)(void *); /* called with the header when no more refs */
+  void *client_data;         /* arbitrary data for free_func to use  */
 } Surf_desc_hdr;
 
 /*
  * Macro to allocate any structure with the above header.
  */
-#define SIPP_SURF_HDR_ALLOC(type) ((Surf_desc_hdr *) \
-                                   smalloc(sizeof(Surf_desc_hdr) \
-                                           + sizeof(type)))
+#define SIPP_SURF_HDR_ALLOC(type)                                              \
+  ((Surf_desc_hdr *)smalloc(sizeof(Surf_desc_hdr) + sizeof(type)))
 /*
  * Macro to extract a pointer of any type to the data after
  * a surface description header.
  */
-#define SIPP_SURFP_HDR(type, hdr) ((type *)(((char *)hdr) \
-                                            + sizeof(Surf_desc_hdr)))
+#define SIPP_SURFP_HDR(type, hdr)                                              \
+  ((type *)(((char *)hdr) + sizeof(Surf_desc_hdr)))
 
 /*
- * Surface definition. Each surface consists of a vertex tree, 
+ * Surface definition. Each surface consists of a vertex tree,
  * a polygon list, possibly a surface description header, a pointer to a
  *  surface description and a pointer to a shader function.
  */
 typedef struct surface_t {
-    Vertex           *vertices;          /* list of vertices */
-    Polygon          *polygons;          /* polygon list */
-    Surf_desc_hdr    *surf_desc_hdr;     /* header for surface if not NULL */
-    void             *surface;           /* surface description */
-    Shader           *shader;            /* shader function */
+  Vertex *vertices;             /* list of vertices */
+  Polygon *polygons;            /* polygon list */
+  Surf_desc_hdr *surf_desc_hdr; /* header for surface if not NULL */
+  void *surface;                /* surface description */
+  Shader *shader;               /* shader function */
 /*    Vector            max, min;          / * Bounding box (Future use) */
 #ifdef FFD
-    Surf_desc_hdr    *ffd_desc_hdr;      /* header for ffd_data if not NULL */
-    void             *ffd_data;
-    FFD_func         *ffd_func;
-#endif 
-    int               ref_count;         /* # of references to this surface */
+  Surf_desc_hdr *ffd_desc_hdr; /* header for ffd_data if not NULL */
+  void *ffd_data;
+  FFD_func *ffd_func;
+#endif
+  int ref_count; /* # of references to this surface */
 } Surface;
-
 
 /*
  * Object definition. Object consists of one or more
@@ -311,452 +277,255 @@ typedef struct surface_t {
  * and all its subobjects.
  */
 typedef struct object_t {
-    Surface         **surfaces;       /* Table of surfaces */
-    int               num_surfaces;   /* Number of surfaces */
-    int               surfaces_size;  /* Size of surfaces table */
-    struct object_t **sub_objs;       /* Table of subobjects */
-    int               num_sub_objs;   /* Number of subobjects */
-    int               sub_objs_size;  /* Size of subobjects table */
-    Transf_mat        transf;         /* Transformation matrix */
-    int               ref_count;      /* # of references to this object */
+  Surface **surfaces;         /* Table of surfaces */
+  int num_surfaces;           /* Number of surfaces */
+  int surfaces_size;          /* Size of surfaces table */
+  struct object_t **sub_objs; /* Table of subobjects */
+  int num_sub_objs;           /* Number of subobjects */
+  int sub_objs_size;          /* Size of subobjects table */
+  Transf_mat transf;          /* Transformation matrix */
+  int ref_count;              /* # of references to this object */
 } Object;
-
 
 /*
  * Information needed in a lightsource to generate
  * shadows.
  */
 typedef struct {
-    Transf_mat  matrix;
-    double      fov_factor;
-    double      bias;
-    bool        active;
-    float      *d_map;
+  Transf_mat matrix;
+  double fov_factor;
+  double bias;
+  bool active;
+  float *d_map;
 } Shadow_info;
-
 
 /*
  * Public part of lightsource definition.
  * Used for both normal lightsources and spotlights.
  */
 typedef struct lightsource_t {
-    Color                 color;      /* Color of the lightsource */
-    bool                  active;     /* Is the light on? */
-    int                   type;       /* Type of lightsource */
-    void                 *info;       /* Type dependent info */
-    Shadow_info           shadow;     /* Shadow information */
-    struct lightsource_t *next;       /* next lightsource in the list */
+  Color color;                /* Color of the lightsource */
+  bool active;                /* Is the light on? */
+  int type;                   /* Type of lightsource */
+  void *info;                 /* Type dependent info */
+  Shadow_info shadow;         /* Shadow information */
+  struct lightsource_t *next; /* next lightsource in the list */
 } Lightsource;
 
-
-extern char  * SIPP_VERSION;
-
+extern char *SIPP_VERSION;
 
 /*
  * The world that is rendered. Defined in objects.c
  */
-extern Object  *sipp_world;
-
+extern Object *sipp_world;
 
 /*
  * The internal (default) camera.
  */
-extern Camera  *sipp_camera;
-
+extern Camera *sipp_camera;
 
 /*
  * This defines all public functions implemented in sipp.
  */
 
 /* Global initialization and configuration functions. */
-EXTERN void
-sipp_init(void);
+EXTERN void sipp_init(void);
 
-EXTERN void
-sipp_show_backfaces(bool flag_);
+EXTERN void sipp_show_backfaces(bool flag_);
 
-EXTERN void
-sipp_render_direction(bool direction);
+EXTERN void sipp_render_direction(bool direction);
 
-EXTERN void
-sipp_background(double red,
-                             double grn,
-                             double blu);
+EXTERN void sipp_background(double red, double grn, double blu);
 
-EXTERN void
-sipp_set_update_callback(Update_func *func,
-                                      void        *client_data,
-                                      int          period);
+EXTERN void sipp_set_update_callback(Update_func *func, void *client_data,
+                                     int period);
 
-EXTERN void
-sipp_render_threads(int n);
+EXTERN void sipp_render_threads(int n);
 
-EXTERN void
-sipp_shading_per_pixel(bool flag);
+EXTERN void sipp_shading_per_pixel(bool flag);
 
-EXTERN void
-sipp_shadows(bool flag,
-                          int  size);
+EXTERN void sipp_shadows(bool flag, int size);
 
-EXTERN bool
-sipp_user_refcount(bool flag);
+EXTERN bool sipp_user_refcount(bool flag);
 
-EXTERN bool
-sipp_surface_desc_headers(bool flag);
+EXTERN bool sipp_surface_desc_headers(bool flag);
 
 #ifdef FFD
-EXTERN bool
-sipp_ffd_desc_headers(bool flag);
-#endif 
+EXTERN bool sipp_ffd_desc_headers(bool flag);
+#endif
 
 /* Functions for handling surfaces and objects. */
 
-EXTERN void
-vertex_push(double  x,
-                         double  y,
-                         double  z);
+EXTERN void vertex_push(double x, double y, double z);
 
-EXTERN void
-vertex_tx_push(double  x,
-                            double  y,
-                            double  z,
-                            double  u,
-                            double  v,
-                            double  w);
+EXTERN void vertex_tx_push(double x, double y, double z, double u, double v,
+                           double w);
 
-EXTERN void
-vertex_n_push(double  x,
-                           double  y,
-                           double  z,
-                           double nx,
-                           double ny,
-                           double nz);
+EXTERN void vertex_n_push(double x, double y, double z, double nx, double ny,
+                          double nz);
 
-EXTERN void
-vertex_tx_n_push(double   x,
-                              double   y,
-                              double   z,
-                              double   u,
-                              double   v,
-                              double   w,
-                              double  nx,
-                              double  ny,
-                              double  nz);
+EXTERN void vertex_tx_n_push(double x, double y, double z, double u, double v,
+                             double w, double nx, double ny, double nz);
 
-EXTERN void
-polygon_push(void);
+EXTERN void polygon_push(void);
 
-EXTERN Surface
-*surface_create (void   *surf_desc,
-                             Shader *shader);
+EXTERN Surface *surface_create(void *surf_desc, Shader *shader);
 
-EXTERN void
-surface_unref(Surface *surface);
+EXTERN void surface_unref(Surface *surface);
 
-EXTERN void
-surface_desc_unref(Surf_desc_hdr *surf_desc_hdr);
+EXTERN void surface_desc_unref(Surf_desc_hdr *surf_desc_hdr);
 
-EXTERN Surface *
-surface_basic_create(double   ambient,
-                                  double   red,
-                                  double   grn,
-                                  double   blu,
-                                  double   specular,
-                                  double   c3,
-                                  double   opred,
-                                  double   opgrn,
-                                  double   opblu);
+EXTERN Surface *surface_basic_create(double ambient, double red, double grn,
+                                     double blu, double specular, double c3,
+                                     double opred, double opgrn, double opblu);
 
-EXTERN void
-surface_set_shader(Surface *surface,
-                                void    *surf_desc,
-                                Shader  *shader);
+EXTERN void surface_set_shader(Surface *surface, void *surf_desc,
+                               Shader *shader);
 
 #ifdef FFD
-EXTERN void
-surface_set_ffd(Surface  *surface,
-                             FFD_func *ffd_func,
-                             void     *ffd_data);
-#endif 
+EXTERN void surface_set_ffd(Surface *surface, FFD_func *ffd_func,
+                            void *ffd_data);
+#endif
 
-EXTERN void
-surface_basic_shader(Surface   *surface,
-                                  double     ambient,
-                                  double     red,
-                                  double     grn,
-                                  double     blu,
-                                  double     specular,
-                                  double     c3,
-                                  double     opred,
-                                  double     opgrn,
-                                  double     opblu);
+EXTERN void surface_basic_shader(Surface *surface, double ambient, double red,
+                                 double grn, double blu, double specular,
+                                 double c3, double opred, double opgrn,
+                                 double opblu);
 
-EXTERN Object *
-object_create(void);
+EXTERN Object *object_create(void);
 
-EXTERN Object *
-object_instance(Object *object);
+EXTERN Object *object_instance(Object *object);
 
-EXTERN Object *
-object_dup(Object *object);
+EXTERN Object *object_dup(Object *object);
 
-EXTERN Object *
-object_deep_dup(Object *object);
+EXTERN Object *object_deep_dup(Object *object);
 
-EXTERN void
-object_unref(Object *object);
+EXTERN void object_unref(Object *object);
 
-EXTERN void
-object_add_surface(Object  *object,
-                                Surface *surface);
+EXTERN void object_add_surface(Object *object, Surface *surface);
 
-EXTERN bool
-object_sub_surface(Object   *object,
-                                Surface  *surface);
+EXTERN bool object_sub_surface(Object *object, Surface *surface);
 
-EXTERN void
-object_add_subobj(Object *object,
-                               Object *subobj);
+EXTERN void object_add_subobj(Object *object, Object *subobj);
 
-EXTERN bool
-object_sub_subobj(Object *object,
-                               Object *subobj);
+EXTERN bool object_sub_subobj(Object *object, Object *subobj);
 
 /* Functions for handling transforming objects. */
 
-EXTERN void
-object_set_transf(Object     *obj,
-                               Transf_mat *matrix);
+EXTERN void object_set_transf(Object *obj, Transf_mat *matrix);
 
-EXTERN Transf_mat *
-object_get_transf(Object     *obj,
-                               Transf_mat *matrix);
+EXTERN Transf_mat *object_get_transf(Object *obj, Transf_mat *matrix);
 
-EXTERN void
-object_clear_transf(Object *obj);
+EXTERN void object_clear_transf(Object *obj);
 
-EXTERN void
-object_transform(Object     *obj,
-                              Transf_mat *matrix);
+EXTERN void object_transform(Object *obj, Transf_mat *matrix);
 
-EXTERN void
-object_rot_x(Object *obj,
-                          double  ang);
+EXTERN void object_rot_x(Object *obj, double ang);
 
-EXTERN void
-object_rot_y(Object *obj,
-                          double  ang);
+EXTERN void object_rot_y(Object *obj, double ang);
 
-EXTERN void
-object_rot_z(Object *obj,
-                          double  ang);
+EXTERN void object_rot_z(Object *obj, double ang);
 
-EXTERN void
-object_rot(Object *obj,
-                        Vector *point,
-                        Vector *vec,
-                        double  ang);
+EXTERN void object_rot(Object *obj, Vector *point, Vector *vec, double ang);
 
-EXTERN void
-object_scale(Object *obj,
-                          double  xscale, 
-                          double  yscale,
-                          double  zscale);
+EXTERN void object_scale(Object *obj, double xscale, double yscale,
+                         double zscale);
 
-EXTERN void
-object_move(Object *obj,
-                         double  dx,
-                         double  dy,
-                         double  dz);
+EXTERN void object_move(Object *obj, double dx, double dy, double dz);
 
 /* Functions for handling lightsources and spotlights. */
 
-EXTERN Lightsource *
-lightsource_create(double  x,
-                                double  y,
-                                double  z,
-                                double  red,
-                                double  grn,
-                                double  blu,
-                                int     type);
+EXTERN Lightsource *lightsource_create(double x, double y, double z, double red,
+                                       double grn, double blu, int type);
 
-EXTERN Lightsource *
-spotlight_create(double  x,
-                              double  y,
-                              double  z,
-                              double  to_x,
-                              double  to_y,
-                              double  to_z,
-                              double  fov,
-                              double  red,
-                              double  grn,
-                              double  blu,
-                              int     type,
-                              bool    shadows);
+EXTERN Lightsource *spotlight_create(double x, double y, double z, double to_x,
+                                     double to_y, double to_z, double fov,
+                                     double red, double grn, double blu,
+                                     int type, bool shadows);
 
-EXTERN void
-light_destruct(Lightsource   *light);
+EXTERN void light_destruct(Lightsource *light);
 
-EXTERN void
-lightsource_put(Lightsource *lp,
-                             double       x,
-                             double       y, 
-                             double       z);
+EXTERN void lightsource_put(Lightsource *lp, double x, double y, double z);
 
-EXTERN void
-spotlight_pos(Lightsource *lp,
-                           double       x,
-                           double       y,
-                           double       z);
+EXTERN void spotlight_pos(Lightsource *lp, double x, double y, double z);
 
-EXTERN void
-spotlight_at(Lightsource *lp,
-                          double       x,
-                          double       y,
-                          double       z);
+EXTERN void spotlight_at(Lightsource *lp, double x, double y, double z);
 
-EXTERN void
-spotlight_opening(Lightsource *lp,
-                               double       fov);
+EXTERN void spotlight_opening(Lightsource *lp, double fov);
 
-EXTERN void
-spotlight_shadows(Lightsource *lp,
-                               bool         flag);
+EXTERN void spotlight_shadows(Lightsource *lp, bool flag);
 
-EXTERN void
-light_color(Lightsource *lp,
-                         double       red, 
-                         double       grn,
-                         double       blu);
+EXTERN void light_color(Lightsource *lp, double red, double grn, double blu);
 
-EXTERN void
-light_active(Lightsource *lp,
-                          bool         flag);
+EXTERN void light_active(Lightsource *lp, bool flag);
 
-EXTERN double
-light_eval(Lightsource *lp,
-                        Vector      *pos,
-                        Vector      *vec);
+EXTERN double light_eval(Lightsource *lp, Vector *pos, Vector *vec);
 
 /* Functions for handling the viewpoint and virtual cameras. */
 
-EXTERN Camera *
-camera_create(void);
+EXTERN Camera *camera_create(void);
 
-EXTERN void
-camera_destruct(Camera *cp);
+EXTERN void camera_destruct(Camera *cp);
 
-EXTERN void
-camera_position(Camera *cp,
-                             double  x,
-                             double  y,
-                             double  z);
+EXTERN void camera_position(Camera *cp, double x, double y, double z);
 
-EXTERN void
-camera_look_at(Camera *cp,
-                            double  x,
-                            double  y,
-                            double  z);
+EXTERN void camera_look_at(Camera *cp, double x, double y, double z);
 
-EXTERN void
-camera_up(Camera *cp,
-                       double  x,
-                       double  y,
-                       double   z);
+EXTERN void camera_up(Camera *cp, double x, double y, double z);
 
-EXTERN void
-camera_focal(Camera *cp,
-                          double  focal);
+EXTERN void camera_focal(Camera *cp, double focal);
 
-EXTERN void
-camera_params(Camera *cp,
-                           double  x0,
-                           double  y0,
-                           double  z0,
-                           double  x,
-                           double  y,
-                           double  z,
-                           double  ux,
-                           double  uy,
-                           double  uz,
-                           double  ratio);
+EXTERN void camera_params(Camera *cp, double x0, double y0, double z0, double x,
+                          double y, double z, double ux, double uy, double uz,
+                          double ratio);
 
-EXTERN void
-camera_use(Camera *cp);
+EXTERN void camera_use(Camera *cp);
 
 /* Functions to render an image. */
 
-EXTERN void
-render_image_file(int   xres, 
-                               int   yres,
-                               FILE *im_file,
-                               int   render_mode,
-                               int   oversampling);
+EXTERN void render_image_file(int xres, int yres, FILE *im_file,
+                              int render_mode, int oversampling);
 
-EXTERN void
-render_image_func(int      xres, 
-                               int      yres,
-                               Pixel_func *pixel_func,
-                               void    *data,
-                               int      render_mode,
-                               int      oversampling);
+EXTERN void render_image_func(int xres, int yres, Pixel_func *pixel_func,
+                              void *data, int render_mode, int oversampling);
 
-EXTERN void
-render_field_file(int   xres,
-                               int   yres,
-                               FILE *im_file,
-                               int   render_mode,
-                               int   oversampling,
-                               int   field);
+EXTERN void render_field_file(int xres, int yres, FILE *im_file,
+                              int render_mode, int oversampling, int field);
 
-EXTERN void
-render_field_func(int      xres, 
-                               int      yres,
-                               Pixel_func *pixel_func,
-                               void    *data,
-                               int      render_mode,
-                               int      oversampling,
-                               int      field);
+EXTERN void render_field_func(int xres, int yres, Pixel_func *pixel_func,
+                              void *data, int render_mode, int oversampling,
+                              int field);
 
-EXTERN void
-sipp_render_terminate(void);
+EXTERN void sipp_render_terminate(void);
 
-EXTERN void
-shadowmaps_create(int size);
+EXTERN void shadowmaps_create(int size);
 
-EXTERN void
-shadowmaps_destruct(void);
+EXTERN void shadowmaps_destruct(void);
 
 /* The basic shader. */
-EXTERN void
-basic_shader(Vector      *pos,
-                          Vector      *normal,
-                          Vector      *texture,
-                          Vector      *view_vec,
-                          Lightsource *lights,
-                          void        *sd,        /* Surf_desc * */
-                          Color       *color,
-                          Color       *opacity);
+EXTERN void basic_shader(Vector *pos, Vector *normal, Vector *texture,
+                         Vector *view_vec, Lightsource *lights,
+                         void *sd, /* Surf_desc * */
+                         Color *color, Color *opacity);
 
 /*
  * The following functions & macros are provided for backward compatibility.
  * We plan to remove them from future releases though,
  * so we don't encourage use of them.
  */
-EXTERN void
-object_delete(Object *o);
+EXTERN void object_delete(Object *o);
 
-#define object_install(obj)    object_add_subobj(sipp_world, obj);
-#define object_uninstall(obj)  object_sub_subobj(sipp_world, obj);
-#define view_from(x, y, z)     camera_position(sipp_camera, x, y, z)
-#define view_at(x, y, z)       camera_look_at(sipp_camera, x, y, z)
-#define view_up(x, y, z)       camera_up(sipp_camera, x, y, z)
-#define view_focal(fr)         camera_focal(sipp_camera, fr)
-#define viewpoint(x, y, z, x2, y2, z2, ux, uy, uz, fr)\
-    camera_params(sipp_camera, x, y, z, x2, y2, z2, ux, uy, uz, fr)
-#define lightsource_push(x, y, z, i) \
-    lightsource_create(x, y, z, i, i, i, LIGHT_DIRECTION)
-#define render_image_pixmap(w, h, p, f, m, o) \
-    render_image_func(w, h, f, p, m, o)
+#define object_install(obj) object_add_subobj(sipp_world, obj);
+#define object_uninstall(obj) object_sub_subobj(sipp_world, obj);
+#define view_from(x, y, z) camera_position(sipp_camera, x, y, z)
+#define view_at(x, y, z) camera_look_at(sipp_camera, x, y, z)
+#define view_up(x, y, z) camera_up(sipp_camera, x, y, z)
+#define view_focal(fr) camera_focal(sipp_camera, fr)
+#define viewpoint(x, y, z, x2, y2, z2, ux, uy, uz, fr)                         \
+  camera_params(sipp_camera, x, y, z, x2, y2, z2, ux, uy, uz, fr)
+#define lightsource_push(x, y, z, i)                                           \
+  lightsource_create(x, y, z, i, i, i, LIGHT_DIRECTION)
+#define render_image_pixmap(w, h, p, f, m, o)                                  \
+  render_image_func(w, h, f, p, m, o)
 
 #endif /* _SIPP_H */

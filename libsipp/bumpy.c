@@ -24,34 +24,32 @@
 #include <stdio.h>
 
 #include <sipp.h>
+
 #include <geometric.h>
 #include <noise.h>
 #include <shaders.h>
 
+void bumpy_shader(Vector *pos, Vector *normal, Vector *texture,
+                  Vector *view_vec, Lightsource *lights, void *bd_,
+                  Color *color, Color *opacity) {
+  Bumpy_desc *bd = (Bumpy_desc *)bd_;
+  Vector tmp;
+  Vector norm;
+  double no;
 
+  noise_init();
 
+  VecCopy(norm, *normal);
+  vecnorm(&norm);
+  VecScalMul(tmp, bd->scale, *texture);
 
-void
-bumpy_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *bd_, Color *color, Color *opacity)
-{
-    Bumpy_desc   *bd = (Bumpy_desc *)bd_;
-    Vector     tmp;
-    Vector     norm;
-    double     no;
+  if ((bd->bumpflag && bd->holeflag) ||
+      ((no = noise(&tmp)) < 0.0 && bd->bumpflag) ||
+      (no > 0.0 && bd->holeflag)) {
+    tmp = Dnoise(&tmp);
+    VecAdd(norm, norm, tmp);
+  }
 
-    noise_init();
-
-    VecCopy(norm, *normal);
-    vecnorm(&norm);
-    VecScalMul(tmp, bd->scale, *texture);
-
-    if ((bd->bumpflag && bd->holeflag)
-          || ((no = noise(&tmp)) < 0.0 && bd->bumpflag)
-          || (no > 0.0 && bd->holeflag)) {
-        tmp = Dnoise(&tmp);
-        VecAdd(norm, norm, tmp);
-    }
-
-    bd->shader(pos, &norm, texture, view_vec, lights, bd->surface, 
-               color, opacity);
+  bd->shader(pos, &norm, texture, view_vec, lights, bd->surface, color,
+             opacity);
 }

@@ -42,167 +42,152 @@
 #include <string.h>
 
 #include <sipp.h>
-#include <smalloc.h>
+
 #include <bezier.h>
+#include <smalloc.h>
 
-extern Tokenval tokenval;                /* Defined in bezier.c */
+extern Tokenval tokenval; /* Defined in bezier.c */
 
-static char   *text;                     /* Whole description file */
-static size_t  text_len;
-static size_t  pos;                      /* Next character to scan */
+static char *text; /* Whole description file */
+static size_t text_len;
+static size_t pos; /* Next character to scan */
 
 static const struct {
-    const char *word;
-    int         token;
+  const char *word;
+  int token;
 } keywords[] = {
-    { "bezier_patches:", PATCHES     },
-    { "bezier_curves:",  CURVES      },
-    { "vertices:",       NVERTICES   },
-    { "patches:",        NPATCHES    },
-    { "curves:",         NCURVES     },
-    { "vertex_list:",    VERTEX_LIST },
-    { "patch_list:",     PATCH_LIST  },
-    { "curve_list:",     CURVE_LIST  },
+    {"bezier_patches:", PATCHES}, {"bezier_curves:", CURVES},
+    {"vertices:", NVERTICES},     {"patches:", NPATCHES},
+    {"curves:", NCURVES},         {"vertex_list:", VERTEX_LIST},
+    {"patch_list:", PATCH_LIST},  {"curve_list:", CURVE_LIST},
 };
 
-#define NKEYWORDS  (sizeof(keywords) / sizeof(keywords[0]))
+#define NKEYWORDS (sizeof(keywords) / sizeof(keywords[0]))
 
-
-static int
-is_digit(size_t i)
-{
-    return i < text_len && text[i] >= '0' && text[i] <= '9';
+static int is_digit(size_t i) {
+  return i < text_len && text[i] >= '0' && text[i] <= '9';
 }
-
 
 /*
  * Read all of FILE into memory in preparation for scanning.
  */
-void
-bezier_lex_open(FILE *file)
-{
-    size_t cap, n;
+void bezier_lex_open(FILE *file) {
+  size_t cap, n;
 
-    cap = 4096;
-    text = (char *)smalloc((int)cap);
-    text_len = 0;
-    while ((n = fread(text + text_len, 1, cap - text_len, file)) > 0) {
-        text_len += n;
-        if (text_len == cap) {
-            cap *= 2;
-            text = (char *)srealloc(text, (int)cap);
-        }
+  cap = 4096;
+  text = (char *)smalloc((int)cap);
+  text_len = 0;
+  while ((n = fread(text + text_len, 1, cap - text_len, file)) > 0) {
+    text_len += n;
+    if (text_len == cap) {
+      cap *= 2;
+      text = (char *)srealloc(text, (int)cap);
     }
-    pos = 0;
+  }
+  pos = 0;
 }
-
 
 /*
  * Release the memory held by bezier_lex_open().
  */
-void
-bezier_lex_close(void)
-{
-    if (text != NULL) {
-        sfree(text);
-    }
-    text = NULL;
-    text_len = 0;
-    pos = 0;
+void bezier_lex_close(void) {
+  if (text != NULL) {
+    sfree(text);
+  }
+  text = NULL;
+  text_len = 0;
+  pos = 0;
 }
-
 
 /*
  * Return the next token; 0 at end of input.  For INTEGER and FLOAT the
  * value is left in tokenval.
  */
-int
-bezier_lex(void)
-{
-    char    numbuf[128];
-    size_t  i, start, end, len;
-    char    c;
+int bezier_lex(void) {
+  char numbuf[128];
+  size_t i, start, end, len;
+  char c;
 
-    for (;;) {
-        if (pos >= text_len) {
-            return 0;
-        }
-        c = text[pos];
-
-        /* [ \n\t] */
-        if (c == ' ' || c == '\n' || c == '\t') {
-            pos++;
-            continue;
-        }
-
-        /* #.*$  (the newline itself is left to the whitespace rule) */
-        if (c == '#') {
-            while (pos < text_len && text[pos] != '\n') {
-                pos++;
-            }
-            continue;
-        }
-
-        /* Keywords */
-        for (i = 0; i < NKEYWORDS; i++) {
-            len = strlen(keywords[i].word);
-            if (pos + len <= text_len
-                && memcmp(text + pos, keywords[i].word, len) == 0) {
-                pos += len;
-                return keywords[i].token;
-            }
-        }
-
-        /* -?[0-9]+ optionally followed by "."[0-9]*([eE][-+]?[0-9]+)? */
-        start = pos;
-        i = pos;
-        if (text[i] == '-') {
-            i++;
-        }
-        if (is_digit(i)) {
-            int is_float = 0;
-
-            while (is_digit(i)) {
-                i++;
-            }
-            end = i;
-            if (i < text_len && text[i] == '.') {
-                is_float = 1;
-                i++;
-                while (is_digit(i)) {
-                    i++;
-                }
-                end = i;
-                if (i < text_len && (text[i] == 'e' || text[i] == 'E')) {
-                    i++;
-                    if (i < text_len && (text[i] == '+' || text[i] == '-')) {
-                        i++;
-                    }
-                    if (is_digit(i)) {
-                        while (is_digit(i)) {
-                            i++;
-                        }
-                        end = i;             /* Exponent is complete */
-                    }
-                }
-            }
-            len = end - start;
-            if (len >= sizeof(numbuf)) {
-                len = sizeof(numbuf) - 1;
-            }
-            memcpy(numbuf, text + start, len);
-            numbuf[len] = '\0';
-            pos = end;
-            if (is_float) {
-                tokenval.floatval = atof(numbuf);
-                return FLOAT;
-            }
-            tokenval.intval = atoi(numbuf);
-            return INTEGER;
-        }
-
-        /* Anything else: return the character itself (an error). */
-        pos++;
-        return (unsigned char)c;
+  for (;;) {
+    if (pos >= text_len) {
+      return 0;
     }
+    c = text[pos];
+
+    /* [ \n\t] */
+    if (c == ' ' || c == '\n' || c == '\t') {
+      pos++;
+      continue;
+    }
+
+    /* #.*$  (the newline itself is left to the whitespace rule) */
+    if (c == '#') {
+      while (pos < text_len && text[pos] != '\n') {
+        pos++;
+      }
+      continue;
+    }
+
+    /* Keywords */
+    for (i = 0; i < NKEYWORDS; i++) {
+      len = strlen(keywords[i].word);
+      if (pos + len <= text_len &&
+          memcmp(text + pos, keywords[i].word, len) == 0) {
+        pos += len;
+        return keywords[i].token;
+      }
+    }
+
+    /* -?[0-9]+ optionally followed by "."[0-9]*([eE][-+]?[0-9]+)? */
+    start = pos;
+    i = pos;
+    if (text[i] == '-') {
+      i++;
+    }
+    if (is_digit(i)) {
+      int is_float = 0;
+
+      while (is_digit(i)) {
+        i++;
+      }
+      end = i;
+      if (i < text_len && text[i] == '.') {
+        is_float = 1;
+        i++;
+        while (is_digit(i)) {
+          i++;
+        }
+        end = i;
+        if (i < text_len && (text[i] == 'e' || text[i] == 'E')) {
+          i++;
+          if (i < text_len && (text[i] == '+' || text[i] == '-')) {
+            i++;
+          }
+          if (is_digit(i)) {
+            while (is_digit(i)) {
+              i++;
+            }
+            end = i; /* Exponent is complete */
+          }
+        }
+      }
+      len = end - start;
+      if (len >= sizeof(numbuf)) {
+        len = sizeof(numbuf) - 1;
+      }
+      memcpy(numbuf, text + start, len);
+      numbuf[len] = '\0';
+      pos = end;
+      if (is_float) {
+        tokenval.floatval = atof(numbuf);
+        return FLOAT;
+      }
+      tokenval.intval = atoi(numbuf);
+      return INTEGER;
+    }
+
+    /* Anything else: return the character itself (an error). */
+    pos++;
+    return (unsigned char)c;
+  }
 }

@@ -25,53 +25,49 @@
 
 #include <geometric.h>
 
-
-#define PATCHES     1
-#define CURVES      2
-#define NVERTICES   3
-#define NPATCHES    4
-#define NCURVES     5
+#define PATCHES 1
+#define CURVES 2
+#define NVERTICES 3
+#define NPATCHES 4
+#define NCURVES 5
 #define VERTEX_LIST 6
-#define PATCH_LIST  7
-#define CURVE_LIST  8
-#define INTEGER     9
-#define FLOAT       10
-
+#define PATCH_LIST 7
+#define CURVE_LIST 8
+#define INTEGER 9
+#define FLOAT 10
 
 typedef union {
-    int    intval;
-    double floatval;
+  int intval;
+  double floatval;
 } Tokenval;
 
 /*
  * The tokenizer (bezier_lex.c).
  */
 EXTERN void bezier_lex_open(FILE *file);
-EXTERN int  bezier_lex(void);
+EXTERN int bezier_lex(void);
 EXTERN void bezier_lex_close(void);
 
-
 typedef struct {
-    int cp[4];
+  int cp[4];
 } Bez_Curve;
 
 typedef struct {
-    int cp[4][4];
+  int cp[4][4];
 } Bez_Patch;
 
 typedef struct {
-    int         type;
-    int         nvertex;
-    Vector *vertex;
-    union {
-        int ncurves;
-        int npatches;
-    } n;
-    union {
-        Bez_Curve *ccp;
-        Bez_Patch *pcp;
-    } cp;
+  int type;
+  int nvertex;
+  Vector *vertex;
+  union {
+    int ncurves;
+    int npatches;
+  } n;
+  union {
+    Bez_Curve *ccp;
+    Bez_Patch *pcp;
+  } cp;
 } Bez_Object;
-
 
 #endif /* BEZIER_H */

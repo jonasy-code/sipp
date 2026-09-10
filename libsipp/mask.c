@@ -17,22 +17,21 @@
  **/
 
 /**
- ** mask.c - Mask shader: use a masking function to select between 
+ ** mask.c - Mask shader: use a masking function to select between
  **          two shaders.
  **/
 
-#include <sipp.h>
 #include <shaders.h>
+#include <sipp.h>
 
-void
-mask_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *md_, Color *color, Color *opacity)
-{
-    Mask_desc    *md = (Mask_desc *)md_;
-    if (md->masker(md->mask_data, texture)) {
-        md->t_shader(pos, normal, texture, view_vec, lights, md->t_surface, 
-                     color, opacity); 
-    } else {
-        md->f_shader(pos, normal, texture, view_vec, lights, md->f_surface, 
-                     color, opacity); 
-    }
+void mask_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
+                 Lightsource *lights, void *md_, Color *color, Color *opacity) {
+  Mask_desc *md = (Mask_desc *)md_;
+  if (md->masker(md->mask_data, texture)) {
+    md->t_shader(pos, normal, texture, view_vec, lights, md->t_surface, color,
+                 opacity);
+  } else {
+    md->f_shader(pos, normal, texture, view_vec, lights, md->f_surface, color,
+                 opacity);
+  }
 }

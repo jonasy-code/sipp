@@ -23,29 +23,27 @@
 #ifndef RENDERING_H
 #define RENDERING_H
 
-#include <sipp.h>
 #include <geometric.h>
+#include <sipp.h>
 
 /*
  * Modes for storing the image.
  */
-#define PBM_FILE   0
-#define PPM_FILE   1
-#define FUNCTION   2
-
+#define PBM_FILE 0
+#define PPM_FILE 1
+#define FUNCTION 2
 
 /*
  * Temporary storage of transformed vertices.
  */
 typedef struct view_coord_3d {
-    Vector                view;     /* Transformed view coordinates */
-    double                hden;      /* Homogenous denominator */
-    Vector                world;     /* Transformed world voordinates */
-    Vector                normal;    /* average normal */
-    Vector                texture;   /* texture parameters */
-    struct view_coord_3d *next;      /* next vertex in the list */
+  Vector view;                /* Transformed view coordinates */
+  double hden;                /* Homogenous denominator */
+  Vector world;               /* Transformed world voordinates */
+  Vector normal;              /* average normal */
+  Vector texture;             /* texture parameters */
+  struct view_coord_3d *next; /* next vertex in the list */
 } View_coord;
-
 
 /*
  * Entry in the edge list used in rendering.
@@ -57,23 +55,23 @@ typedef struct view_coord_3d {
  * can share them.
  */
 typedef struct edge_t {
-    int              ystart;      /* First scanline */
-    int              ystop;       /* Last scanline */
-    double           xstart;      /* x at ystart ... */
-    double           xstep;       /* ... and its change per scanline */
-    double           hden;        /* 1/w at ystart, for perspective correct */
-    double           hdenstep;    /* interpolation */
-    Vector           world;       /* World position at ystart */
-    Vector           worldstep;
-    Vector           normal;      /* Normal at ystart */
-    Vector           normalstep;
-    Vector           texture;     /* Texture coordinates at ystart */
-    Vector           texturestep;
-    int              polygon;     /* Id of the polygon the edge belongs to */
-    Surface         *surface;     /* Surface that the edge belongs to */
-    int              id;          /* Index of the edge, unique in a pass */
-    struct edge_t   *next;        /* Next edge in the same y_bucket */
-    struct edge_t   *sibling;     /* Ring of all edges of the same polygon */
+  int ystart;      /* First scanline */
+  int ystop;       /* Last scanline */
+  double xstart;   /* x at ystart ... */
+  double xstep;    /* ... and its change per scanline */
+  double hden;     /* 1/w at ystart, for perspective correct */
+  double hdenstep; /* interpolation */
+  Vector world;    /* World position at ystart */
+  Vector worldstep;
+  Vector normal; /* Normal at ystart */
+  Vector normalstep;
+  Vector texture; /* Texture coordinates at ystart */
+  Vector texturestep;
+  int polygon;            /* Id of the polygon the edge belongs to */
+  Surface *surface;       /* Surface that the edge belongs to */
+  int id;                 /* Index of the edge, unique in a pass */
+  struct edge_t *next;    /* Next edge in the same y_bucket */
+  struct edge_t *sibling; /* Ring of all edges of the same polygon */
 } Edge;
 
 /*
@@ -82,33 +80,32 @@ typedef struct edge_t {
  * and the links of the active list.
  */
 typedef struct active_edge_t {
-    Edge                  *edge;
-    int                    y;       /* Current scanline */
-    double                 x;       /* Current x */
-    double                 hden;    /* Current 1/w */
-    Vector                 world;
-    Vector                 normal;
-    Vector                 texture;
-    struct active_edge_t  *next;    /* Next/previous edge in the active */
-    struct active_edge_t  *prev;    /* list */
-    struct active_edge_t  *retire_next; /* Retirement bucket chain, used
-                                           while a band replays */
+  Edge *edge;
+  int y;       /* Current scanline */
+  double x;    /* Current x */
+  double hden; /* Current 1/w */
+  Vector world;
+  Vector normal;
+  Vector texture;
+  struct active_edge_t *next;        /* Next/previous edge in the active */
+  struct active_edge_t *prev;        /* list */
+  struct active_edge_t *retire_next; /* Retirement bucket chain, used
+                                        while a band replays */
 } Active_edge;
-
 
 #ifdef SAVE_MEMORY
 
 typedef struct surf_box_t {
-    Surface           *surface;
-    Transf_mat         mat;
-    struct surf_box_t *next
+  Surface *surface;
+  Transf_mat mat;
+  struct surf_box_t *next
 } Surface_box;
 
 typedef struct {
-    Edge        *edge;
-    Surface_box *surf_box;
+  Edge *edge;
+  Surface_box *surf_box;
 } Bucket_entry;
 
-#endif 
+#endif
 
 #endif /* RENDERING_H */

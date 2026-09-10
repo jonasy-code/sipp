@@ -25,38 +25,31 @@
 
 #include <sipp.h>
 
-
 /*
  * Information needed in a directional lightsource.
  */
 typedef struct {
-    Vector dir;
+  Vector dir;
 } Dir_light_info;
 
 /*
  * Information needed in a spotlight.
  */
 typedef struct {
-    Vector      pos;
-    Vector      point;
-    Vector      dir;
-    double      cos_fov;
+  Vector pos;
+  Vector point;
+  Vector dir;
+  double cos_fov;
 } Spot_light_info;
 
+extern Lightsource *lightsrc_stack; /* Lightsource list. */
 
-extern Lightsource  *lightsrc_stack;  /* Lightsource list. */
+#define lightsource_init() lightsrc_stack = NULL
 
+extern void depthmaps_create(void);
 
-#define lightsource_init()    lightsrc_stack = NULL
+extern void depthmaps_destruct(void);
 
-extern void
-depthmaps_create(void);
-
-extern void
-depthmaps_destruct(void);
-
-
-extern void
-shadow_jitter_reset(void);
+extern void shadow_jitter_reset(void);
 
 #endif /* LIGHTSOURCE_H */

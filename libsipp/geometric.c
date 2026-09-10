@@ -20,25 +20,22 @@
  ** geometric.c - Matrixes, transformations and coordinates.
  **/
 
-#include <stdio.h>
 #include <math.h>
+#include <stdio.h>
 
 #include <sipp.h>
-#include <smalloc.h>
-#include <geometric.h>
 
+#include <geometric.h>
+#include <smalloc.h>
 
 /* =================================================================== */
- /* */
+/* */
 
-
-Transf_mat   ident_matrix = {{        /* Unit tranfs. matrix */
-    { 1.0, 0.0, 0.0 },
-    { 0.0, 1.0, 0.0 },
-    { 0.0, 0.0, 1.0 },
-    { 0.0, 0.0, 0.0 }
-}};
-
+Transf_mat ident_matrix = {{/* Unit tranfs. matrix */
+                            {1.0, 0.0, 0.0},
+                            {0.0, 1.0, 0.0},
+                            {0.0, 0.0, 1.0},
+                            {0.0, 0.0, 0.0}}};
 
 /* =================================================================== */
 
@@ -48,52 +45,39 @@ Transf_mat   ident_matrix = {{        /* Unit tranfs. matrix */
  * to the new matrix.
  */
 
-Transf_mat *
-transf_mat_create(Transf_mat * initmat)
-{
-    Transf_mat  * mat;
+Transf_mat *transf_mat_create(Transf_mat *initmat) {
+  Transf_mat *mat;
 
-    mat = (Transf_mat *) smalloc(sizeof(Transf_mat));
-    if (initmat != NULL)
-	MatCopy(mat, initmat);
-    else
-	MatCopy(mat, &ident_matrix);
+  mat = (Transf_mat *)smalloc(sizeof(Transf_mat));
+  if (initmat != NULL)
+    MatCopy(mat, initmat);
+  else
+    MatCopy(mat, &ident_matrix);
 
-    return mat;
+  return mat;
 }
 
-
-void
-transf_mat_destruct(Transf_mat * mat)
-{
-    sfree(mat);
-}
-
+void transf_mat_destruct(Transf_mat *mat) { sfree(mat); }
 
 /* =================================================================== */
 /*          Transformation routines (see also geometric.h)             */
 
-
 /*
  * Normalize a vector.
  */
-void
-vecnorm(Vector *vec)
-{
-    double   len;
+void vecnorm(Vector *vec) {
+  double len;
 
-    len =  VecLen(*vec);
-    if (len == 0.0) {  /* As Mark says, we could really use error handling...*/
-        MakeVector(*vec, 0.0, 0.0, 0.0);
-    } else {
-        VecScalMul(*vec, 1.0 / len, *vec);
-    }
+  len = VecLen(*vec);
+  if (len == 0.0) { /* As Mark says, we could really use error handling...*/
+    MakeVector(*vec, 0.0, 0.0, 0.0);
+  } else {
+    VecScalMul(*vec, 1.0 / len, *vec);
+  }
 }
 
-
-
 /*
- * Set MAT to the transformation matrix that represents the 
+ * Set MAT to the transformation matrix that represents the
  * concatenation between the previous transformation in MAT
  * and a translation along the vector described by DX, DY and DZ.
  *
@@ -103,18 +87,14 @@ vecnorm(Vector *vec)
  * [j  k  l  1]   [Tx Ty Tz  1]     [j+Tx  k+Ty  l+Tz  1]
  */
 
-void
-mat_translate(Transf_mat * mat, double dx, double dy, double dz)
-{
-    mat->mat[3][0] += dx;
-    mat->mat[3][1] += dy;
-    mat->mat[3][2] += dz;
+void mat_translate(Transf_mat *mat, double dx, double dy, double dz) {
+  mat->mat[3][0] += dx;
+  mat->mat[3][1] += dy;
+  mat->mat[3][2] += dz;
 }
 
-
-
 /*
- * Set MAT to the transformation matrix that represents the 
+ * Set MAT to the transformation matrix that represents the
  * concatenation between the previous transformation in MAT
  * and a rotation with the angle ANG around the X axis.
  *
@@ -124,34 +104,29 @@ mat_translate(Transf_mat * mat, double dx, double dy, double dz)
  * [j  k  l  1]   [0   0   0  1]     [j  k*Ca-l*Sa  k*Se+l*Ca  1]
  */
 
-void
-mat_rotate_x(Transf_mat * mat, double ang)
-{
-    double   cosang;
-    double   sinang;
-    double   tmp;
-    int      i;
-    
-    cosang = cos(ang);
-    sinang = sin(ang);
-    if (fabs(cosang) < 1.0e-15) {
-        cosang = 0.0;
-    }
-    if (fabs(sinang) < 1.0e-15) {
-        sinang = 0.0;
-    }
-    for (i = 0; i < 4; ++i) {
-	tmp = mat->mat[i][1];
-	mat->mat[i][1] = mat->mat[i][1] * cosang
-	               - mat->mat[i][2] * sinang;
-	mat->mat[i][2] = tmp * sinang + mat->mat[i][2] * cosang;
-    }
+void mat_rotate_x(Transf_mat *mat, double ang) {
+  double cosang;
+  double sinang;
+  double tmp;
+  int i;
+
+  cosang = cos(ang);
+  sinang = sin(ang);
+  if (fabs(cosang) < 1.0e-15) {
+    cosang = 0.0;
+  }
+  if (fabs(sinang) < 1.0e-15) {
+    sinang = 0.0;
+  }
+  for (i = 0; i < 4; ++i) {
+    tmp = mat->mat[i][1];
+    mat->mat[i][1] = mat->mat[i][1] * cosang - mat->mat[i][2] * sinang;
+    mat->mat[i][2] = tmp * sinang + mat->mat[i][2] * cosang;
+  }
 }
 
-
-
 /*
- * Set MAT to the transformation matrix that represents the 
+ * Set MAT to the transformation matrix that represents the
  * concatenation between the previous transformation in MAT
  * and a rotation with the angle ANG around the Y axis.
  *
@@ -161,34 +136,29 @@ mat_rotate_x(Transf_mat * mat, double ang)
  * [j  k  l  1]   [ 0   0   0  1]     [j*Ca+l*Sa  k  -j*Sa+l*Ca  1]
  */
 
-void
-mat_rotate_y(Transf_mat * mat, double ang)
-{
-    double   cosang;
-    double   sinang;
-    double   tmp;
-    int      i;
-    
-    cosang = cos(ang);
-    sinang = sin(ang);
-    if (fabs(cosang) < 1.0e-15) {
-        cosang = 0.0;
-    }
-    if (fabs(sinang) < 1.0e-15) {
-        sinang = 0.0;
-    }
-    for (i = 0; i < 4; ++i) {
-	tmp = mat->mat[i][0];
-	mat->mat[i][0] = mat->mat[i][0] * cosang
-	               + mat->mat[i][2] * sinang;
-	mat->mat[i][2] = -tmp * sinang + mat->mat[i][2] * cosang;
-    }
+void mat_rotate_y(Transf_mat *mat, double ang) {
+  double cosang;
+  double sinang;
+  double tmp;
+  int i;
+
+  cosang = cos(ang);
+  sinang = sin(ang);
+  if (fabs(cosang) < 1.0e-15) {
+    cosang = 0.0;
+  }
+  if (fabs(sinang) < 1.0e-15) {
+    sinang = 0.0;
+  }
+  for (i = 0; i < 4; ++i) {
+    tmp = mat->mat[i][0];
+    mat->mat[i][0] = mat->mat[i][0] * cosang + mat->mat[i][2] * sinang;
+    mat->mat[i][2] = -tmp * sinang + mat->mat[i][2] * cosang;
+  }
 }
 
-
-
 /*
- * Set MAT to the transformation matrix that represents the 
+ * Set MAT to the transformation matrix that represents the
  * concatenation between the previous transformation in MAT
  * and a rotation with the angle ANG around the Z axis.
  *
@@ -198,31 +168,26 @@ mat_rotate_y(Transf_mat * mat, double ang)
  * [j  k  l  1]   [  0   0   0  1]     [j*Ca-k*Sa  j*Sa+k*Ca  l  0]
  */
 
-void
-mat_rotate_z(Transf_mat * mat, double ang)
-{
-    double   cosang;
-    double   sinang;
-    double   tmp;
-    int      i;
-    
-    cosang = cos(ang);
-    sinang = sin(ang);
-    if (fabs(cosang) < 1.0e-15) {
-        cosang = 0.0;
-    }
-    if (fabs(sinang) < 1.0e-15) {
-        sinang = 0.0;
-    }
-    for (i = 0; i < 4; ++i) {
-	tmp = mat->mat[i][0];
-	mat->mat[i][0] = mat->mat[i][0] * cosang
-	               - mat->mat[i][1] * sinang;
-	mat->mat[i][1] = tmp * sinang + mat->mat[i][1] * cosang;
-    }
+void mat_rotate_z(Transf_mat *mat, double ang) {
+  double cosang;
+  double sinang;
+  double tmp;
+  int i;
+
+  cosang = cos(ang);
+  sinang = sin(ang);
+  if (fabs(cosang) < 1.0e-15) {
+    cosang = 0.0;
+  }
+  if (fabs(sinang) < 1.0e-15) {
+    sinang = 0.0;
+  }
+  for (i = 0; i < 4; ++i) {
+    tmp = mat->mat[i][0];
+    mat->mat[i][0] = mat->mat[i][0] * cosang - mat->mat[i][1] * sinang;
+    mat->mat[i][1] = tmp * sinang + mat->mat[i][1] * cosang;
+  }
 }
-
-
 
 /*
  * Set MAT to the transformation matrix that represents the
@@ -231,27 +196,23 @@ mat_rotate_z(Transf_mat * mat, double ang)
  * by the point POINT and the vector VECTOR.
  */
 
-void
-mat_rotate(Transf_mat * mat, Vector * point, Vector * vector, double ang)
-{
-    double   ang2;
-    double   ang3;
+void mat_rotate(Transf_mat *mat, Vector *point, Vector *vector, double ang) {
+  double ang2;
+  double ang3;
 
-    ang2 = atan2(vector->y, vector->x);
-    ang3 = atan2(hypot(vector->x, vector->y), vector->z);
-    mat_translate(mat, -point->x, -point->y, -point->z);
-    mat_rotate_z(mat, -ang2);
-    mat_rotate_y(mat, -ang3);
-    mat_rotate_z(mat, ang);
-    mat_rotate_y(mat, ang3);
-    mat_rotate_z(mat, ang2);
-    mat_translate(mat, point->x, point->y, point->z);
+  ang2 = atan2(vector->y, vector->x);
+  ang3 = atan2(hypot(vector->x, vector->y), vector->z);
+  mat_translate(mat, -point->x, -point->y, -point->z);
+  mat_rotate_z(mat, -ang2);
+  mat_rotate_y(mat, -ang3);
+  mat_rotate_z(mat, ang);
+  mat_rotate_y(mat, ang3);
+  mat_rotate_z(mat, ang2);
+  mat_translate(mat, point->x, point->y, point->z);
 }
 
-
-
 /*
- * Set MAT to the transformation matrix that represents the 
+ * Set MAT to the transformation matrix that represents the
  * concatenation between the previous transformation in MAT
  * and a scaling with the scaling factors XSCALE, YSCALE and ZSCALE
  *
@@ -261,19 +222,15 @@ mat_rotate(Transf_mat * mat, Vector * point, Vector * vector, double ang)
  * [j  k  l  1]   [ 0  0  0  1]     [j*Sx  k*Sy  l*Sz  1]
  */
 
-void
-mat_scale(Transf_mat * mat, double xscale, double yscale, double zscale)
-{
-    int   i;
+void mat_scale(Transf_mat *mat, double xscale, double yscale, double zscale) {
+  int i;
 
-    for (i = 0; i < 4; ++i) {
-	mat->mat[i][0] *= xscale;
-	mat->mat[i][1] *= yscale;
-	mat->mat[i][2] *= zscale;
-    }
+  for (i = 0; i < 4; ++i) {
+    mat->mat[i][0] *= xscale;
+    mat->mat[i][1] *= yscale;
+    mat->mat[i][2] *= zscale;
+  }
 }
-
-
 
 /*
  * Set MAT to the transformation matrix that represents the
@@ -282,43 +239,38 @@ mat_scale(Transf_mat * mat, double xscale, double yscale, double zscale)
  * and the normal vector NORM.
  */
 
-void
-mat_mirror_plane(Transf_mat * mat, Vector * point, Vector * norm)
-{
-    Transf_mat   tmp;
-    double   factor;
+void mat_mirror_plane(Transf_mat *mat, Vector *point, Vector *norm) {
+  Transf_mat tmp;
+  double factor;
 
-    /* The first thing we do is to make a transformation matrix */
-    /* for mirroring through a plane with the same normal vector */
-    /* as our, but through the origin instead. */
-    factor = 2.0 / (norm->x * norm->x + norm->y * norm->y 
-		    + norm->z * norm->z);
-    
-    /* The diagonal elements. */
-    tmp.mat[0][0] = 1 - factor * norm->x * norm->x;
-    tmp.mat[1][1] = 1 - factor * norm->y * norm->y;
-    tmp.mat[2][2] = 1 - factor * norm->z * norm->z;
-    
-    /* The rest of the matrix */
-    tmp.mat[1][0] = tmp.mat[0][1] = -factor * norm->x * norm->y;
-    tmp.mat[2][0] = tmp.mat[0][2] = -factor * norm->x * norm->z;
-    tmp.mat[2][1] = tmp.mat[1][2] = -factor * norm->y * norm->z;
-    tmp.mat[3][0] = tmp.mat[3][1] = tmp.mat[3][2] = 0.0;
+  /* The first thing we do is to make a transformation matrix */
+  /* for mirroring through a plane with the same normal vector */
+  /* as our, but through the origin instead. */
+  factor = 2.0 / (norm->x * norm->x + norm->y * norm->y + norm->z * norm->z);
 
-    /* Do the actual transformation. This is done in 3 steps: */
-    /* 1) Translate the plane so that it goes through the origin. */
-    /* 2) Do the actual mirroring. */
-    /* 3) Translate it all back to the starting position. */
-    mat_translate(mat, -point->x, -point->y, -point->z);
-    mat_mul(mat, mat, &tmp);
-    mat_translate(mat, point->x, point->y, point->z);
+  /* The diagonal elements. */
+  tmp.mat[0][0] = 1 - factor * norm->x * norm->x;
+  tmp.mat[1][1] = 1 - factor * norm->y * norm->y;
+  tmp.mat[2][2] = 1 - factor * norm->z * norm->z;
+
+  /* The rest of the matrix */
+  tmp.mat[1][0] = tmp.mat[0][1] = -factor * norm->x * norm->y;
+  tmp.mat[2][0] = tmp.mat[0][2] = -factor * norm->x * norm->z;
+  tmp.mat[2][1] = tmp.mat[1][2] = -factor * norm->y * norm->z;
+  tmp.mat[3][0] = tmp.mat[3][1] = tmp.mat[3][2] = 0.0;
+
+  /* Do the actual transformation. This is done in 3 steps: */
+  /* 1) Translate the plane so that it goes through the origin. */
+  /* 2) Do the actual mirroring. */
+  /* 3) Translate it all back to the starting position. */
+  mat_translate(mat, -point->x, -point->y, -point->z);
+  mat_mul(mat, mat, &tmp);
+  mat_translate(mat, point->x, point->y, point->z);
 }
-
-
 
 /*
  * Multiply the Matrix A with the Matrix B, and store the result
- * into the Matrix RES. It is possible for RES to point to the 
+ * into the Matrix RES. It is possible for RES to point to the
  * same Matrix as either A or B since the result is stored into
  * a temporary during computation.
  *
@@ -328,32 +280,25 @@ mat_mirror_plane(Transf_mat * mat, Vector * point, Vector * norm)
  * [j k l 1]  [J K L 1]     [jA+kD+lG+J  jB+kE+lH+K  jC+kF+lI+L  1]
  */
 
-void
-mat_mul(Transf_mat * res, Transf_mat * a, Transf_mat * b)
-{
-    Transf_mat   tmp;
-    int      i;
+void mat_mul(Transf_mat *res, Transf_mat *a, Transf_mat *b) {
+  Transf_mat tmp;
+  int i;
 
-    for (i = 0; i < 4; ++i) {
-	tmp.mat[i][0] = a->mat[i][0] * b->mat[0][0]
-	              + a->mat[i][1] * b->mat[1][0] 
-	              + a->mat[i][2] * b->mat[2][0];
-	tmp.mat[i][1] = a->mat[i][0] * b->mat[0][1]
-  	              + a->mat[i][1] * b->mat[1][1] 
-	              + a->mat[i][2] * b->mat[2][1];
-	tmp.mat[i][2] = a->mat[i][0] * b->mat[0][2]
- 	              + a->mat[i][1] * b->mat[1][2]
-	              + a->mat[i][2] * b->mat[2][2];
-    }
+  for (i = 0; i < 4; ++i) {
+    tmp.mat[i][0] = a->mat[i][0] * b->mat[0][0] + a->mat[i][1] * b->mat[1][0] +
+                    a->mat[i][2] * b->mat[2][0];
+    tmp.mat[i][1] = a->mat[i][0] * b->mat[0][1] + a->mat[i][1] * b->mat[1][1] +
+                    a->mat[i][2] * b->mat[2][1];
+    tmp.mat[i][2] = a->mat[i][0] * b->mat[0][2] + a->mat[i][1] * b->mat[1][2] +
+                    a->mat[i][2] * b->mat[2][2];
+  }
 
-    tmp.mat[3][0] += b->mat[3][0];
-    tmp.mat[3][1] += b->mat[3][1];
-    tmp.mat[3][2] += b->mat[3][2];
+  tmp.mat[3][0] += b->mat[3][0];
+  tmp.mat[3][1] += b->mat[3][1];
+  tmp.mat[3][2] += b->mat[3][2];
 
-    MatCopy(res, &tmp);
+  MatCopy(res, &tmp);
 }
-
-
 
 /*
  * Transform the Point3d VEC with the transformation matrix MAT, and
@@ -365,13 +310,11 @@ mat_mul(Transf_mat * res, Transf_mat * a, Transf_mat * b)
  *               [j  k  l  1]
  */
 
-void
-point_transform(Vector * res, Vector * vec, Transf_mat * mat)
-{
-    res->x = mat->mat[0][0] * vec->x + mat->mat[1][0] * vec->y 
-        + mat->mat[2][0] * vec->z + mat->mat[3][0];
-    res->y = mat->mat[0][1] * vec->x + mat->mat[1][1] * vec->y 
-        + mat->mat[2][1] * vec->z + mat->mat[3][1];
-    res->z = mat->mat[0][2] * vec->x + mat->mat[1][2] * vec->y 
-        + mat->mat[2][2] * vec->z + mat->mat[3][2];
+void point_transform(Vector *res, Vector *vec, Transf_mat *mat) {
+  res->x = mat->mat[0][0] * vec->x + mat->mat[1][0] * vec->y +
+           mat->mat[2][0] * vec->z + mat->mat[3][0];
+  res->y = mat->mat[0][1] * vec->x + mat->mat[1][1] * vec->y +
+           mat->mat[2][1] * vec->z + mat->mat[3][1];
+  res->z = mat->mat[0][2] * vec->x + mat->mat[1][2] * vec->y +
+           mat->mat[2][2] * vec->z + mat->mat[3][2];
 }

@@ -25,117 +25,111 @@
 #include <stdio.h>
 
 #include <sipp.h>
+
 #include <noise.h>
 #include <shaders.h>
 
+#define BOARDSIZE 45.0 /* "Log" or "board" size in texture coordinates */
 
-#define BOARDSIZE  45.0    /* "Log" or "board" size in texture coordinates */
+void wood_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
+                 Lightsource *lights, void *wd_, Color *color, Color *opacity) {
+  Wood_desc *wd = (Wood_desc *)wd_;
+  Vector tpos;
+  Vector tmp;
+  Surf_desc surface;
+  double chaos;
+  double val;
+  double val2;
+  double skewoff;
+  double t;
+  double rad;
 
+  noise_init();
 
-void
-wood_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *wd_, Color *color, Color *opacity)
-{
-    Wood_desc    *wd = (Wood_desc *)wd_;
-    Vector    tpos;
-    Vector    tmp;
-    Surf_desc surface;
-    double chaos;
-    double val;
-    double val2;
-    double skewoff;
-    double t;
-    double rad;
+  /*
+   * Scale the texture coordinates.
+   */
+  VecScalMul(tpos, wd->scale, *texture);
 
-    noise_init();
+  /*
+   * Get some noise values. Drag out the texture in
+   * the direction of the "stem" of the fictive tree, the
+   * pattern should vary less along that direction.
+   */
+  tpos.x *= 0.08;
+  chaos = turbulence(&tpos, 5) * 0.5;
+  val2 = noise(&tpos);
 
-    /*
-     * Scale the texture coordinates.
-     */
-    VecScalMul(tpos, wd->scale, *texture);
+  /*
+   * Make the pattern "semi"-periodic so it looks as if
+   * a new board is used at regular intervals
+   */
+  if (tpos.z > 0.0) {
+    tmp.z = floor((tpos.z + BOARDSIZE * 0.5) / BOARDSIZE);
+    tpos.z -= tmp.z * BOARDSIZE;
+  } else {
+    tmp.z = floor((BOARDSIZE * 0.5 - tpos.z) / BOARDSIZE);
+    tpos.z += tmp.z * BOARDSIZE;
+  }
+  if (tpos.y > 0.0) {
+    tmp.y = floor((tpos.y + BOARDSIZE * 0.5) / BOARDSIZE);
+    tpos.y -= tmp.y * BOARDSIZE;
+  } else {
+    tmp.y = floor((BOARDSIZE * 0.5 - tpos.y) / BOARDSIZE);
+    tpos.y += tmp.y * BOARDSIZE;
+  }
 
-    /*
-     * Get some noise values. Drag out the texture in
-     * the direction of the "stem" of the fictive tree, the
-     * pattern should vary less along that direction.
-     */
-    tpos.x *= 0.08;
-    chaos = turbulence(&tpos, 5) * 0.5;
-    val2 = noise(&tpos);
+  /*
+   * Skew the "stem" a bit so the "cylinders" isn't perfectly
+   * symmertic about the x-axis. Skew the different "logs"
+   * slightly differently.
+   */
+  tmp.x = 0.0;
+  skewoff = noise(&tmp);
+  tpos.z -= (0.05 + 0.03 * skewoff) * (texture->x * wd->scale - 2.0);
+  tpos.y -= (0.05 + 0.03 * skewoff) * (texture->x * wd->scale - 2.0);
 
-    /*
-     * Make the pattern "semi"-periodic so it looks as if
-     * a new board is used at regular intervals
-     */
-    if (tpos.z > 0.0) {
-        tmp.z = floor((tpos.z + BOARDSIZE * 0.5) / BOARDSIZE);
-        tpos.z -= tmp.z * BOARDSIZE;
-    } else {
-        tmp.z = floor((BOARDSIZE * 0.5 - tpos.z) / BOARDSIZE);
-        tpos.z += tmp.z * BOARDSIZE;
-    }
-    if (tpos.y > 0.0) {
-        tmp.y = floor((tpos.y + BOARDSIZE * 0.5) / BOARDSIZE);
-        tpos.y -= tmp.y * BOARDSIZE;
-    } else {
-        tmp.y = floor((BOARDSIZE * 0.5 - tpos.y) / BOARDSIZE);
-        tpos.y += tmp.y * BOARDSIZE;
-    }
+  /*
+   * Calculate the distance from the middle of the "stem" and
+   * distort this distance with the turbulence value.
+   */
+  rad = sqrt(tpos.y * tpos.y + tpos.z * tpos.z);
+  rad += chaos;
+  val = rad - floor(rad);
 
-    /* 
-     * Skew the "stem" a bit so the "cylinders" isn't perfectly
-     * symmertic about the x-axis. Skew the different "logs"
-     * slightly differently.
-     */
-    tmp.x = 0.0;
-    skewoff = noise(&tmp);
-    tpos.z -= (0.05 + 0.03 * skewoff) * (texture->x * wd->scale - 2.0);
-    tpos.y -= (0.05 + 0.03 * skewoff) * (texture->x * wd->scale - 2.0);
+  /*
+   * Choose a color dependent on the distorted distance.
+   */
+  if (val < 0.1) {
+    surface.color.red = wd->base.red;
+    surface.color.grn = wd->base.grn;
+    surface.color.blu = wd->base.blu;
+  } else if (val < 0.9) {
+    t = 1.0 - pow(val / 0.8 - 0.1, 6.0);
+    surface.color.red = wd->ring.red + t * (wd->base.red - wd->ring.red);
+    surface.color.grn = wd->ring.grn + t * (wd->base.grn - wd->ring.grn);
+    surface.color.blu = wd->ring.blu + t * (wd->base.blu - wd->ring.blu);
+  } else {
+    surface.color.red = wd->ring.red;
+    surface.color.grn = wd->ring.grn;
+    surface.color.blu = wd->ring.blu;
+  }
 
-    /*
-     * Calculate the distance from the middle of the "stem" and
-     * distort this distance with the turbulence value.
-     */
-    rad = sqrt(tpos.y * tpos.y + tpos.z * tpos.z);
-    rad += chaos;
-    val = rad - floor(rad);
+  /*
+   * Add a little extra "noise" so the pattern doesn't get
+   * too regular, this could be small cracks, or other anomalies
+   * in the wood.
+   */
+  if (val2 < 0.01 && val2 > 0.0) {
+    surface.color.red = wd->ring.red;
+    surface.color.grn = wd->ring.grn;
+    surface.color.blu = wd->ring.blu;
+  }
 
-    /*
-     * Choose a color dependent on the distorted distance.
-     */
-    if (val < 0.1) {
-        surface.color.red = wd->base.red;
-        surface.color.grn = wd->base.grn;
-        surface.color.blu = wd->base.blu;
-    } else if (val < 0.9) {
-        t = 1.0 - pow(val / 0.8 - 0.1, 6.0);
-        surface.color.red = wd->ring.red + t * (wd->base.red 
-                                                  - wd->ring.red);
-        surface.color.grn = wd->ring.grn + t * (wd->base.grn 
-                                                  - wd->ring.grn);
-        surface.color.blu = wd->ring.blu + t * (wd->base.blu 
-                                                  - wd->ring.blu);
-    } else {
-        surface.color.red = wd->ring.red;
-        surface.color.grn = wd->ring.grn;
-        surface.color.blu = wd->ring.blu;
-    }
-
-    /*
-     * Add a little extra "noise" so the pattern doesn't get
-     * too regular, this could be small cracks, or other anomalies
-     * in the wood.
-     */
-    if (val2 < 0.01 && val2 > 0.0) {
-        surface.color.red = wd->ring.red;
-        surface.color.grn = wd->ring.grn;
-        surface.color.blu = wd->ring.blu;
-    }
-
-
-    surface.ambient  = wd->ambient;
-    surface.specular = wd->specular;
-    surface.c3       = wd->c3;
-    surface.opacity  = wd->opacity;
-    basic_shader(pos, normal, texture, view_vec, lights, &surface, 
-                 color, opacity);
+  surface.ambient = wd->ambient;
+  surface.specular = wd->specular;
+  surface.c3 = wd->c3;
+  surface.opacity = wd->opacity;
+  basic_shader(pos, normal, texture, view_vec, lights, &surface, color,
+               opacity);
 }

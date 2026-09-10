@@ -1,80 +1,73 @@
-#include <stdio.h>
 #include <math.h>
+#include <stdio.h>
 
 #include <sipp.h>
+
 #include <geometric.h>
 #include <noise.h>
 #include <shaders.h>
 
-
 /* A reasonably nice brown color */
-static Color  land = {0.28125, 0.1875, 0.09375};
+static Color land = {0.28125, 0.1875, 0.09375};
 
 /* Oceans are usually blue */
-static Color  sea = {0.0, 0.0, 1.0};
+static Color sea = {0.0, 0.0, 1.0};
 
 /* And Clouds are white */
-static Color  cloud = {1.0, 1.0, 1.0};
+static Color cloud = {1.0, 1.0, 1.0};
 
-
-/* 
- * This was designed to work with a unit sphere.  
- * 
+/*
+ * This was designed to work with a unit sphere.
+ *
  * Thanks to Jon Buller       jonb@vector.dallas.tx.us
  */
-static double
-turb(int size, double scale_factor, Vector loc)
-{
-    double cur_scale, result;
-    int cur;
+static double turb(int size, double scale_factor, Vector loc) {
+  double cur_scale, result;
+  int cur;
 
-    result = noise(&loc);
-    cur_scale = 1.0;
+  result = noise(&loc);
+  cur_scale = 1.0;
 
-    cur = 1;
-    while (cur < size) {
-        cur <<= 1;
-        cur_scale = cur_scale * scale_factor;
-        loc.x *= 2.0;
-        loc.y *= 2.0;
-        loc.z *= 2.0;
-        result += noise(&loc) * cur_scale;
-    }
-    return result;
+  cur = 1;
+  while (cur < size) {
+    cur <<= 1;
+    cur_scale = cur_scale * scale_factor;
+    loc.x *= 2.0;
+    loc.y *= 2.0;
+    loc.z *= 2.0;
+    result += noise(&loc) * cur_scale;
+  }
+  return result;
 }
 
+void planet_shader(Vector *pos, Vector *normal, Vector *texture,
+                   Vector *view_vec, Lightsource *lights, void *sd_,
+                   Color *color, Color *opacity) {
+  Surf_desc surf = *(Surf_desc *)sd_; /* Local copy: the shader
+                                         must not write into the
+                                         shared description */
+  Surf_desc *sd = &surf;
+  Vector tmp;
+  double amt;
 
+  noise_init();
 
+  VecCopy(tmp, *texture);
 
-void
-planet_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec, Lightsource *lights, void *sd_, Color *color, Color *opacity)
-{
-    Surf_desc     surf = *(Surf_desc *)sd_;   /* Local copy: the shader
-                                                 must not write into the
-                                                 shared description */
-    Surf_desc    *sd = &surf;
-    Vector  tmp;
-    double  amt;
+  if (turb(430, 0.7, tmp) > 0.15)
+    sd->color = land;
+  else
+    sd->color = sea;
 
-    noise_init();
+  VecScalMul(tmp, 12.0, tmp)
 
-    VecCopy(tmp, *texture);
+      amt = turb(18, 0.6, tmp);
+  if (amt > -0.25) {
+    amt += 0.25;
+    sd->color.red += amt * (cloud.red - sd->color.red);
+    sd->color.grn += amt * (cloud.grn - sd->color.grn);
+    sd->color.blu += amt * (cloud.blu - sd->color.blu);
+  }
 
-    if (turb(430, 0.7, tmp) > 0.15)
-        sd->color = land;
-    else 
-        sd->color = sea;
-
-    VecScalMul(tmp, 12.0, tmp)
-
-    amt = turb(18, 0.6, tmp);
-    if (amt > -0.25) {
-        amt += 0.25;
-        sd->color.red += amt * (cloud.red - sd->color.red);
-        sd->color.grn += amt * (cloud.grn - sd->color.grn);
-        sd->color.blu += amt * (cloud.blu - sd->color.blu);
-    }
-
-    basic_shader(pos, normal, texture, view_vec, lights, sd, 
-                 color, opacity);
+  basic_shader(pos, normal, texture, view_vec, lights, sd, color, opacity);
 }
