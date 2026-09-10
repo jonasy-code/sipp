@@ -1192,7 +1192,7 @@ without them.
 @findex @code{sipp_render_direction()}
 @smallexample
 sipp_render_direction(direction)
-        bool direction;
+        Scan_direction direction;
 @end smallexample
 Some image formats (notably Utah RLE) store images with the 
 scanlines in the order bottom to top. The default file format in SIPP
@@ -2354,7 +2354,7 @@ Lightsource *
 lightsource_create(x, y, z, red, green, blue, type)
         double x, y, z;
         double red, green, blue;
-        int    type;
+        Light_type type;
 @end smallexample
 @itemize @bullet
 @item
@@ -2392,7 +2392,7 @@ spotlight_create(x1, y1, z1, x2, y2, z2, opening, red, green, blue,
         double x2, y2, z2;
         double opening;
         double red, green, blue;
-        int    type;
+        Light_type type;
         bool   shadow;
 @end smallexample
 @itemize @bullet
@@ -2838,7 +2838,7 @@ render_image_file(width, height, file, format, mode, oversampling)
         int    width, height;
         FILE  *file;
         Image_format format;
-        int    mode;
+        Render_mode mode;
         int    oversampling;
 @end smallexample
 
@@ -2905,9 +2905,9 @@ render_field_file(width, height, file, format, mode, oversampling, field)
         int    width, height;
         FILE  *file;
         Image_format format;
-        int    mode;
+        Render_mode mode;
         int    oversampling;
-        int    field;
+        Field field;
 @end smallexample
 
 @itemize
@@ -2972,7 +2972,7 @@ render_image_func(width, height, pix_func, data, format, mode, oversampling)
         Pixel_func *pix_func;
         void  *data;
         Image_format format;
-        int    mode;
+        Render_mode mode;
         int    oversampling;
 @end smallexample
 
@@ -3078,9 +3078,9 @@ render_field_func(width, height, pix_func, data, format, mode, oversampling, fie
         Pixel_func *pix_func;
         void  *data;
         Image_format format;
-        int    mode;
+        Render_mode mode;
         int    oversampling;
-        int    field;
+        Field field;
 @end smallexample
 All parameters have the same meaning as in @code{render_image_func()}
 except the last one.
@@ -4043,7 +4043,7 @@ sipp_cube(size, surface, shader, texture)
         double   size;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4090,7 +4090,7 @@ sipp_block(xsize, ysize, zsize, surface, shader, texture)
         double   xsize, ysize, zsize;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4140,7 +4140,7 @@ sipp_prism(num_points, points, zsize, surface, shader, texture)
         double   zsize;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4195,7 +4195,7 @@ sipp_sphere(radius, resol, surface, shader, texture)
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4246,7 +4246,7 @@ sipp_ellipsoid(xradius, yradius, zradius, resol, surface, shader, texture)
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4295,7 +4295,7 @@ sipp_cylinder(radius, resol, surface, shader, texture)
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4346,7 +4346,7 @@ sipp_cone(topradius, bottomradius, resol, surface, shader, texture)
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4399,7 +4399,7 @@ sipp_torus(bigradius, smallradius, res1, res2, surface, shader, texture)
         int      res2;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4478,7 +4478,7 @@ sipp_bezier_patch(num_vertex, vertex, num_patch, vx_index, resol,
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4565,7 +4565,7 @@ sipp_bezier_rotcurve(num_vertex, vertex, num_curve, vx_index, resol,
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4697,7 +4697,7 @@ sipp_bezier_file(file, resol, surface, shader, texture)
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4762,7 +4762,7 @@ sipp_teapot(resol, surface, shader, texture)
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4809,7 +4809,7 @@ sipp_teapot_body(resol, surface, shader, texture)
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4852,7 +4852,7 @@ sipp_teapot_lid(resol, surface, shader, texture)
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4895,7 +4895,7 @@ sipp_teapot_handle(resol, surface, shader, texture)
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item
@@ -4935,7 +4935,7 @@ sipp_teapot_spout(resol, surface, shader, texture)
         int      resol;
         void    *surface;
         Shader  *shader;
-        int      texture;
+        Texture_type texture;
 @end smallexample
 @itemize
 @item

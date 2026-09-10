@@ -63,15 +63,15 @@ static Edge **y_bucket;        /* Y-bucket for edge lists. */
 static FILE *image_file;       /* File to store image in      */
                                /* when rendering into a file. */
 static Image_format image_format; /* Its format: IMAGE_PPM or IMAGE_PNG */
-static bool image_alpha;       /* The image has an alpha channel */
-static unsigned char *png_rows; /* The rows of a PNG image are    */
-static int png_nrows;           /* collected here until all of    */
-static int png_lines;           /* them are known                 */
+static bool image_alpha;          /* The image has an alpha channel */
+static unsigned char *png_rows;   /* The rows of a PNG image are    */
+static int png_nrows;             /* collected here until all of    */
+static int png_lines;             /* them are known                 */
 static int png_rowbytes;
-static Pixel_func *pixel_set;  /* User function receiving pixels   */
-                               /* when rendering with a function.  */
-static Line_func *line_set;    /* Likewise for lines in LINE mode. */
-static void *im_data;          /* Data to pixel_set()/line_set()   */
+static Pixel_func *pixel_set; /* User function receiving pixels   */
+                              /* when rendering with a function.  */
+static Line_func *line_set;   /* Likewise for lines in LINE mode. */
+static void *im_data;         /* Data to pixel_set()/line_set()   */
 
 int depthmap_size; /* Size of the depthmaps */
 
@@ -86,8 +86,7 @@ int depthmap_size; /* Size of the depthmaps */
  * vcoord_arena holds the View_coords of the polygon currently being
  * transformed and clipped, and is reset for every polygon.
  */
-#define EDGE_ARENA_BLOCK (256 * 1024)
-#define VCOORD_ARENA_BLOCK (16 * 1024)
+enum { EDGE_ARENA_BLOCK = 256 * 1024, VCOORD_ARENA_BLOCK = 16 * 1024 };
 
 static Arena edge_arena;
 static Arena vcoord_arena;
@@ -131,22 +130,28 @@ static struct tm_stack_t {
 static Transf_mat curr_mat; /* Current transformation matrix */
 
 /*
+ * The clipping planes of the view volume, see polygon_clip().
+ */
+typedef enum { XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX } Clip_plane;
+
+/*
  * Prototypes of internal functions.
  */
 static void calc_normals(Polygon *pstart, Vector eyepoint);
 
 static void create_edges(View_coord *view_vert, int polygon, Surface *surface,
-                         int render_mode);
+                         Render_mode render_mode);
 
 static View_coord *interpolate(View_coord *v1, View_coord *v2, double ratio);
 
 static void reset_normals(Vertex *vref);
 
-static View_coord *polygon_clip(View_coord *vlist, int plane, bool first_vert);
+static View_coord *polygon_clip(View_coord *vlist, Clip_plane plane,
+                                bool first_vert);
 
 static void transf_vertices(Vertex *vertex[], int nvertices, Surface *surface,
                             Transf_mat *view_mat, Transf_mat *tr_mat,
-                            double xsiz, double ysiz, int render_mode);
+                            double xsiz, double ysiz, Render_mode render_mode);
 
 #ifdef FFD
 static void do_ffd(Vertex *vertex, Surface *surface);
@@ -155,19 +160,20 @@ static void ffd_vertices(Surface *surface);
 #endif
 
 static void scan_and_render(int xres, int yres, Storage_mode storage_mode,
-                            int render_mode, int oversampl, int field);
+                            Render_mode render_mode, int oversampl,
+                            Field field);
 
 static void matrix_push(void);
 
 static void matrix_pop(void);
 
 static void traverse_object_tree(Object *object, Transf_mat *view_mat, int xres,
-                                 int yres, int render_mode);
+                                 int yres, Render_mode render_mode);
 
 static void scan_depthmap(float *d_map);
 
 static void render_main(int xres, int yres, Storage_mode storage_mode,
-                        int render_mode, int oversampling, int field);
+                        Render_mode render_mode, int oversampling, Field field);
 
 /*
  * Line_func adapter for the internal bitmap used when a LINE image is
@@ -267,7 +273,7 @@ static void calc_normals(Polygon *pstart, Vector eyepoint) {
  * edges and sort them into the y-bucket.
  */
 static void create_edges(View_coord *view_vert, int polygon, Surface *surface,
-                         int render_mode) {
+                         Render_mode render_mode) {
   Edge *edge;
   Edge *first_edge, *last_edge;
   View_coord *view_ref, *last;
@@ -449,14 +455,9 @@ static void reset_normals(Vertex *vref) {
  * Clip a polygon using the Sutherland-Hodgeman algorithm for
  * reentrant clipping;
  */
-#define XMIN 0
-#define XMAX 1
-#define YMIN 2
-#define YMAX 3
-#define ZMIN 4
-#define ZMAX 5
 
-static View_coord *polygon_clip(View_coord *vlist, int plane, bool first_vert) {
+static View_coord *polygon_clip(View_coord *vlist, Clip_plane plane,
+                                bool first_vert) {
   static View_coord *first;
   static View_coord *curr;
   View_coord *out1;
@@ -661,7 +662,7 @@ static View_coord *polygon_clip(View_coord *vlist, int plane, bool first_vert) {
  */
 static void transf_vertices(Vertex *vertex[], int nvertices, Surface *surface,
                             Transf_mat *view_mat, Transf_mat *tr_mat,
-                            double xsiz, double ysiz, int render_mode) {
+                            double xsiz, double ysiz, Render_mode render_mode) {
   static int polygon = 0; /* incremented for each call to provide */
                           /* unique polygon id numbers */
   View_coord *nhead;
@@ -826,6 +827,9 @@ static void transf_vertices(Vertex *vertex[], int nvertices, Surface *surface,
       MakeVector(view_ref->normal, color.red, color.grn, color.blu);
       MakeVector(view_ref->texture, opacity.red, opacity.grn, opacity.blu);
       break;
+
+    case LINE: /* Handled by create_edges() */
+      break;
     }
 
     /*
@@ -897,14 +901,14 @@ static void ffd_vertices(Surface *surface) {
  * lets bands be rendered independently, and in parallel.
  */
 
-#define ACTIVE_ARENA_BLOCK (64 * 1024)
+enum { ACTIVE_ARENA_BLOCK = 64 * 1024 };
 
 typedef struct {
   /* The pass */
   int xres, yres; /* Sub-sampled resolution */
   int oversampl;
-  int render_mode;
-  int field;
+  Render_mode render_mode;
+  Field field;
   bool step_vectors; /* Step normal/texture/world too */
   bool call_update;  /* Run the update callback here */
 
@@ -988,7 +992,7 @@ static double edge_x_at(Edge *edge, int y) {
 }
 
 static void ctx_init(Render_ctx *ctx, int xres, int yres, int oversampl,
-                     int render_mode, int field, int nedges) {
+                     Render_mode render_mode, Field field, int nedges) {
   int i;
 
   ctx->xres = xres;
@@ -1676,8 +1680,7 @@ static void store_line(unsigned char *buf, int npixels, int line,
     if (image_format == IMAGE_PNG) {
       /* PNG is written when all rows are known, see file_end(). */
       if (png_nrows < png_lines) {
-        memcpy(png_rows + (size_t)png_nrows * png_rowbytes, buf,
-               png_rowbytes);
+        memcpy(png_rows + (size_t)png_nrows * png_rowbytes, buf, png_rowbytes);
         png_nrows++;
       }
     } else {
@@ -1703,7 +1706,7 @@ static void store_line(unsigned char *buf, int npixels, int line,
  * The number of lines an image of YRES_OUT lines has when only FIELD
  * of it is rendered.
  */
-static int field_lines(int yres_out, int field) {
+static int field_lines(int yres_out, Field field) {
   switch (field) {
   case EVEN:
     return (yres_out & 1) ? (yres_out >> 1) + 1 : yres_out >> 1;
@@ -1718,7 +1721,7 @@ static int field_lines(int yres_out, int field) {
  * Begin the image file: write the header of a PPM or PAM file, or set
  * up the row buffer of a PNG file.
  */
-static void file_begin(int xres_out, int yres_out, int field) {
+static void file_begin(int xres_out, int yres_out, Field field) {
   int nlines = field_lines(yres_out, field);
   size_t nbytes;
 
@@ -1739,6 +1742,8 @@ static void file_begin(int xres_out, int yres_out, int field) {
     break;
   case ODD:
     fprintf(image_file, "#Image field containing ODD lines\n");
+    break;
+  case BOTH:
     break;
   }
   if (image_alpha) {
@@ -1879,7 +1884,8 @@ static void run_bands(Render_job *job, Render_ctx *ctx, int nthreads,
  * several threads if asked to), and deliver the rows in scan order.
  */
 static void scan_and_render(int xres, int yres, Storage_mode storage_mode,
-                            int render_mode, int oversampl, int field) {
+                            Render_mode render_mode, int oversampl,
+                            Field field) {
   Render_job job;
   Render_ctx *ctx;
   unsigned char *image;
@@ -2046,7 +2052,7 @@ static void matrix_pop(void) {
  * Build the edge lists in y_bucket.
  */
 static void traverse_object_tree(Object *object, Transf_mat *view_mat, int xres,
-                                 int yres, int render_mode) {
+                                 int yres, Render_mode render_mode) {
   Surface *surfref;
   Polygon *polyref;
   Vector eyepoint, tmp;
@@ -2250,7 +2256,8 @@ void shadowmaps_destruct(void) { depthmaps_destruct(); }
  * Call scan_and_render to do the real work.
  */
 static void render_main(int xres, int yres, Storage_mode storage_mode,
-                        int render_mode, int oversampling, int field) {
+                        Render_mode render_mode, int oversampling,
+                        Field field) {
   Transf_mat view_mat;
 
   get_view_transf(&view_mat, sipp_current_camera, render_mode);
@@ -2331,7 +2338,7 @@ static bool set_format(const char *caller, Image_format format) {
 }
 
 void render_image_file(int xres, int yres, FILE *im_file, Image_format format,
-                       int render_mode, int oversampling) {
+                       Render_mode render_mode, int oversampling) {
   if (!set_format("render_image_file", format)) {
     return;
   }
@@ -2340,7 +2347,8 @@ void render_image_file(int xres, int yres, FILE *im_file, Image_format format,
 }
 
 void render_image_func(int xres, int yres, Pixel_func *pixel_func, void *data,
-                       Image_format format, int render_mode, int oversampling) {
+                       Image_format format, Render_mode render_mode,
+                       int oversampling) {
   if (!set_format("render_image_func", format)) {
     return;
   }
@@ -2351,7 +2359,7 @@ void render_image_func(int xres, int yres, Pixel_func *pixel_func, void *data,
 }
 
 void render_field_file(int xres, int yres, FILE *im_file, Image_format format,
-                       int render_mode, int oversampling, int field) {
+                       Render_mode render_mode, int oversampling, Field field) {
   if (render_mode == LINE) {
     fprintf(stderr, "render_field_file: Can't render line fields\n");
     return;
@@ -2364,8 +2372,8 @@ void render_field_file(int xres, int yres, FILE *im_file, Image_format format,
 }
 
 void render_field_func(int xres, int yres, Pixel_func *pixel_func, void *data,
-                       Image_format format, int render_mode, int oversampling,
-                       int field) {
+                       Image_format format, Render_mode render_mode,
+                       int oversampling, Field field) {
   if (render_mode == LINE) {
     fprintf(stderr, "render_field_func: Can't render line fields\n");
     return;
@@ -2382,7 +2390,7 @@ void render_field_func(int xres, int yres, Pixel_func *pixel_func, void *data,
  * The customary file name extension of an image rendered with FORMAT
  * in RENDER_MODE: "ppm", "pbm", "pam" or "png".
  */
-const char *sipp_image_extension(Image_format format, int render_mode) {
+const char *sipp_image_extension(Image_format format, Render_mode render_mode) {
   if ((format & ~IMAGE_ALPHA) == IMAGE_PNG) {
     return "png";
   }
@@ -2402,7 +2410,9 @@ void sipp_render_terminate(void) { abort_render = TRUE; }
 /*
  * If the argument is TRUE, render the scanlines in reverse.
  */
-void sipp_render_direction(bool direction) { reverse_scan = direction; }
+void sipp_render_direction(Scan_direction direction) {
+  reverse_scan = (direction == BOTTOM_TO_TOP);
+}
 
 /*
  * Save a function pointer to call during the rendering process.  This function

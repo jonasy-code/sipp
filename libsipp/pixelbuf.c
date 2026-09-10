@@ -195,7 +195,7 @@ static void shade_cache_insert(Pixel_buffer *pb, int slot, int polygon,
  * sub-sample; only the shader call is shared.
  */
 void pixel_collect(Pixel_buffer *pb, int pixel, Color *color, Color *opacity,
-                   int render_mode, int cache_slot) {
+                   Render_mode render_mode, int cache_slot) {
   Pixel_info *pixbuf = pb->pixbuf;
   Color *result = color;
   Color frac;
@@ -284,6 +284,9 @@ void pixel_collect(Pixel_buffer *pb, int pixel, Color *color, Color *opacity,
       surf_opacity.grn = edge->texture.y;
       surf_opacity.blu = edge->texture.z;
       break;
+
+    case LINE: /* Never gets here: lines are drawn during traversal */
+      return;
     }
 
     frac.red = surf_opacity.red;

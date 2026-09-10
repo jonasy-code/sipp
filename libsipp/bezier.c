@@ -43,7 +43,7 @@ static void patch_read(Bez_Object *obj);
 static Bez_Object *bezier_read(FILE *file);
 
 static Surface *bezier_patches(Bez_Object *obj, int res, void *surface,
-                               Shader *shader, int texture);
+                               Shader *shader, Texture_type texture);
 
 static double C(int i);
 
@@ -56,7 +56,7 @@ static void bez_patch_eval(Vector *vertex, Bez_Patch *patch, double u, double v,
                            double *x, double *y, double *z);
 
 static Surface *bezier_rot_curves(Bez_Object *obj, int res, void *surface,
-                                  Shader *shader, int texture);
+                                  Shader *shader, Texture_type texture);
 
 /*================================================================*/
 /*                                                                */
@@ -69,7 +69,7 @@ static Surface *bezier_rot_curves(Bez_Object *obj, int res, void *surface,
  * install it in the bezier structure.
  */
 static void vertex_read(Bez_Object *obj) {
-  int token;
+  Bezier_token token;
   int i, j;
 
   token = bezier_lex();
@@ -141,7 +141,7 @@ errout:
  * it in the bezier structure.
  */
 static void curve_read(Bez_Object *obj) {
-  int token;
+  Bezier_token token;
   int i, j;
 
   token = bezier_lex();
@@ -190,7 +190,7 @@ errout:
  * it in the bezier structure.
  */
 static void patch_read(Bez_Object *obj) {
-  int token;
+  Bezier_token token;
   int i, j, k;
 
   token = bezier_lex();
@@ -241,7 +241,7 @@ errout:
  * description. Build a bezier object from the data.
  */
 static Bez_Object *bezier_read(FILE *file) {
-  int token;
+  Bezier_token token;
   Bez_Object *obj;
 
   bezier_lex_open(file);
@@ -389,7 +389,7 @@ static void bez_patch_eval(Vector *vertex, Bez_Patch *patch, double v, double u,
  * tesselated into RESxRES polygons (rectangles).
  */
 static Surface *bezier_patches(Bez_Object *obj, int res, void *surface,
-                               Shader *shader, int texture) {
+                               Shader *shader, Texture_type texture) {
   double x, y, z;
   double u, v;
   double step;
@@ -444,7 +444,7 @@ static Surface *bezier_patches(Bez_Object *obj, int res, void *surface,
  * patch should cover of a rotational body.)
  */
 static Surface *bezier_rot_curves(Bez_Object *obj, int res, void *surface,
-                                  Shader *shader, int texture) {
+                                  Shader *shader, Texture_type texture) {
   double x[4], y[4], z[4];
   double u;
   double v;
@@ -507,7 +507,7 @@ static Surface *bezier_rot_curves(Bez_Object *obj, int res, void *surface,
  * polygons and return a pointer to a SIPP object.
  */
 Object *sipp_bezier_file(FILE *file, int res, void *surface, Shader *shader,
-                         int texture) {
+                         Texture_type texture) {
   Object *obj;
   Bez_Object *bez_obj;
   bool old_user_refs;
@@ -543,7 +543,7 @@ Object *sipp_bezier_file(FILE *file, int res, void *surface, Shader *shader,
  */
 Object *sipp_bezier_patches(int nvert, Vector *vertex, int npatch,
                             int *cp_index, int res, void *surface,
-                            Shader *shader, int texture) {
+                            Shader *shader, Texture_type texture) {
   Object *obj;
   Bez_Object bez_obj;
   int index;
@@ -585,7 +585,7 @@ Object *sipp_bezier_patches(int nvert, Vector *vertex, int npatch,
  */
 Object *sipp_bezier_rotcurve(int nvert, Vector *vertex, int ncurve,
                              int *cp_index, int res, void *surface,
-                             Shader *shader, int texture) {
+                             Shader *shader, Texture_type texture) {
   Object *obj;
   Bez_Object bez_obj;
   int index;

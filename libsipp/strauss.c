@@ -47,8 +47,10 @@
  * was: Kf = 1.12, Kg = 1.02
  */
 
-#define Kf 1.2   /* Factor used in approximation of fresnel reflection */
-#define Kg 1.031 /* Factor used in approximation of geometric attenuation */
+/* Factors used in the approximations of fresnel reflection and of
+   geometric attenuation. */
+static const double Kf = 1.2;
+static const double Kg = 1.031;
 
 /*
  * Function to simulate fresnel reflection.

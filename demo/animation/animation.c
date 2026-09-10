@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
   int image_size;
   FILE *image;
   int frame;
-  int mode;
+  Render_mode mode;
 
   double time_start; /* Animation time values. */
   double time_stop;

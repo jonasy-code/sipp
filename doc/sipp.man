@@ -161,7 +161,7 @@ Turn shadow casting on or off and specify size of depth maps.
 
 .IP \fIvoid\ sipp_render_direction(direction)\fR
 .br
-\fIbool\ direction;\fR
+\fIScan_direction\ direction;\fR
 .sp
 Decide if rendering of the scanlines should take place bottom-to-top or
 top-to-bottom. Allowed values on \fIdirection\fR are \fITOP_TO_BOTTOM\fR and
@@ -468,7 +468,7 @@ of the object \fIobj\fR.
 .br
 \fIdouble\ red,\ green,\ blue;\fR
 .br
-\fIint\ type;\fR
+\fILight_type\ type;\fR
 .sp
 Create a new lightsource.The type specified in \fItype\fR should be either
 \fILIGHT_DIRECTION\fR or \fILIGHT_POINT\fR.
@@ -483,7 +483,7 @@ Create a new lightsource.The type specified in \fItype\fR should be either
 .br
 \fIdouble\ red,\ green,\ blue;\fR
 .br
-\fIint\ type;\fR
+\fILight_type\ type;\fR
 .br
 \fIbool\ shadow;\fR
 .sp
@@ -631,7 +631,7 @@ Set all parameters of a camera in one call.
 .br
 \fIImage_format\ format;\fR
 .br
-\fIint\    mode;\fR
+\fIRender_mode\ mode;\fR
 .br
 \fIint\    oversampling;\fR
 .sp
@@ -651,11 +651,11 @@ In \fILINE\fR mode a PBM file, or a 1 bit PNG file, is written.
 .br
 \fIImage_format\ format;\fR
 .br
-\fIint\    mode;\fR
+\fIRender_mode\ mode;\fR
 .br
 \fIint\    oversampling;\fR
 .br
-\fIint\    field;\fR
+\fIField\ field;\fR
 .sp
 Render the current scene as a field (half frame) into a file. \fImode\fR
 should be one of \fIPHONG,\ GOURAUD\fR or \fIFLAT\fR and \fIfield\fR
@@ -672,7 +672,7 @@ should be either \fIODD\fR or \fIEVEN\fR. \fIformat\fR is as in
 .br
 \fIImage_format\ format;\fR
 .br
-\fIint\    mode;\fR
+\fIRender_mode\ mode;\fR
 .br
 \fIint\    oversampling;\fR
 .sp
@@ -696,11 +696,11 @@ this function looks at. In \fILINE\fR mode a \fILine_func\fR,
 .br
 \fIImage_format\ format;\fR
 .br
-\fIint\    mode;\fR
+\fIRender_mode\ mode;\fR
 .br
 \fIint\    oversampling;\fR
 .br
-\fIint\    field;\fR
+\fIField\ field;\fR
 .sp
 Render the current scene as a field (half frame) into any device. \fImode\fR
 should be one of \fIPHONG,\ GOURAUD\fR or \fIFLAT\fR and \fIfield\fR
@@ -711,7 +711,7 @@ should be either \fIODD\fR or \fIEVEN\fR. \fIformat\fR and
 .br
 \fIImage_format\ format;\fR
 .br
-\fIint\    mode;\fR
+\fIRender_mode\ mode;\fR
 .sp
 Return the customary file name extension of an image rendered with
 \fIformat\fR in \fImode\fR: "ppm", "pbm", "pam" or "png".

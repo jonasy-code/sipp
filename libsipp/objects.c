@@ -56,10 +56,12 @@ static bool user_refcount; /* True if users pointer to objects  */
  * Initial and increment sizes of the surface and sub-object arrays stored
  * in an object.
  */
-#define SURFACES_INIT_SIZE 32
-#define SURFACES_INCR_SIZE 12
-#define SUB_OBJS_INIT_SIZE 12
-#define SUB_OBJS_INCR_SIZE 12
+enum {
+  SURFACES_INIT_SIZE = 32,
+  SURFACES_INCR_SIZE = 12,
+  SUB_OBJS_INIT_SIZE = 12,
+  SUB_OBJS_INCR_SIZE = 12
+};
 
 /*
  * Prototypes of internal functions.
@@ -101,8 +103,8 @@ static Object *object_copy(Object *object, bool copy_surfaces,
  * rehashed when it changes; that happens only while it holds a vertex or
  * two, so it is cheap.
  */
-#define VHASH_INIT_SIZE 1024     /* Initial number of buckets */
-#define VHASH_CELL_FACTOR 1024.0 /* cell_size / dist_limit */
+enum { VHASH_INIT_SIZE = 1024 };                /* Initial number of buckets */
+static const double VHASH_CELL_FACTOR = 1024.0; /* cell_size / dist_limit */
 
 static Vertex **vhash;       /* Bucket heads */
 static unsigned vhash_size;  /* Number of buckets, a power of two */

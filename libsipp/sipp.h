@@ -84,23 +84,18 @@
 /*
  * Modes for rendering
  */
-#define PHONG 0
-#define GOURAUD 1
-#define FLAT 2
-#define LINE 3
+typedef enum { PHONG, GOURAUD, FLAT, LINE } Render_mode;
 
 /*
- * Direction for rendering
+ * Direction for rendering: the order in which the scanlines are
+ * produced.
  */
-#define TOP_TO_BOTTOM FALSE
-#define BOTTOM_TO_TOP TRUE
+typedef enum { TOP_TO_BOTTOM, BOTTOM_TO_TOP } Scan_direction;
 
 /*
  * Field definition.
  */
-#define EVEN 0
-#define ODD 1
-#define BOTH 2
+typedef enum { EVEN, ODD, BOTH } Field;
 
 /*
  * Image file formats, for render_image_file() and render_field_file().
@@ -125,16 +120,9 @@ typedef enum {
 } Image_format;
 
 /*
- * Types of lightsources.
+ * Types of lightsources, including the two kinds of spotlights.
  */
-#define LIGHT_DIRECTION 0
-#define LIGHT_POINT 1
-
-/*
- * Types of spotlights (actually lightsource types too).
- */
-#define SPOT_SHARP 2
-#define SPOT_SOFT 3
+typedef enum { LIGHT_DIRECTION, LIGHT_POINT, SPOT_SHARP, SPOT_SOFT } Light_type;
 
 /*
  * FFD function interface.
@@ -330,7 +318,7 @@ typedef struct {
 typedef struct lightsource_t {
   Color color;                /* Color of the lightsource */
   bool active;                /* Is the light on? */
-  int type;                   /* Type of lightsource */
+  Light_type type;            /* Type of lightsource */
   void *info;                 /* Type dependent info */
   Shadow_info shadow;         /* Shadow information */
   struct lightsource_t *next; /* next lightsource in the list */
@@ -357,7 +345,7 @@ EXTERN void sipp_init(void);
 
 EXTERN void sipp_show_backfaces(bool flag_);
 
-EXTERN void sipp_render_direction(bool direction);
+EXTERN void sipp_render_direction(Scan_direction direction);
 
 EXTERN void sipp_background(double red, double grn, double blu);
 
@@ -460,12 +448,12 @@ EXTERN void object_move(Object *obj, double dx, double dy, double dz);
 /* Functions for handling lightsources and spotlights. */
 
 EXTERN Lightsource *lightsource_create(double x, double y, double z, double red,
-                                       double grn, double blu, int type);
+                                       double grn, double blu, Light_type type);
 
 EXTERN Lightsource *spotlight_create(double x, double y, double z, double to_x,
                                      double to_y, double to_z, double fov,
                                      double red, double grn, double blu,
-                                     int type, bool shadows);
+                                     Light_type type, bool shadows);
 
 EXTERN void light_destruct(Lightsource *light);
 
@@ -508,22 +496,24 @@ EXTERN void camera_use(Camera *cp);
 /* Functions to render an image. */
 
 EXTERN void render_image_file(int xres, int yres, FILE *im_file,
-                              Image_format format, int render_mode,
+                              Image_format format, Render_mode render_mode,
                               int oversampling);
 
 EXTERN void render_image_func(int xres, int yres, Pixel_func *pixel_func,
-                              void *data, Image_format format, int render_mode,
-                              int oversampling);
+                              void *data, Image_format format,
+                              Render_mode render_mode, int oversampling);
 
 EXTERN void render_field_file(int xres, int yres, FILE *im_file,
-                              Image_format format, int render_mode,
-                              int oversampling, int field);
+                              Image_format format, Render_mode render_mode,
+                              int oversampling, Field field);
 
 EXTERN void render_field_func(int xres, int yres, Pixel_func *pixel_func,
-                              void *data, Image_format format, int render_mode,
-                              int oversampling, int field);
+                              void *data, Image_format format,
+                              Render_mode render_mode, int oversampling,
+                              Field field);
 
-EXTERN const char *sipp_image_extension(Image_format format, int render_mode);
+EXTERN const char *sipp_image_extension(Image_format format,
+                                        Render_mode render_mode);
 
 EXTERN void sipp_render_terminate(void);
 

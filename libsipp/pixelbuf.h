@@ -65,7 +65,7 @@ typedef struct {
   int shade_npixels;
 } Pixel_buffer;
 
-#define SHADE_SLOTS 8
+enum { SHADE_SLOTS = 8 };
 
 extern void pixels_setup(Pixel_buffer *pb, int init_size);
 
@@ -78,7 +78,8 @@ extern int pixel_insert(Pixel_buffer *pb, int pixel, Vector *worldstep,
                         double hden, double offset, Active_edge *edge);
 
 extern void pixel_collect(Pixel_buffer *pb, int pixel, Color *color,
-                          Color *opacity, int render_mode, int cache_slot);
+                          Color *opacity, Render_mode render_mode,
+                          int cache_slot);
 
 extern void shade_cache_setup(Pixel_buffer *pb, int npixels);
 

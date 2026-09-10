@@ -27,7 +27,7 @@
 #include <sipp.h>
 
 Object *sipp_ellipsoid(double x_rad, double y_rad, double z_rad, int res,
-                       void *surface, Shader *shader, int texture) {
+                       void *surface, Shader *shader, Texture_type texture) {
   int i, j;
   double factor;
   double factor1;
@@ -219,6 +219,6 @@ Object *sipp_ellipsoid(double x_rad, double y_rad, double z_rad, int res,
 }
 
 Object *sipp_sphere(double radius, int res, void *surface, Shader *shader,
-                    int texture) {
+                    Texture_type texture) {
   return sipp_ellipsoid(radius, radius, radius, res, surface, shader, texture);
 }

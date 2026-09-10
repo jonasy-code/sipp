@@ -54,7 +54,7 @@ static size_t pos; /* Next character to scan */
 
 static const struct {
   const char *word;
-  int token;
+  Bezier_token token;
 } keywords[] = {
     {"bezier_patches:", PATCHES}, {"bezier_curves:", CURVES},
     {"vertices:", NVERTICES},     {"patches:", NPATCHES},
@@ -62,7 +62,7 @@ static const struct {
     {"patch_list:", PATCH_LIST},  {"curve_list:", CURVE_LIST},
 };
 
-#define NKEYWORDS (sizeof(keywords) / sizeof(keywords[0]))
+enum { NKEYWORDS = sizeof(keywords) / sizeof(keywords[0]) };
 
 static int is_digit(size_t i) {
   return i < text_len && text[i] >= '0' && text[i] <= '9';
@@ -100,17 +100,17 @@ void bezier_lex_close(void) {
 }
 
 /*
- * Return the next token; 0 at end of input.  For INTEGER and FLOAT the
- * value is left in tokenval.
+ * Return the next token; END_OF_INPUT at end of input.  For INTEGER and FLOAT
+ * the value is left in tokenval.
  */
-int bezier_lex(void) {
+Bezier_token bezier_lex(void) {
   char numbuf[128];
   size_t i, start, end, len;
   char c;
 
   for (;;) {
     if (pos >= text_len) {
-      return 0;
+      return END_OF_INPUT;
     }
     c = text[pos];
 

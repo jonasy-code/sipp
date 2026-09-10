@@ -142,7 +142,7 @@ static int teapot_handle_i[] = {
     6,  5,  4,  3,  13, 12, 11, 10, 20, 19, 18, 17, 27, 26, 25, 24};
 
 Object *sipp_teapot_body(int resolution, void *surface, Shader *shader,
-                         int texture) {
+                         Texture_type texture) {
   return sipp_bezier_rotcurve(sizeof(teapot_body) / sizeof(Vector), teapot_body,
                               sizeof(teapot_body_i) / sizeof(int) / 4,
                               teapot_body_i, resolution, surface, shader,
@@ -150,7 +150,7 @@ Object *sipp_teapot_body(int resolution, void *surface, Shader *shader,
 }
 
 Object *sipp_teapot_lid(int resolution, void *surface, Shader *shader,
-                        int texture) {
+                        Texture_type texture) {
   return sipp_bezier_rotcurve(sizeof(teapot_lid) / sizeof(Vector), teapot_lid,
                               sizeof(teapot_lid_i) / sizeof(int) / 4,
                               teapot_lid_i, resolution, surface, shader,
@@ -158,7 +158,7 @@ Object *sipp_teapot_lid(int resolution, void *surface, Shader *shader,
 }
 
 Object *sipp_teapot_handle(int resolution, void *surface, Shader *shader,
-                           int texture) {
+                           Texture_type texture) {
   return sipp_bezier_patches(
       sizeof(teapot_handle) / sizeof(Vector), teapot_handle,
       sizeof(teapot_handle_i) / sizeof(int) / 16, teapot_handle_i, resolution,
@@ -166,7 +166,7 @@ Object *sipp_teapot_handle(int resolution, void *surface, Shader *shader,
 }
 
 Object *sipp_teapot_spout(int resolution, void *surface, Shader *shader,
-                          int texture) {
+                          Texture_type texture) {
   return sipp_bezier_patches(
       sizeof(teapot_spout) / sizeof(Vector), teapot_spout,
       sizeof(teapot_spout_i) / sizeof(int) / 16, teapot_spout_i, resolution,
@@ -174,7 +174,7 @@ Object *sipp_teapot_spout(int resolution, void *surface, Shader *shader,
 }
 
 Object *sipp_teapot(int resolution, void *surface, Shader *shader,
-                    int texture) {
+                    Texture_type texture) {
   Object *teapot;
 
   teapot = object_create();

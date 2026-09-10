@@ -30,14 +30,14 @@
  * type may be stored in the arena.  16 covers doubles, pointers and
  * SSE-style vector types on all common platforms.
  */
-#define ARENA_ALIGN 16
+enum { ARENA_ALIGN = 16 };
 #define ALIGN_UP(n) (((n) + (ARENA_ALIGN - 1)) & ~(size_t)(ARENA_ALIGN - 1))
 
 /*
  * Used if an arena is used before arena_init() (e.g. a zero-initialized
  * static Arena), so that it still behaves sensibly.
  */
-#define ARENA_DEFAULT_BLOCK (64 * 1024)
+enum { ARENA_DEFAULT_BLOCK = 64 * 1024 };
 
 /*
  * Allocate a fresh block able to hold at least SIZE bytes.

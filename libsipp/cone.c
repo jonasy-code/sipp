@@ -18,7 +18,7 @@
 #include <xalloca.h>
 
 Object *sipp_cone(double radius_bot, double radius_top, double length, int res,
-                  void *surface, Shader *shader, int texture) {
+                  void *surface, Shader *shader, Texture_type texture) {
   Object *cone;
   double *xb;
   double *yb;
@@ -222,7 +222,7 @@ Object *sipp_cone(double radius_bot, double radius_top, double length, int res,
 }
 
 Object *sipp_cylinder(double radius, double length, int res, void *surface,
-                      Shader *shader, int texture) {
+                      Shader *shader, Texture_type texture) {
   Object *cylinder;
 
   cylinder = sipp_cone(radius, radius, length, res, surface, shader, texture);

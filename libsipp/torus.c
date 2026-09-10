@@ -42,11 +42,11 @@ static Vector *tx2;
 /*
  * Prototypes of internal functions.
  */
-static void arr_rot(int len, double angle, int texture);
+static void arr_rot(int len, double angle, Texture_type texture);
 
 static void push_band(int len);
 
-static void arr_rot(int len, double angle, int texture) {
+static void arr_rot(int len, double angle, Texture_type texture) {
   int i;
   double sa, ca;
 
@@ -105,7 +105,7 @@ static void push_band(int len) {
 }
 
 Object *sipp_torus(double bigradius, double smallradius, int res1, int res2,
-                   void *surface, Shader *shader, int texture) {
+                   void *surface, Shader *shader, Texture_type texture) {
   Object *torus;
   double angle;
   int i;

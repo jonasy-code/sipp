@@ -111,7 +111,7 @@ myline(void *data, int x1, int y1, int x2, int y2)
 
 
 static void
-myrender(int w, int h, int mode, int over)
+myrender(int w, int h, Render_mode mode, int over)
 {
     int size = (mode == LINE) ? 1 : (cmap ? 1 : 2);
 
@@ -128,7 +128,7 @@ myrender(int w, int h, int mode, int over)
 
 
 static void
-myrender2(int w, int h, int mode, int over)
+myrender2(int w, int h, Render_mode mode, int over)
 {
     int size = width;
 
@@ -158,7 +158,7 @@ myrender2(int w, int h, int mode, int over)
 
 
 static void
-myrender3(int w, int h, int mode, int over)
+myrender3(int w, int h, Render_mode mode, int over)
 {
     int          size = 16;
     int          i, j, n; 
@@ -182,7 +182,7 @@ myrender3(int w, int h, int mode, int over)
 /* ------------------------------------------------------------------------- */
 
 Pixmap 
-render_ximage(int width, int height, int mode, int over, int rtype, int dbuffer, int tcolor)
+render_ximage(int width, int height, Render_mode mode, int over, int rtype, int dbuffer, int tcolor)
 {
     if (!win) {
         disp = XOpenDisplay("");

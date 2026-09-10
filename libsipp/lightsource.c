@@ -57,7 +57,7 @@ void shadow_jitter_reset(void) { rand_index = 0; }
  * Create a new lightsource in the scene.
  */
 Lightsource *lightsource_create(double x, double y, double z, double red,
-                                double grn, double blu, int type) {
+                                double grn, double blu, Light_type type) {
   Lightsource *lp;
   Dir_light_info *ip;
 
@@ -106,7 +106,8 @@ void lightsource_put(Lightsource *lp, double x, double y, double z) {
  */
 Lightsource *spotlight_create(double x, double y, double z, double to_x,
                               double to_y, double to_z, double fov, double red,
-                              double grn, double blu, int type, bool shadows) {
+                              double grn, double blu, Light_type type,
+                              bool shadows) {
   Lightsource *lp;
   Spot_light_info *sp;
 
@@ -301,7 +302,7 @@ double light_eval(Lightsource *lp, Vector *pos, Vector *vec) {
  * Sample a depth map and do percentage closer filtering to
  * see how much shadowed POS is.
  */
-#define BOXRES 0.002
+static const double BOXRES = 0.002;
 static double shadow_sample(Shadow_info *sh, Vector *pos) {
   Vector lp_view;
   int lit;

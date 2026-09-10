@@ -36,7 +36,7 @@ of the different values.
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 \fIsipp_torus()\fR creates a torus centered about the origin and with the
 z-axis pointing up through the ring. \fINATURAL\fR texture mapping is a two
@@ -58,7 +58,7 @@ shader,\ texture)\fR
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 \fIsipp_cone()\fR creates a, possibly truncated, cone centered about the
 origin and with the z-axis along the cones main axis. \fINATURAL\fR texture
@@ -76,7 +76,7 @@ mapping is \fICYLINDRICAL\fR.
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 \fIsipp_cylinder()\fR creates a cylinder centered about the origin and with
 the z-axis along the cylinders main axis. \fINATURAL\fR texture mapping is
@@ -96,7 +96,7 @@ the z-axis along the cylinders main axis. \fINATURAL\fR texture mapping is
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 \fIsipp_ellipsoid()\fR creates a ellipsoid centered about the origin.
 \fINATURAL\fR texture mapping is \fISPHERICAL\fR.
@@ -111,7 +111,7 @@ the z-axis along the cylinders main axis. \fINATURAL\fR texture mapping is
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 \fIsipp_sphere()\fR creates a sphere centered about the origin.
 \fINATURAL\fR texture mapping is \fISPHERICAL\fR.
@@ -128,7 +128,7 @@ the z-axis along the cylinders main axis. \fINATURAL\fR texture mapping is
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 \fIsipp_prism()\fR creates a prism defined by the polygon in \fIpoints\fR.
 Only the x and y values are used and the prism will ascend and descend equally
@@ -151,7 +151,7 @@ top face will have texture coordinates (0.0, 1.0) while the bottom will get
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 \fIsipp_block()\fR creates a rectangular block with the size defined by
 \fIx_size\fR, \fIz_size\fR and \fIz_size\fR. The block is centered about the
@@ -170,7 +170,7 @@ coordinates (0.0, 1.0) while the bottom will get (0.0, 0.0).
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 \fIsipp_cube()\fR creates a cube with the side of length \fIside\fR.  The cube
 is centered about the origin. \fINATURAL\fR texture mapping is similar to
@@ -195,7 +195,7 @@ will have texture coordinates (0.0, 1.0) while the bottom will get (0.0, 0.0).
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 This function creates one or more bezier patches. All created patches in a
 call will belong to the same surface.  The texture coordinates are a bit
@@ -221,7 +221,7 @@ these parameters range from 0 to 1 within each patch!
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 This function creates a surface by rotating one or more bezier curves about
 the world z-axis.  The texture coordinates are a bit special for these
@@ -242,7 +242,7 @@ to 1 around the perimeter of the rotational surface on the other axis
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 \fIsipp_bezier_file()\fR reads a file containing descriptions of a set of
 bezier patches or bezier curves. See the user manual for a detailed
@@ -259,7 +259,7 @@ assigned in the same way as in \fIsipp_bezier_patch()\fR and
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 \fIsipp_teapot()\fR creates a model of the famous "Utah Teapot". It is built
 as a combined object of four subobjects: body, lid, handle and spout (no,
@@ -278,7 +278,7 @@ coordinates are assigned in the same way as for these primitives (i.e.
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 Create the body of the "Utah Teapot" as a separate object. See
 \fIsipp_teapot()\fR for a more detailed description.
@@ -291,7 +291,7 @@ Create the body of the "Utah Teapot" as a separate object. See
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 Create the lid of the "Utah Teapot" as a separate object. See
 \fIsipp_teapot()\fR for a more detailed description.
@@ -306,7 +306,7 @@ Create the lid of the "Utah Teapot" as a separate object. See
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 Create the handle of the "Utah Teapot" as a separate object. See
 \fIsipp_teapot()\fR for a more detailed description.
@@ -320,7 +320,7 @@ Create the handle of the "Utah Teapot" as a separate object. See
 .br
 \fIShader\ *shader;\fR
 .br
-\fIint\     texture;\fR
+\fITexture_type\ texture;\fR
 .sp
 Create the spout of the "Utah Teapot" as a separate object. See
 \fIsipp_teapot()\fR for a more detailed description.

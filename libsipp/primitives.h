@@ -28,59 +28,60 @@
 /*
  * Types of texture coordinates.
  */
-#define WORLD 0
-#define CYLINDRICAL 1
-#define SPHERICAL 2
-#define NATURAL 3
+typedef enum { WORLD, CYLINDRICAL, SPHERICAL, NATURAL } Texture_type;
 
 EXTERN Object *sipp_torus(double bigradius, double smallradius, int res1,
-                          int res2, void *surface, Shader *shader, int texture);
+                          int res2, void *surface, Shader *shader,
+                          Texture_type texture);
 
 EXTERN Object *sipp_cone(double radius_bot, double radius_top, double length,
-                         int res, void *surface, Shader *shader, int texture);
+                         int res, void *surface, Shader *shader,
+                         Texture_type texture);
 
 EXTERN Object *sipp_cylinder(double radius, double length, int res,
-                             void *surface, Shader *shader, int texture);
+                             void *surface, Shader *shader,
+                             Texture_type texture);
 
 EXTERN Object *sipp_ellipsoid(double x_rad, double y_rad, double z_rad, int res,
-                              void *surface, Shader *shader, int texture);
+                              void *surface, Shader *shader,
+                              Texture_type texture);
 
 EXTERN Object *sipp_sphere(double radius, int res, void *surface,
-                           Shader *shader, int texture);
+                           Shader *shader, Texture_type texture);
 
 EXTERN Object *sipp_prism(int num_points, Vector *points, double length,
-                          void *surface, Shader *shader, int texture);
+                          void *surface, Shader *shader, Texture_type texture);
 
 EXTERN Object *sipp_block(double xsize, double ysize, double zsize,
-                          void *surface, Shader *shader, int texture);
+                          void *surface, Shader *shader, Texture_type texture);
 
 EXTERN Object *sipp_cube(double size, void *surface, Shader *shader,
-                         int texture);
+                         Texture_type texture);
 
 EXTERN Object *sipp_bezier_file(FILE *file, int res, void *surface,
-                                Shader *shader, int texture);
+                                Shader *shader, Texture_type texture);
 
 EXTERN Object *sipp_bezier_patches(int nvert, Vector *vertex, int npatch,
                                    int *cp_index, int res, void *surface,
-                                   Shader *shader, int texture);
+                                   Shader *shader, Texture_type texture);
 
 EXTERN Object *sipp_bezier_rotcurve(int nvert, Vector *vertex, int ncurve,
                                     int *cp_index, int res, void *surface,
-                                    Shader *shader, int texture);
+                                    Shader *shader, Texture_type texture);
 
 EXTERN Object *sipp_teapot(int resolution, void *surface, Shader *shader,
-                           int texture);
+                           Texture_type texture);
 
 EXTERN Object *sipp_teapot_body(int resolution, void *surface, Shader *shader,
-                                int texture);
+                                Texture_type texture);
 
 EXTERN Object *sipp_teapot_lid(int resolution, void *surface, Shader *shader,
-                               int texture);
+                               Texture_type texture);
 
 EXTERN Object *sipp_teapot_spout(int resolution, void *surface, Shader *shader,
-                                 int texture);
+                                 Texture_type texture);
 
 EXTERN Object *sipp_teapot_handle(int resolution, void *surface, Shader *shader,
-                                  int texture);
+                                  Texture_type texture);
 
 #endif /* PRIMITIVES_H */

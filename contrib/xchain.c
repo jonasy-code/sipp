@@ -24,7 +24,7 @@ main(int argc, char **argv)
     Surf_desc surf;
 
     char    *imfile_name;
-    int      mode;
+    Render_mode mode;
     int      c;
     int      size;
 

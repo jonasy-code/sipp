@@ -35,6 +35,6 @@ extern double yon;                  /* Yonder z-clipping plane */
 extern void camera_init(void);
 
 extern void get_view_transf(Transf_mat *view_mat, Camera *camera,
-                            int render_mode);
+                            Render_mode render_mode);
 
 #endif /* VIEWPOINT_H */

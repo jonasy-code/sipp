@@ -21,7 +21,7 @@
 #include <xalloca.h>
 
 Object *sipp_prism(int num_points, Vector *points, double length, void *surface,
-                   Shader *shader, int texture) {
+                   Shader *shader, Texture_type texture) {
   Object *prism;
   double *u = NULL;
   double *v = NULL;
@@ -163,7 +163,7 @@ Object *sipp_prism(int num_points, Vector *points, double length, void *surface,
  * A square block. Generated as a prism.
  */
 Object *sipp_block(double xsize, double ysize, double zsize, void *surface,
-                   Shader *shader, int texture) {
+                   Shader *shader, Texture_type texture) {
   Vector coor[4];
 
   xsize /= 2.0;
@@ -184,6 +184,7 @@ Object *sipp_block(double xsize, double ysize, double zsize, void *surface,
 /*
  * A cube.
  */
-Object *sipp_cube(double size, void *surface, Shader *shader, int texture) {
+Object *sipp_cube(double size, void *surface, Shader *shader,
+                  Texture_type texture) {
   return sipp_block(size, size, size, surface, shader, texture);
 }

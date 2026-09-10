@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
 
   char imfile_name[64];
   const char *imbase;
-  int mode;
+  Render_mode mode;
   int c;
   bool shade_once = FALSE;
   int nthreads = 1;

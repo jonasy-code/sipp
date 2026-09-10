@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
   FILE *image;
   char imfile_name[64];
   const char *imbase;
-  int mode;
+  Render_mode mode;
   int c;
   int size;
 

@@ -29,7 +29,8 @@
 #include <noise.h>
 #include <shaders.h>
 
-#define BOARDSIZE 45.0 /* "Log" or "board" size in texture coordinates */
+static const double BOARDSIZE =
+    45.0; /* "Log" or "board" size in texture coordinates */
 
 void wood_shader(Vector *pos, Vector *normal, Vector *texture, Vector *view_vec,
                  Lightsource *lights, void *wd_, Color *color, Color *opacity) {

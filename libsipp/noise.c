@@ -15,11 +15,8 @@
  *	routines.
  */
 
-#define NUMPTS 512
-#define P1 173
-#define P2 263
-#define P3 337
-#define phi 0.6180339
+enum { NUMPTS = 512, P1 = 173, P2 = 263, P3 = 337 };
+static const double phi = 0.6180339;
 
 bool noise_ready = FALSE;
 

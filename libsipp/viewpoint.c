@@ -116,7 +116,8 @@ void camera_use(Camera *cp) { sipp_current_camera = cp; }
  * Build a transformation matrix for transformation
  * into view coordinates from a particular camera position.
  */
-void get_view_transf(Transf_mat *view_mat, Camera *camera, int render_mode) {
+void get_view_transf(Transf_mat *view_mat, Camera *camera,
+                     Render_mode render_mode) {
   Vector tmp;
   double transl[3];
   double vy, vz;

@@ -25,16 +25,22 @@
 
 #include <geometric.h>
 
-#define PATCHES 1
-#define CURVES 2
-#define NVERTICES 3
-#define NPATCHES 4
-#define NCURVES 5
-#define VERTEX_LIST 6
-#define PATCH_LIST 7
-#define CURVE_LIST 8
-#define INTEGER 9
-#define FLOAT 10
+/*
+ * The tokens of a bezier description file.
+ */
+typedef enum {
+  END_OF_INPUT = 0,
+  PATCHES,
+  CURVES,
+  NVERTICES,
+  NPATCHES,
+  NCURVES,
+  VERTEX_LIST,
+  PATCH_LIST,
+  CURVE_LIST,
+  INTEGER,
+  FLOAT
+} Bezier_token;
 
 typedef union {
   int intval;
@@ -45,7 +51,7 @@ typedef union {
  * The tokenizer (bezier_lex.c).
  */
 EXTERN void bezier_lex_open(FILE *file);
-EXTERN int bezier_lex(void);
+EXTERN Bezier_token bezier_lex(void);
 EXTERN void bezier_lex_close(void);
 
 typedef struct {
@@ -57,7 +63,7 @@ typedef struct {
 } Bez_Patch;
 
 typedef struct {
-  int type;
+  Bezier_token type; /* PATCHES or CURVES */
   int nvertex;
   Vector *vertex;
   union {

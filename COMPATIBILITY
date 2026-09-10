@@ -81,6 +81,19 @@ may affect existing programs:
   is needed.  sipp_pixmap_write_png() and sipp_bitmap_write_png() write
   a pixmap or bitmap as PNG.
 
+* The option constants are enumerations instead of #defines, and the
+  parameters that carry them have the enumeration types:
+      Render_mode     PHONG, GOURAUD, FLAT, LINE
+      Scan_direction  TOP_TO_BOTTOM, BOTTOM_TO_TOP  (sipp_render_direction)
+      Field           EVEN, ODD, BOTH
+      Light_type      LIGHT_DIRECTION, LIGHT_POINT, SPOT_SHARP, SPOT_SOFT
+                      (also the "type" member of a Lightsource)
+      Texture_type    WORLD, CYLINDRICAL, SPHERICAL, NATURAL
+      Image_format    IMAGE_PPM, IMAGE_PNG, IMAGE_ALPHA
+  The names and values are unchanged, so code that passes the constants
+  keeps working; code that stores them in "int" variables still compiles
+  in C but should use the enumeration types.
+
 * The Vertex structure is a linked list (fields "next" and "hnext")
   instead of a binary tree ("big" and "sml").  Only code that walked
   the vertex tree directly is affected.
