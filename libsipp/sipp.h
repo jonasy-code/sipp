@@ -204,6 +204,9 @@ typedef struct {
   Vector lookat;   /* point to look at */
   Vector up;       /* Up direction in the view */
   double focal_ratio;
+  double hither; /* Near and far clipping planes, as distances */
+  double yon;    /* from the camera; 0.0: derived from the   */
+                 /* distance to the look-at point            */
 } Camera;
 
 /*
@@ -511,6 +514,15 @@ EXTERN void camera_look_at(Camera *cp, double x, double y, double z);
 EXTERN void camera_up(Camera *cp, double x, double y, double z);
 
 EXTERN void camera_focal(Camera *cp, double focal);
+
+/*
+ * Set the near (HITHER) and far (YON) clipping planes of a camera, as
+ * distances along the sight line.  Nothing closer than HITHER or
+ * farther than YON is rendered.  With HITHER <= 0.0 (the default) the
+ * planes are derived from the distance to the look-at point: one
+ * hundredth and one hundred times it.
+ */
+EXTERN void camera_clipping(Camera *cp, double hither, double yon);
 
 EXTERN void camera_params(Camera *cp, double x0, double y0, double z0, double x,
                           double y, double z, double ux, double uy, double uz,

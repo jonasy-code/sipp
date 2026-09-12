@@ -2283,6 +2283,7 @@ void shadowmaps_create(int size) {
   tmp_camera = sipp_current_camera;
   light_camera = camera_create();
   *light_camera = *sipp_current_camera;
+  camera_clipping(light_camera, 0.0, 0.0); /* Not the camera's planes */
   backface_tmp = show_backfaces;
   show_backfaces = TRUE;
 

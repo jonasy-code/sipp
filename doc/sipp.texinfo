@@ -2758,6 +2758,21 @@ See figure below:
 @end smallexample
 
 
+@findex @code{camera_clipping()}
+@smallexample
+void
+camera_clipping(camera, hither, yon)
+        Camera  *camera;
+        double   hither, yon;
+@end smallexample
+Set @code{camera}'s near and far clipping planes, as distances from the
+viewpoint along the sight line: nothing closer than @code{hither} or
+farther than @code{yon} is rendered. By default (@code{hither} 0.0) the
+planes are derived from the distance to the look-at point, one hundredth
+and one hundred times it, which is fine for most scenes; set them when
+the scene is much deeper than that, or when the look-at point is very
+close to or far from the geometry.
+
 
 @findex @code{camera_params()}
 @smallexample

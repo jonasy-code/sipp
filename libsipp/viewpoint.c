@@ -53,7 +53,18 @@ Camera *camera_create(void) {
 
   cp = (Camera *)smalloc(sizeof(Camera));
   camera_params(cp, 0.0, 0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.25);
+  camera_clipping(cp, 0.0, 0.0);
   return cp;
+}
+
+void camera_clipping(Camera *cp, double hither_plane, double yon_plane) {
+  if (hither_plane > 0.0 && yon_plane > hither_plane) {
+    cp->hither = hither_plane;
+    cp->yon = yon_plane;
+  } else {
+    cp->hither = 0.0;
+    cp->yon = 0.0;
+  }
 }
 
 /*
@@ -133,13 +144,17 @@ void get_view_transf(Transf_mat *view_mat, Camera *camera,
   transl[2] = -camera->position.z;
 
   /*
-   * Calculate a vector from the viewpoint to the looked at
-   * point and use it's length to define heuristic values
-   * for hither and yon.
+   * The clipping planes: the camera's own, or else heuristic values
+   * from the distance to the looked at point.
    */
   VecSub(tmp, camera->lookat, camera->position);
-  hither = VecLen(tmp) / ZCLIPF;
-  yon = VecLen(tmp) * ZCLIPF;
+  if (camera->hither > 0.0) {
+    hither = camera->hither;
+    yon = camera->yon;
+  } else {
+    hither = VecLen(tmp) / ZCLIPF;
+    yon = VecLen(tmp) * ZCLIPF;
+  }
 
   /*
    * Then we need a rotation that makes the

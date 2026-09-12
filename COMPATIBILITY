@@ -81,6 +81,11 @@ may affect existing programs:
   is needed.  sipp_pixmap_write_png() and sipp_bitmap_write_png() write
   a pixmap or bitmap as PNG.
 
+* New function camera_clipping(camera, hither, yon) sets the near and
+  far clipping planes explicitly.  The Camera structure has two new
+  members for them; 0.0 keeps the old behaviour of deriving them from
+  the distance to the look-at point, so existing code is unaffected.
+
 * The shader interface has changed: a shader is now
 
       void my_shader(const Shade_point *sp, Lightsource *lights,
