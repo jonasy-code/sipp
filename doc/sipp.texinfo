@@ -546,15 +546,16 @@ Edit the file @file{Makefile} to reflect the situation at your site. The
 things you might have to change are clearly marked in the beginning of
 that file. They are also described below.
 
+SIPP is written in C99 and needs a C99 (or later) compiler; it is
+built and tested with gcc and clang. Rendering uses POSIX threads, so
+the programs are linked with @code{-lpthread}.
+
 @itemize @bullet
 @item
-The @code{NOVOID} definition should be used if the C compiler on your
-system does not understand the type @code{void}. 
-
-@item
-If the C library on your system does not contain the functions
-@code{memcpy()} or @code{memset()}, or the include file @file{memory.h}
-does not exist, you should use the @code{NOMEMCPY} definition.
+@code{CC} and @code{CFLAGS} select the compiler and its flags.
+@code{ARCHFLAGS} is chosen by the host architecture: on x86-64 it adds
+@code{-msse4.1}, which makes the procedural textures noticeably faster
+with identical output; arm64 needs nothing.
 
 @item
 If your system does not support the @code{alloca()} function, the
@@ -597,7 +598,9 @@ macro should return a random floating point number in the range (-1, 1).
 
 By just typing @code{make} in the @file{sipp-3.1} directory, the library
 and the demonstration programs will be compiled. The library is not
-installed, but only compiled in place.
+installed, but only compiled in place. @code{make qtanim} builds the
+interactive animation demo in @file{demo/qtanim}, which needs Qt 6 and
+@code{qmake} (see its @file{README}); it is not part of @code{make}.
 
 By typing @code{make library}, the library will be compiled in place but
 the demonstration programs will not.
@@ -949,7 +952,34 @@ the definitions for those that a user might need to access.
 @item
 @code{bool}
 
-A boolean type which can have the value @code{TRUE} or @code{FALSE}.
+A boolean type which can have the value @code{TRUE} or @code{FALSE}
+(it is the C99 @code{bool}; @code{TRUE} and @code{FALSE} are defined by
+SIPP).
+
+@item
+Enumerations
+
+The options of SIPP are enumerations rather than plain integers:
+@code{Render_mode} (@code{PHONG}, @code{GOURAUD}, @code{FLAT},
+@code{LINE}), @code{Scan_direction} (@code{TOP_TO_BOTTOM},
+@code{BOTTOM_TO_TOP}), @code{Field} (@code{EVEN}, @code{ODD},
+@code{BOTH}), @code{Light_type} (@code{LIGHT_DIRECTION},
+@code{LIGHT_POINT}, @code{SPOT_SHARP}, @code{SPOT_SOFT}),
+@code{Image_format} (@code{IMAGE_PPM}, @code{IMAGE_PNG}, or:ed with
+@code{IMAGE_ALPHA}) and, in @file{primitives.h}, @code{Texture_type}
+(@code{WORLD}, @code{CYLINDRICAL}, @code{SPHERICAL}, @code{NATURAL}).
+Each is described where it is used.
+
+@item
+Function types
+
+@code{Shader} is the type of a shading function and @code{Shade_point}
+what it is told about the point it shades (@xref{Writing your own
+shaders}); @code{Pixel_func} and @code{Line_func} receive the pixels or
+lines of an image rendered to a function (@xref{Rendering to other
+devices}); @code{Update_func} is the callback called during a rendering
+(@xref{Initializations}); @code{FFD_func} deforms vertices
+(@xref{Deformations}).
 
 @item 
 @code{Object}
@@ -1015,18 +1045,16 @@ camera is the default viewpoint used when rendering a scene.
 @item 
 @code{Lightsource}
 
-This structure hold information about a lightsource. Two members in the
-struct are of interest to users writing their own shaders.
+This structure hold information about a lightsource. Three members in
+the struct are of interest to users writing their own shaders.
 @smallexample
+Light_type    type;
 Color         color;
-@end smallexample
-and
-@smallexample
 Lightsource  *next;
 @end smallexample
-@code{color} decides the color of the light emitted from the lightsource
-and @code{next} points to the next lightsource defined in the scene (or
-NULL). @xref{Writing your own shaders} for a description of how to use this
+@code{type} is the kind of light, @code{color} decides the color of the
+light emitted from the lightsource and @code{next} points to the next
+lightsource defined in the scene (or NULL). @xref{Writing your own shaders} for a description of how to use this
 information.
 
 @item 
@@ -1109,8 +1137,7 @@ Before using any of the functions, SIPP needs to be initialized.
 Initialization is done with a call to the following function:
 @findex @code{sipp_init()}
 @smallexample
-void
-sipp_init()
+void sipp_init(void)
 @end smallexample
 Apart from initializations, some default settings are created:
 @itemize @bullet
@@ -1125,6 +1152,8 @@ The camera is placed in (0 0 10), looking at the origin and with the
 world y-axis as the up-axis.
 @item
 Rendering direction is top to bottom.
+@item
+One rendering thread is used, and every sub-sample is shaded.
 @end itemize
 @code{sipp_init()} takes no parameters
 
@@ -1132,11 +1161,7 @@ There are also some functions that determine various global behavior of
 SIPP. These functions can be called at any time:
 @findex @code{sipp_background()}
 @smallexample
-void
-sipp_background(red, green, blue)
-        double  red;
-        double  green;
-        double  blue;
+void sipp_background(double red, double green, double blue)
 @end smallexample
 This function sets the background color in the rendered image. The
 parameters are doubles in the range [0, 1]. The default value (set by
@@ -1144,9 +1169,7 @@ parameters are doubles in the range [0, 1]. The default value (set by
 
 @findex @code{sipp_show_backfaces()}
 @smallexample
-void
-sipp_show_backfaces(flag)
-        bool  flag;
+void sipp_show_backfaces(bool flag)
 @end smallexample
 Normally SIPP checks if a polygon is facing away from the viewpoint and
 if that is the case, the polygon is not considered in the rendering.
@@ -1160,10 +1183,7 @@ culled.
 
 @findex @code{sipp_shadows()}
 @smallexample
-void
-sipp_shadows(flag, size)
-        bool  flag;
-        int   size;
+void sipp_shadows(bool flag, int size)
 @end smallexample
 This function tells SIPP if objects should cast shadows. When
 @code{flag} is @code{TRUE} shadows are cast. The default is not to do
@@ -1191,8 +1211,7 @@ without them.
 
 @findex @code{sipp_render_direction()}
 @smallexample
-sipp_render_direction(direction)
-        Scan_direction direction;
+void sipp_render_direction(Scan_direction direction)
 @end smallexample
 Some image formats (notably Utah RLE) store images with the 
 scanlines in the order bottom to top. The default file format in SIPP
@@ -1201,12 +1220,43 @@ bottom. This function decides in which order SIPP should render the
 scanlines. The @code{direction} argument can have the values
 @code{TOP_TO_BOTTOM} or @code{BOTTOM_TO_TOP}.
 
+@findex @code{sipp_render_threads()}
+@smallexample
+void sipp_render_threads(int n)
+@end smallexample
+Render with @code{n} threads; @code{n} <= 0 selects one per processor.
+The default is 1, which renders exactly as before. The image is
+rendered as bands of scanlines, each band by one thread with the same
+result as the sequential sweep, so the picture does not depend on the
+number of threads (except for the jitter of soft shadows, which does,
+but is deterministic for a given number). With several threads the
+rows are delivered after rendering, in scan order, and the update
+callback runs less often. Shaders, deformation and mask functions are
+then called from several threads at once and must be reentrant: no
+static scratch variables, no writing into the surface description they
+are given, and anything they need (texture images, tables) loaded
+before rendering starts rather than on the first call. The update
+callback and the pixel function of @code{render_image_func()} are only
+ever called from the thread that called the rendering function.
+
+@findex @code{sipp_shading_per_pixel()}
+@smallexample
+void sipp_shading_per_pixel(bool flag)
+@end smallexample
+When rendering with oversampling, each polygon is normally shaded at
+every sub-sample. With @code{flag} @code{TRUE} it is shaded once per
+output pixel instead and the result reused for the pixel's sub-samples:
+the shader is called 4 to 9 times less often, edges are still
+anti-aliased by the oversampling, and shading detail within a polygon
+(procedural textures) is sampled once per pixel, with the sample size
+told to the shader so that a filtering shader (@xref{Filtering
+textures}) still comes out right. Off by default. Only affects
+@code{PHONG} rendering.
+
 @findex @code{sipp_set_update_callback()}
 @smallexample
-sipp_set_update_callback(proc, client_data, period)
-        void  (*proc)();
-        void   *client_data;
-        int     period;
+void sipp_set_update_callback(Update_func *proc, void *client_data,
+                              int period)
 @end smallexample
 If SIPP is used in a more interactive application, for instance under a
 window system, it is very useful for the application to gain control
@@ -1228,8 +1278,7 @@ fairly advanced applications on top of SIPP, @xref{Memory management}.
 
 @findex @code{sipp_user_refcount()}
 @smallexample
-sipp_user_refcount(flag)
-        bool  flag;
+bool sipp_user_refcount(bool flag)
 @end smallexample
 
 Selects if user references to surfaces and objects should be counted. If
@@ -1239,9 +1288,7 @@ affect things.
 
 @findex @code{sipp_surface_desc_headers()}
 @smallexample
-bool
-sipp_surface_desc_headers(flag)
-        bool  flag;
+bool sipp_surface_desc_headers(bool flag)
 @end smallexample
 This function indicates if surface descriptions are equipped with
 @code{Surf_desc_hdr} headers. If @code{flag} is @code{TRUE} they are
@@ -1251,9 +1298,7 @@ more detailed description of how to use these headers:
 
 @findex @code{sipp_ffd_desc_headers()}
 @smallexample
-bool
-sipp_ffd_desc_headers(flag)
-        bool  flag;
+bool sipp_ffd_desc_headers(bool flag)
 @end smallexample
 Currently, in the experimental version, memory management for free form
 deformation descriptions is handled in the same way as for surface
@@ -1309,18 +1354,14 @@ The following functions are used in the described process:
 
 @findex @code{vertex_push()}
 @smallexample
-void
-vertex_push(x, y, z)
-        double  x, y, z;
+void vertex_push(double x, double y, double z)
 @end smallexample
 Push a vertex onto the vertex stack.
 
 @findex @code{vertex_tx_push()}
 @smallexample
-void
-vertex_tx_push(x, y, z,  u, v, w)
-        double  x, y, z;
-        double  u, v, w;
+void vertex_tx_push(double x, double y, double z, double u, double v,
+                    double w)
 @end smallexample
 Push a vertex with texture coordinates defined by (u, v, w) onto the
 vertex stack. Calls to @code{vertex_push()} and @code{vertex_tx_push()}
@@ -1330,10 +1371,8 @@ texture coordinates (0 0 0).
 
 @findex @code{vertex_n_push()}
 @smallexample
-void
-vertex_n_push(x, y, z,  nx, ny, nz)
-        double  x, y, z;
-        double  nx, ny, nz;
+void vertex_n_push(double x, double y, double z, double nx, double ny,
+                   double nz)
 @end smallexample
 Push a vertex with a specified normal vector defined by (nx, ny, nz) onto
 the vertex stack. @code{vertex_n_push()} gives the vertex texture
@@ -1341,11 +1380,8 @@ coordinates (0 0 0).
 
 @findex @code{vertex_tx_n_push()}
 @smallexample
-void
-vertex_n_tx_push(x, y, z,  u, v, w,  nx, ny, nz)
-        double  x, y, z;
-        double  u, v, w;
-        double  nx, ny, nz;
+void vertex_tx_n_push(double x, double y, double z, double u, double v,
+                      double w, double nx, double ny, double nz)
 @end smallexample
 Push a vertex with texture coordinates defined by (u, v, w) and a
 specified normal vector defined by (nx, ny, nz) onto the vertex stack.
@@ -1354,8 +1390,7 @@ coordinates within a polygon as in @code{vertex_tx_push()} applies here.
 
 @findex @code{polygon_push()}
 @smallexample
-void
-polygon_push()
+void polygon_push(void)
 @end smallexample
 Takes all vertices currently on the vertex stack and creates a polygon
 from them. The new polygon is pushed onto the polygon stack and the vertex
@@ -1381,10 +1416,7 @@ of type @code{Surf_desc}(see @ref{Basic concepts} and @ref{Shaders}).
 
 @findex @code{surface_create()}
 @smallexample
-Surface *
-surface_create(surface_desc, shader)
-        void    *surface_desc;
-        Shader  *shader;
+Surface *surface_create(void *surface_desc, Shader *shader)
 @end smallexample
 Takes all polygons currently on the polygon stack, creates a surface
 from them and returns a pointer to the new surface. The created surface
@@ -1393,9 +1425,7 @@ description pointed to by @code{surface_desc} (see @ref{Shaders}).
 
 @findex @code{surface_unref()}
 @smallexample
-void
-surface_unref(surface)
-        Surface  *surface;
+void surface_unref(Surface *surface)
 @end smallexample
 Tell SIPP that the reference @code{surface} is not needed anymore. If
 there are no other references to the structure @code{surface} pointed
@@ -1422,11 +1452,8 @@ can also be used to set new values in the surface description if
 
 @findex @code{surface_set_shader()}
 @smallexample
-void
-surface_set_shader(surface, surface_desc, shader)
-        Surface *surface;
-        void    *surface_desc;
-        Shader  *shader;
+void surface_set_shader(Surface *surface, void *surface_desc,
+                        Shader *shader)
 @end smallexample
 This function is used when a previously created surface should be
 changed so that it is shaded with another shader than the one specified
@@ -1459,8 +1486,7 @@ To build objects and object trees the following functions are provided:
 
 @findex @code{object_create()}
 @smallexample
-Object *
-object_create()
+Object *object_create(void)
 @end smallexample
 This function creates a new object and returns a pointer to it. The new
 object contains no surfaces or subobjects, and is not installed in any
@@ -1468,9 +1494,7 @@ tree.
 
 @findex @code{object_unref()}
 @smallexample
-void
-object_unref(object)
-        Object  *object;
+void object_unref(Object *object)
 @end smallexample
 Tell SIPP that the reference @code{object} is not needed anymore. If
 there are no other references to the structure @code{object} pointed to,
@@ -1488,29 +1512,20 @@ in future versions.)
 
 @findex @code{object_add_surface()}
 @smallexample
-void
-object_add_surface(object, surface)
-        Object  *object;
-        Surface *surface;
+void object_add_surface(Object *object, Surface *surface)
 @end smallexample
 Install a surface in an object.
 
 @findex @code{object_sub_surface()}
 @smallexample
-bool
-object_sub_surface(object, surface)
-        Object  *object;
-        Surface *surface;
+bool object_sub_surface(Object *object, Surface *surface)
 @end smallexample
 Remove a surface from an object. If @code{surface} was not found in
 @code{object}, @code{FALSE} is returned, otherwise @code{TRUE}.
 
 @findex @code{object_add_subobj()}
 @smallexample
-void
-object_add_subobj(object, subobject)
-        Object  *object;
-        Object  *subobject;
+void object_add_subobj(Object *object, Object *subobject)
 @end smallexample
 Install @code{subobject} as a subobject in @code{object}. Any
 transformations of @code{subobject} will now be performed relative the
@@ -1523,10 +1538,7 @@ recursion and crash when it tries to render the scene.
 
 @findex @code{object_sub_subobj()}
 @smallexample
-bool
-object_sub_subobj(object, subobject)
-        Object  *object;
-        Object  *subobject;
+bool object_sub_subobj(Object *object, Object *subobject)
 @end smallexample
 Remove @code{subobject} as a subobject in @code{object}. If
 @code{subobject} was not found in @code{object}, @code{FALSE} is
@@ -1545,9 +1557,7 @@ hierarchies:
 
 @findex @code{object_instance()}
 @smallexample
-Object *
-object_instance(object)
-        Object  *object;
+Object *object_instance(Object *object)
 @end smallexample
 Create a new instance of an object and return a pointer to it. This is
 the "shallowest" version of object copy in SIPP. It only creates a copy
@@ -1560,9 +1570,7 @@ identity matrix as its transformation matrix.
 
 @findex @code{object_dup()}
 @smallexample
-Object *
-object_dup(object)
-        Object  *object;
+Object *object_dup(Object *object)
 @end smallexample
 This version of object duplication copies not only the top level object,
 but also all the subobjects recursively. All copied objects in the tree
@@ -1573,9 +1581,7 @@ identity matrix as its transformation matrix.
 
 @findex @code{object_deep_dup()}
 @smallexample
-Object *
-object_deep_dup(object)
-        Object  *object;
+Object *object_deep_dup(Object *object)
 @end smallexample
 Copy a complete object tree, objects, surfaces and all. The new object
 will have the identity matrix as its transformation matrix.
@@ -1690,9 +1696,7 @@ the function
 
 @findex @code{sipp_user_refcount()}
 @smallexample
-void
-sipp_user_refcount(flag)
-        bool  flag;
+bool sipp_user_refcount(bool flag)
 @end smallexample
 
 If @code{flag} is @code{FALSE} the default approach is used, if
@@ -1770,9 +1774,7 @@ is a direct pointer to the surface description, or a pointer to a
 by calling:
 @findex @code{sipp_surface_desc_headers()}
 @smallexample
-bool
-sipp_surface_desc_headers(flag)
-        bool  flag;
+bool sipp_surface_desc_headers(bool flag)
 @end smallexample
 If @code{flag} is @code{TRUE} the surface descriptions installed from now
 on are assumed to have headers. This will be the case until the function
@@ -1819,6 +1821,14 @@ mess.
 @code{SIPP_SURF_HDR_ALLOC()} is @code{malloc()}-specific but
 @code{SIPP_SURFP_HDR()} is general and works for any data structure
 headed by a @code{Surf_desc_hdr} header, no matter how it was created.
+
+A surface description with a header is released by the user with:
+@findex @code{surface_desc_unref()}
+@smallexample
+void surface_desc_unref(Surf_desc_hdr *surf_desc_hdr)
+@end smallexample
+which decrements its reference counter and calls the @code{free_func}
+of the header when the counter reaches zero.
 
 
 @node     Transformations, Deformations, Memory management, Top    
@@ -1985,8 +1995,7 @@ macro operating on matrices in SIPP.  All other operations listed here
 are functions.
 
 
-@item Transf_mat *transf_mat_create(initmat)
-@code{Transf_mat *initmat;}
+@item Transf_mat *transf_mat_create(Transf_mat *initmat)
 @findex @code{transf_mat_create()}
 
 Allocate memory for a new transformation matrix and if @code{initmat} is
@@ -1994,26 +2003,19 @@ equal to @code{NULL}, set the new matrix to the identity matrix.
 Otherwise set the new matrix to the contents of @code{initmat}.  Return
 a pointer to the new matrix.
 
-@item Transf_mat *transf_mat_destruct(mat)
-@code{Transf_mat *initmat;}
-@findex @code{Transf_mat_destruct()}
+@item void transf_mat_destruct(Transf_mat *mat)
+@findex @code{transf_mat_destruct()}
 
 Free the memory associated with the matrix @code{mat}.
 
-@item void mat_translate(mat, dx, dy, dz)
-@code{Transf_mat *mat;@*
-double dx;@*
-double dy;@*
-double dz;}
+@item void mat_translate(Transf_mat *mat, double dx, double dy, double dz)
 @findex @code{mat_translate()}
 
 Set @code{mat} to the transformation matrix that represents the
 concatenation of the previous transformation in @code{mat} and a
 translation along the vector (@code{dx}, @code{dy}, @code{dz}).
 
-@item void mat_rotate_x(mat, ang)
-@code{Transf_mat *mat;@*
-double ang;}
+@item void mat_rotate_x(Transf_mat *mat, double ang)
 @findex @code{mat_rotate_x()}
 
 Set @code{mat} to the transformation matrix that represents the
@@ -2021,9 +2023,7 @@ concatenation of the previous transformation in @code{mat} and a
 rotation with the angle @code{ang} around the X axis. The angle
 @code{ang} is expressed in radians.
 
-@item void mat_rotate_y(mat, ang)
-@code{Transf_mat *mat;@*
-double ang;}
+@item void mat_rotate_y(Transf_mat *mat, double ang)
 @findex @code{mat_rotate_y()}
 
 Set @code{mat} to the transformation matrix that represents the
@@ -2031,9 +2031,7 @@ concatenation of the previous transformation in @code{mat} and a
 rotation with the angle @code{ang} around the Y axis.  The angle
 @code{ang} is expressed in radians.
 
-@item void mat_rotate_z(mat, ang)
-@code{Transf_mat *mat;@*
-double ang;}
+@item void mat_rotate_z(Transf_mat *mat, double ang)
 @findex @code{mat_rotate_z()}
 
 Set @code{mat} to the transformation matrix that represents the
@@ -2041,11 +2039,7 @@ concatenation of the previous transformation in @code{mat} and a
 rotation with the angle @code{ang} around the Z axis.  The angle
 @code{ang} is expressed in radians.
 
-@item void mat_rotate(mat, point, vector, ang)
-@code{Transf_mat *mat;@*
-Vector *point;@*
-Vector *vector;@*
-double ang;}
+@item void mat_rotate(Transf_mat *mat, Vector *point, Vector *vector, double ang)
 @findex @code{mat_rotate()}
 
 Set @code{mat} to the transformation matrix that represents the
@@ -2054,21 +2048,14 @@ rotation with the angle @code{ang} around the line represented by the
 point @code{point} and the vector @code{vector}.  The angle
 @code{ang} is expressed in radians.
 
-@item void mat_scale(mat, xscale, yscale, zscale)
-@code{Transf_mat *mat;@*
-double xscale;@*
-double yscale;@*
-double zscale;}
+@item void mat_scale(Transf_mat *mat, double xscale, double yscale, double zscale)
 @findex @code{mat_scale()}
 
 Set @code{mat} to the transformation matrix that represents the
 concatenation of the previous transformation in @code{mat} and a scaling
 with the scaling factors (@code{xscale}, @code{yscale}, @code{zscale}).
 
-@item void mat_mirror_plane(mat, point, normal)
-@code{Transf_mat *mat;@*
-Vector *point;@*
-Vector *normal;}
+@item void mat_mirror_plane(Transf_mat *mat, Vector *point, Vector *normal)
 @findex @code{mat_mirror_plane()}
 
 Set @code{mat} to the transformation matrix that represents the
@@ -2076,10 +2063,7 @@ concatenation of the previous transformation in @code{mat} and a
 mirroring in the plane defined by the point @code{point} and the normal
 vector @code{normal}.
 
-@item void mat_mul(res, a, b)
-@code{Transf_mat *res;@*
-Transf_mat *a;@*
-Transf_mat *b;}
+@item void mat_mul(Transf_mat *res, Transf_mat *a, Transf_mat *b)
 @findex @code{mat_mul()}
 
 Multiply the two matrices @code{a} and @code{b} and put the result in
@@ -2088,10 +2072,7 @@ It is possible for @code{res} to point at the same matrix as either
 @code{a} or @code{b} since the result is stored in a temporary matrix
 during the computations.
 
-@item void point_transform(res, vec, mat)
-@code{Vector *res;@*
-Vector *vec;@*
-Transf_mat *mat;}
+@item void point_transform(Vector *res, const Vector *vec, const Transf_mat *mat)
 @findex @code{point_transform()}
 
 Transform the point (vector) @code{vec} with the transformation matrix
@@ -2111,10 +2092,7 @@ to objects:
 
 @findex @code{object_get_transf()}
 @smallexample
-Transf_mat *
-object_get_transf(object, matrix)
-        Object      *object;
-        Transf_mat  *matrix;
+Transf_mat *object_get_transf(Object *object, Transf_mat *matrix)
 @end smallexample
 This function retrieves the transformation matrix of the object pointed
 to by @code{object}. If @code{matrix} is @code{NULL} the function will
@@ -2125,10 +2103,7 @@ its pointing to and the same pointer is returned.
 
 @findex @code{object_set_transf()}
 @smallexample
-void
-object_set_transf(object, matrix)
-        Object      *object;
-        Transf_mat  *matrix;
+void object_set_transf(Object *object, Transf_mat *matrix)
 @end smallexample
 This function copies the matrix pointed to by @code{matrix} into
 @code{object}'s transformation matrix.
@@ -2138,9 +2113,7 @@ transformation matrix to the identity matrix, i.e. no transformation
 at all:
 @findex @code{object_clear_transf()}
 @smallexample
-void
-object_clear_transf(object)
-        Object  *object;
+void object_clear_transf(Object *object)
 @end smallexample
 
 @subsection Applying transformations
@@ -2196,10 +2169,7 @@ same way as for the previous three functions.
 For scaling an object the following function is used:
 @findex @code{object_scale()}
 @smallexample
-void
-object_scale(object, sx, sy, sz)
-        Object  *object;
-        double   sx, sy, sz;
+void object_scale(Object *object, double sx, double sy, double sz)
 @end smallexample
 The object pointed to by @code{object} is scaled towards the origin along the
 three principal axes with the three scaling factors @code{sx, sy} and
@@ -2208,10 +2178,7 @@ three principal axes with the three scaling factors @code{sx, sy} and
 The last standard transformation is translation:
 @findex @code{object_move()}
 @smallexample
-void
-object_move(object, dx, dy, dz)
-        Object  *object;
-        double   dx, dy, dz;
+void object_move(Object *object, double dx, double dy, double dz)
 @end smallexample
 The object is translated along the vector (@code{dx dy dz}) from its
 current position. Note that the movement is relative and not absolute.
@@ -2221,10 +2188,7 @@ There is also a general transformation function that post-multiplies any
 transformation matrix into the current matrix of an object:
 @findex @code{object_transform()}
 @smallexample
-void
-object_transform(object, matrix)
-        Object      *object;
-        Transf_mat  *matrix;
+void object_transform(Object *object, Transf_mat *matrix)
 @end smallexample
 
 
@@ -2261,13 +2225,8 @@ result if used with some care.
 
 The deformation function should have the following interface:
 @smallexample
-void
-my_ffd(ffd_data, world, texture, new_world, new_texture)
-        void          *ffd_data;
-        Vector        *position;
-        Vector        *texture;
-        Vector        *new_position;
-        Vector        *new_texture;
+void my_ffd(void *ffd_data, Vector *position, Vector *texture,
+            Vector *new_position, Vector *new_texture)
 @end smallexample
 @itemize
 @item 
@@ -2295,11 +2254,8 @@ should be placed upon return.
 To install a deformation funtion in a surface you call this function:
 @findex @code{surface_set_ffd()}
 @smallexample
-void
-surface_set_ffd(surface, ffd_func, ffd_data)
-	Surface  *surface;
-	void    (*ffd_func)();
-	void     *ffd_data;
+void surface_set_ffd(Surface *surface, FFD_func *ffd_func,
+                     void *ffd_data)
 @end smallexample
 @itemize
 @item 
@@ -2350,11 +2306,9 @@ every point in the scene, similar to light from the sun. Point
 lightsources emit light from a single point in space.
 @findex @code{lightsource_create()}
 @smallexample
-Lightsource *
-lightsource_create(x, y, z, red, green, blue, type)
-        double x, y, z;
-        double red, green, blue;
-        Light_type type;
+Lightsource *lightsource_create(double x, double y, double z,
+                                double red, double green, double blue,
+                                Light_type type)
 @end smallexample
 @itemize @bullet
 @item
@@ -2438,9 +2392,7 @@ There is also a function for releasing the memory used by a lightsource
 or a spotlight.
 @findex @code{light_destruct()}
 @smallexample
-void
-light_destruct(light)
-        Lightsource  *light;
+void light_destruct(Lightsource *light)
 @end smallexample
 @itemize @bullet
 @item
@@ -2461,10 +2413,8 @@ of lights.
 
 @findex @code{lightsource_put()}
 @smallexample
-void
-lightsource_put(lightsrc, x, y, z)
-        Lightsource  *lightsrc;
-        double        x, y, z;
+void lightsource_put(Lightsource *lightsrc, double x, double y,
+                     double z)
 @end smallexample
 This function is used to modify the direction, or position, of a
 lightsource. If (@code{x, y, z}) are interpreted as a position or as a
@@ -2473,58 +2423,41 @@ lightsource or a directional lightsource.
 
 @findex @code{spotlight_pos()}
 @smallexample
-void
-spotlight_pos(spot, x, y, z)
-        Lightsource  *spot;
-        double        x, y, z;
+void spotlight_pos(Lightsource *spot, double x, double y, double z)
 @end smallexample
 Modify the position of a spotlight.
 
 @findex @code{spotlight_at()}
 @smallexample
-void
-spotlight_at(spot, x, y, z)
-        Lightsource  *spot;
-        double        x, y, z;
+void spotlight_at(Lightsource *spot, double x, double y, double z)
 @end smallexample
 Modify the position the spotlight is pointing at.
 
 @findex @code{spotlight_opening()}
 @smallexample
-void
-spotlight_opening(spot, opening)
-        Lightsource  *spot;
-        double        opening;
+void spotlight_opening(Lightsource *spot, double opening)
 @end smallexample
 Modify the opening angle of the lightcone of a spotlight. @code{opening}
 is given in degrees.
 
 @findex @code{spotlight_shadows()}
 @smallexample
-void
-spotlight_shadows(spot, flag)
-        Lightsource  *spot;
-        bool          flag;
+void spotlight_shadows(Lightsource *spot, bool flag)
 @end smallexample
 Turn shadow casting on or off for a specific spotlight. @code{flag} set
 to @code{TRUE} means that the spotlight can cast shadows.
 
 @findex @code{light_color()}
 @smallexample
-void
-light_color(light, red, green, blue)
-        Lightsource  *light;
-        double        red, green, blue;
+void light_color(Lightsource *light, double red, double green,
+                 double blue)
 @end smallexample
 Change the color of the emitted light from a lightsource or a spotlight.
 (@code{red, green, blue}) are all numbers in the range [0, 1].
 
 @findex @code{light_active()}
 @smallexample
-void
-light_active(light, flag)
-        Lightsource  *light;
-        bool          flag;
+void light_active(Lightsource *light, bool flag)
 @end smallexample
 Turn a lightsource or a spotlight on or off. If @code{flag} is
 @code{TRUE} the light is activated.
@@ -2540,11 +2473,8 @@ the chapter on how to write your own shaders for instructions and
 examples of how to use it (@xref{Writing your own shaders}).
 @findex @code{light_eval()}
 @smallexample
-double
-light_eval(light, position, light_vector)
-        Lightsource  *light;
-        Vector       *position;
-        Vector       *light_vector;
+double light_eval(Lightsource *light, const Vector *position,
+                  Vector *light_vector)
 @end smallexample
 @itemize @bullet
 @item
@@ -2629,9 +2559,7 @@ rendering (@xref{Initializations}).
 To explicitly create the depth maps call the following function:
 @findex @code{shadowmaps_create()}
 @smallexample
-void
-shadowmaps_create(size)
-        int  size;
+void shadowmaps_create(int size)
 @end smallexample
 The argument @code{size} determines the size of the generated depth maps,
 they will be (@code{size x size}) "pixels". When a rendering is
@@ -2653,8 +2581,7 @@ has changed too much to use the same depth maps, call the following
 function: 
 @findex @code{shadowmaps_destruct()}
 @smallexample
-void
-shadowmaps_destruct()
+void shadowmaps_destruct(void)
 @end smallexample
 
 
@@ -2681,8 +2608,7 @@ To create and manipulate cameras, SIPP provide the following functions:
 
 @findex @code{camera_create()}
 @smallexample
-Camera *
-camera_create()
+Camera *camera_create(void)
 @end smallexample
 This function creates a new virtual camera and initializes it to the
 same default setting as @code{sipp_init()} does with @code{sipp_camera}
@@ -2690,9 +2616,7 @@ same default setting as @code{sipp_init()} does with @code{sipp_camera}
 
 @findex @code{camera_destruct()}
 @smallexample
-void
-camera_destruct(camera)
-        Camera  *camera;
+void camera_destruct(Camera *camera)
 @end smallexample
 Release the memory used by a virtual camera. @code{sipp_camera} can't be
 destructed and if the camera which is currently used as viewpoint is
@@ -2700,30 +2624,21 @@ destructed, the current viewpoint will be reset to @code{sipp_camera}.
 
 @findex @code{camera_position()}
 @smallexample
-void
-camera_position(camera, x, y, z)
-        Camera  *camera;
-        double   x, y, z;
+void camera_position(Camera *camera, double x, double y, double z)
 @end smallexample
 Place @code{camera} at the position (@code{x, y, z}) in the world
 coordinate system.
 
 @findex @code{camera_look_at()}
 @smallexample
-void
-camera_look_at(camera, x, y, z)
-        Camera  *camera;
-        double   x, y, z;
+void camera_look_at(Camera *camera, double x, double y, double z)
 @end smallexample
 Set @code{camera} to look at the point (@code{x, y, z}) in the world
 coordinate system.
 
 @findex @code{camera_up()}
 @smallexample
-void
-camera_up(camera, x, y, z)
-        Camera  *camera;
-        double   x, y, z;
+void camera_up(Camera *camera, double x, double y, double z)
 @end smallexample
 Set the up direction of @code{camera} to be the vector (@code{x, y, z})
 in the world coordinate system. The up direction is not allowed to be
@@ -2732,10 +2647,7 @@ position to the point it is looking at.
 
 @findex @code{camera_focal()}
 @smallexample
-void
-camera_focal(camera, focal)
-        Camera  *camera;
-        double   focal;
+void camera_focal(Camera *camera, double focal)
 @end smallexample
 Set @code{camera}'s focal factor to be @code{focal}. The focal factor is
 the ratio between half the screen height and the distance from the
@@ -2760,10 +2672,7 @@ See figure below:
 
 @findex @code{camera_clipping()}
 @smallexample
-void
-camera_clipping(camera, hither, yon)
-        Camera  *camera;
-        double   hither, yon;
+void camera_clipping(Camera *camera, double hither, double yon)
 @end smallexample
 Set @code{camera}'s near and far clipping planes, as distances from the
 viewpoint along the sight line: nothing closer than @code{hither} or
@@ -2776,13 +2685,9 @@ close to or far from the geometry.
 
 @findex @code{camera_params()}
 @smallexample
-void
-camera_params(camera, x1, y1, z1, x2, y2, z2, ux, uy, uz, focal)
-        Camera  *camera;
-        double   x1, y1, z1;
-        double   x2, y2, z2;
-        double   ux, uy, uz;
-        double   focal;
+void camera_params(Camera *camera, double x1, double y1, double z1,
+                   double x2, double y2, double z2, double ux,
+                   double uy, double uz, double focal)
 @end smallexample
 Set all parameters of a camera in one call. (@code{x1, y1, z1}) is the
 position, (@code{x2, y2, z2}) is the point the camera is looking at,
@@ -2793,9 +2698,7 @@ it is looking at.
 
 @findex @code{camera_use()}
 @smallexample
-void
-camera_use(camera)
-        Camera  *camera;
+void camera_use(Camera *camera)
 @end smallexample
 Tell SIPP to use @code{camera} as the current viewpoint.
 
@@ -2848,13 +2751,9 @@ There are two functions for rendering into a file.
 
 @findex @code{render_image_file()}
 @smallexample
-void
-render_image_file(width, height, file, format, mode, oversampling)
-        int    width, height;
-        FILE  *file;
-        Image_format format;
-        Render_mode mode;
-        int    oversampling;
+void render_image_file(int width, int height, FILE *file,
+                       Image_format format, Render_mode mode,
+                       int oversampling)
 @end smallexample
 
 @itemize
@@ -2886,8 +2785,13 @@ is not used), and alpha is the opacity of the surfaces: 255 where they
 are opaque, 0 where none is seen, anti-aliased along with the color.
 The colors are not premultiplied by alpha.  A portable pixmap with an
 alpha channel is written as a PAM file (@code{P7}, @code{RGB_ALPHA}).
-The function @code{sipp_image_extension(format, mode)} returns the
-customary file name extension: @code{"ppm"}, @code{"pbm"}, @code{"pam"}
+The function
+@findex @code{sipp_image_extension()}
+@smallexample
+const char *sipp_image_extension(Image_format format, Render_mode mode)
+@end smallexample
+returns the customary file name extension of an image rendered with
+@code{format} in @code{mode}: @code{"ppm"}, @code{"pbm"}, @code{"pam"}
 or @code{"png"}.
 
 @item
@@ -2915,14 +2819,9 @@ when rendering fields.
 
 @findex @code{render_field_file()}
 @smallexample
-void
-render_field_file(width, height, file, format, mode, oversampling, field)
-        int    width, height;
-        FILE  *file;
-        Image_format format;
-        Render_mode mode;
-        int    oversampling;
-        Field field;
+void render_field_file(int width, int height, FILE *file,
+                       Image_format format, Render_mode mode,
+                       int oversampling, Field field)
 @end smallexample
 
 @itemize
@@ -2981,14 +2880,9 @@ file:
 
 @findex @code{render_image_func()}
 @smallexample
-void
-render_image_func(width, height, pix_func, data, format, mode, oversampling)
-        int    width, height;
-        Pixel_func *pix_func;
-        void  *data;
-        Image_format format;
-        Render_mode mode;
-        int    oversampling;
+void render_image_func(int width, int height, Pixel_func *pix_func,
+                       void *data, Image_format format,
+                       Render_mode mode, int oversampling)
 @end smallexample
 
 @itemize
@@ -3035,8 +2929,8 @@ If @code{LINE} rendering is used instead, the user provided function is
 called for each rendered line instead of each pixel and should have the
 following interface:
 @smallexample
-void
-my_line_function(void *data, int col1, int row1, int col2, int row2)
+void my_line_function(int void *data, int int col1, int int row1,
+                      int int col2, int int row2)
 @end smallexample
 Pass it to @code{render_image_func()} cast to @code{(Pixel_func *)}.
 @itemize
@@ -3087,15 +2981,9 @@ rendering a field into a user defined place. As in that function,
 
 @findex @code{render_field_func()}
 @smallexample
-void
-render_field_func(width, height, pix_func, data, format, mode, oversampling, field)
-        int    width, height;
-        Pixel_func *pix_func;
-        void  *data;
-        Image_format format;
-        Render_mode mode;
-        int    oversampling;
-        Field field;
+void render_field_func(int width, int height, Pixel_func *pix_func,
+                       void *data, Image_format format,
+                       Render_mode mode, int oversampling, Field field)
 @end smallexample
 All parameters have the same meaning as in @code{render_image_func()}
 except the last one.
@@ -3156,34 +3044,23 @@ buffer is 3 * @code{width} * @code{height} bytes long.
 The following functions are defined for a @code{Sipp_pixmap}:
 
 @smallexample
-Sipp_pixmap *
-sipp_pixmap_create(width, height)
-        int  width;
-        int  height;
+Sipp_pixmap *sipp_pixmap_create(int width, int height)
 @end smallexample
 @findex @code{sipp_pixmap_create()}
 Returns a newly created @code{Sipp_pixmap} with the given size.  The new
 pixmap is filled with zeros on creation.
 
 @smallexample
-void
-sipp_pixmap_destruct(pm)
-        Sipp_pixmap *pm;
+void sipp_pixmap_destruct(Sipp_pixmap *pm)
 @end smallexample
 @findex @code{sipp_pixmap_destruct()}
 Frees all memory associated to the @code{Sipp_pixmap pm} and returns it
 to the heap.
 
 @smallexample
-void
-sipp_pixmap_set_pixel(pm, col, row, red, grn, blu, alpha)
-        Sipp_pixmap   *pm;
-        int            col;
-        int            row;
-        unsigned char  red;
-        unsigned char  grn;
-        unsigned char  blu;
-        unsigned char  alpha;
+void sipp_pixmap_set_pixel(Sipp_pixmap *pm, int col, int row,
+                           unsigned char red, unsigned char grn,
+                           unsigned char blu, unsigned char alpha)
 @end smallexample
 @findex @code{sipp_pixmap_set_pixel()}
 Set the pixel at (@code{col}, @code{row}) in pixmap @code{pm} to be the
@@ -3195,15 +3072,31 @@ defined in @ref{Rendering to other devices}, when using the @code{FLAT},
 @code{GOURAUD} or @code{PHONG} mode of rendering.
 
 @smallexample
-void
-sipp_pixmap_write(file, pm)
-        FILE         *file;
-        Sipp_pixmap  *pm;
+void sipp_pixmap_write(FILE *file, Sipp_pixmap *pm)
 @end smallexample
 @findex @code{sipp_pixmap_write()}
 Write the pixmap @code{pm} to the open file @code{file}.  The image is
 written in the Portable Pixmap format P6 (raw ppm), the same format SIPP
 is using when rendering to a file.
+
+@smallexample
+void sipp_pixmap_write_png(FILE *file, Sipp_pixmap *pm)
+@end smallexample
+@findex @code{sipp_pixmap_write_png()}
+Write the pixmap @code{pm} to the open file @code{file} as a PNG image.
+SIPP has its own PNG encoder, so no library is needed; it is available
+directly in @file{sipp_png.h}:
+@findex @code{sipp_png_write()}
+@findex @code{sipp_png_write_bitmap()}
+@smallexample
+void sipp_png_write(FILE *file, int width, int height, int channels,
+                    const unsigned char *rows)
+void sipp_png_write_bitmap(FILE *file, int width, int height,
+                           const unsigned char *rows)
+@end smallexample
+for @code{height} rows of @code{width} pixels of 1 to 4 bytes each (grey,
+grey and alpha, RGB, RGB and alpha), and for 1 bit rows in the layout of
+a @code{Sipp_bitmap}.
 
 @node Sipp_bitmap, , Sipp_pixmap, Rendering to in-core images    
 @comment  node-name,  next,  previous,  up
@@ -3239,32 +3132,22 @@ long.
 The following functions operate on a @code{Sipp_bitmap}:
 
 @smallexample
-Sipp_bitmap *
-sipp_bitmap_create(width, height)
-        int width;
-        int height;
+Sipp_bitmap *sipp_bitmap_create(int width, int height)
 @end smallexample
 @findex @code{sipp_bitmap_create()}
 Returns a new @code{Sipp_bitmap} with the given size.  The new bitmap is
 filled with zeros on creation.
 
 @smallexample
-void
-sipp_bitmap_destruct(bm)
-        Sipp_bitmap  *bm;
+void sipp_bitmap_destruct(Sipp_bitmap *bm)
 @end smallexample
 @findex @code{sipp_bitmap_destruct()}
 Frees all memory associated to the @code{Sipp_bitmap bm} and returns it
 to the heap.
 
 @smallexample
-void
-sipp_bitmap_line(bm, col1, row1, col2, row2)
-        Sipp_bitmap  *bm;
-        int           col1;
-        int           row1;
-        int           col2;
-        int           row2;
+void sipp_bitmap_line(Sipp_bitmap *bm, int col1, int row1, int col2,
+                      int row2)
 @end smallexample
 @findex @code{sipp_bitmap_line()}
 Draw a line from (@code{col1}, @code{row1}) to (@code{col2},
@@ -3274,15 +3157,19 @@ in @ref{Rendering to other devices}, when using the @code{LINE} mode of
 rendering.
 
 @smallexample
-void
-sipp_bitmap_write(file, bm)
-        FILE         *file;
-        Sipp_bitmap  *bm;
+void sipp_bitmap_write(FILE *file, Sipp_bitmap *bm)
 @end smallexample
 @findex @code{sipp_bitmap_write()}
 Write the bitmap @code{bm} to the open file @code{file}.  The image is
 written in the Portable Bitmap format P4 (pbm), the same format SIPP is
 using when rendering a line drawing to a file.
+
+@smallexample
+void sipp_bitmap_write_png(FILE *file, Sipp_bitmap *bm)
+@end smallexample
+@findex @code{sipp_bitmap_write_png()}
+Write the bitmap @code{bm} to the open file @code{file} as a 1 bit
+greyscale PNG image.
 
 @node   Aborting a rendering, , Rendering to in-core images, Rendering
 @comment  node-name,  next,  previous,  up
@@ -3297,8 +3184,7 @@ a rendering and SIPP provides a callback mechanism for this
 function should call the following function:
 
 @smallexample
-void
-sipp_render_terminate()
+void sipp_render_terminate(void)
 @end smallexample
 @findex @code{sipp_render_terminate()}
 
@@ -3644,7 +3530,7 @@ get larger in comparison with the wood texture.
 @subsection The bozo shader
 @cindex bozo shader
 @cindex shader, bozo
-@findex @code{bozo shader}
+@findex @code{bozo_shader()}
 
 @code{bozo_shader()} uses a random number, correlated with the three
 dimensional texture coordinates, to chose a color from a fixed set. The
@@ -3684,26 +3570,28 @@ before applying the texture.
 @findex @code{mask_shader()}
 
 @code{mask_shader()} uses a user provided decision function to mask
-between two different shaders. The decision function is passed all three
-texture coordinates and returns TRUE or FALSE.
+between two different shaders. The decision function is passed the
+point being shaded and returns the fraction, 0.0 to 1.0, of the shading
+sample that the mask covers; where it returns 1.0 or 0.0 only one of
+the two shaders is called, in between both are and their colors and
+opacities are blended. A mask kept in a @code{Sipp_texture} and looked
+up with @code{sipp_texture_lookup()} (@xref{Filtering textures}) gives
+anti-aliased mask edges this way.
 
 The decision function should have the following interface:
 @smallexample
-bool 
-my_masker(mask, u, v, w)
-        my_mask_data *mask;
-        int           u, v, w;
+double my_masker(void *mask_data, const Shade_point *sp)
 @end smallexample
 @itemize
 @item 
-@code{my_mask_data} is a pointer to any data structure that the decision
-function needs. A common use for @code{mask_shader()} is to use a bitmap
-to mask something onto a surface, in this case @code{my_mask_data} could
-point to the bitmap itself.
+@code{mask_data} is a pointer to any data structure that the decision
+function needs. A common use for @code{mask_shader()} is to use an
+image to mask something onto a surface, in this case @code{mask_data}
+could point to the texture itself.
 
 @item 
-@code{u, v} and @code{w} is the interpolated texture coordinates sent to
-the shader.
+@code{sp} describes the point being shaded, with its texture
+coordinates and their derivatives (@xref{Writing your own shaders}).
 @end itemize
 
 Surface description:
@@ -3714,17 +3602,17 @@ typedef struct @{
         Shader *f_shader;
         void   *f_surface;
         void   *mask_data;
-        bool  (*masker)();
+        double (*masker)(void *mask_data, const Shade_point *sp);
 @} Mask_desc;
 @end smallexample
 @itemize
 @item
 The shader @code{t_shader} and the surface description @code{t_surface}
-is used to shade the surface whenever the decision function returns TRUE.
+is used to shade the surface where the decision function returns 1.0.
 
 @item
 The shader @code{f_shader} and the surface description @code{f_surface}
-is used to shade the surface whenever the decision function returns FALSE.
+is used to shade the surface where the decision function returns 0.0.
 
 @item
 @code{mask_data} points to any data structure the decision function need.
@@ -3884,49 +3772,6 @@ whatever, and then calls another shader, like @code{phong_shader()}, to
 do the actual shading. This is the way most of the shaders provided in
 SIPP work (see @ref{Provided shaders}).
 
-@anchor{Filtering textures}
-@subsection Filtering textures
-
-A texture that varies faster than the shading samples are spaced
-aliases: at a distance a fine pattern turns into noise, and it flickers
-in animations. Oversampling helps, but only by as much as the number of
-samples. The right cure is for the shader to leave out the detail that
-is finer than the sample, and the derivatives in the @code{Shade_point}
-tell it how fine that is. @code{shade_texture_width(sp)} gives the
-width of the area the sample covers in texture coordinate units (the
-larger of the two derivatives; scale it as you scale the texture
-coordinates). The noise functions have filtered forms which take that
-width: @code{noise_filtered()} and @code{turbulence_filtered()} weight,
-and stop, the octaves of noise that a sample of that width would
-alias, and @code{noise_weight()} gives the weight itself for use in
-other constructions. The provided procedural textures work this way.
-Patterns that are not noise can often be averaged over the sample
-analytically; @file{filter.h} has such averaged forms of the usual
-building blocks: @code{filter_step()}, @code{filter_pulse()},
-@code{filter_square_wave()} and @code{filter_checker()}. The checkered
-floor of the teapot demo uses the last one, and turns into a smooth
-grey at the horizon; the holes in its teapot get anti-aliased edges
-from @code{filter_step()} applied to the noise that cuts them, with
-the noise gradient times the sample width as the filter width.
-
-A sample seen at a grazing angle covers a long, thin sliver of the
-surface, and filtering it with the single width above blurs it across
-the sliver. @code{shade_texture_footprint()} gives the footprint as an
-ellipse, and @code{shade_texture_taps()} spreads a few points along its
-long axis, each to be filtered with the short one, for a texture to be
-averaged over (anisotropic filtering); the provided textures do this
-with four points.
-
-Image textures are handled by a @code{Sipp_texture}
-(@file{sipp_texture.h}): an image of one to four channels kept with a
-pyramid of half-size copies, looked up with
-@code{sipp_texture_lookup()} at the level whose texels are about the
-size of the sample, interpolated between levels and averaged along the
-long axis of the footprint. The scroll demo shows its text this way.
-The masker function of the mask shader returns the fraction of the
-sample the mask covers, so such a lookup on a one channel texture
-gives an anti-aliased mask.
-
 If one wants to implement a new shading model, things get slightly more
 complicated. Lightsources and possible shadows must be considered. The
 heart of such a shader must contain a loop over all lightsources, which
@@ -3994,6 +3839,173 @@ my_shader(const Shade_point *sp, Lightsource *lights, void *surface,
 The function @code{light_eval()} and its parameters are described in
 more detail in the chapter on lightsources (see @ref{Manipulating
 lights}).
+
+
+@anchor{Filtering textures}
+@subsection Filtering textures
+
+A texture that varies faster than the shading samples are spaced
+aliases: at a distance a fine pattern turns into noise, and it flickers
+in animations. Oversampling helps, but only by as much as the number of
+samples. The right cure is for the shader to leave out the detail that
+is finer than the sample, and the derivatives in the @code{Shade_point}
+tell it how fine that is. @code{shade_texture_width(sp)} gives the
+width of the area the sample covers in texture coordinate units (the
+larger of the two derivatives; scale it as you scale the texture
+coordinates). The noise functions have filtered forms which take that
+width: @code{noise_filtered()} and @code{turbulence_filtered()} weight,
+and stop, the octaves of noise that a sample of that width would
+alias, and @code{noise_weight()} gives the weight itself for use in
+other constructions. The provided procedural textures work this way.
+Patterns that are not noise can often be averaged over the sample
+analytically; @file{filter.h} has such averaged forms of the usual
+building blocks: @code{filter_step()}, @code{filter_pulse()},
+@code{filter_square_wave()} and @code{filter_checker()}. The checkered
+floor of the teapot demo uses the last one, and turns into a smooth
+grey at the horizon; the holes in its teapot get anti-aliased edges
+from @code{filter_step()} applied to the noise that cuts them, with
+the noise gradient times the sample width as the filter width.
+
+A sample seen at a grazing angle covers a long, thin sliver of the
+surface, and filtering it with the single width above blurs it across
+the sliver. @code{shade_texture_footprint()} gives the footprint as an
+ellipse, and @code{shade_texture_taps()} spreads a few points along its
+long axis, each to be filtered with the short one, for a texture to be
+averaged over (anisotropic filtering); the provided textures do this
+with four points.
+
+Image textures are handled by a @code{Sipp_texture}
+(@file{sipp_texture.h}): an image of one to four channels kept with a
+pyramid of half-size copies, looked up with
+@code{sipp_texture_lookup()} at the level whose texels are about the
+size of the sample, interpolated between levels and averaged along the
+long axis of the footprint. The scroll demo shows its text this way.
+The masker function of the mask shader returns the fraction of the
+sample the mask covers, so such a lookup on a one channel texture
+gives an anti-aliased mask.
+
+
+The functions of this subsection, in @file{sipp.h}, @file{noise.h},
+@file{filter.h} and @file{sipp_texture.h}:
+
+@findex @code{shade_texture_width()}
+@findex @code{shade_world_width()}
+@smallexample
+double shade_texture_width(const Shade_point *sp)
+double shade_world_width(const Shade_point *sp)
+@end smallexample
+The width of the area the sample covers, in texture coordinate units
+and in world units: the larger of the two derivatives. 0.0 when no
+footprint is known.
+
+@findex @code{shade_texture_footprint()}
+@findex @code{shade_texture_taps()}
+@smallexample
+void shade_texture_footprint(const Shade_point *sp, Vector *major,
+                             double *minor)
+int shade_texture_taps(const Shade_point *sp, int max_taps,
+                       Vector *points, double *width)
+@end smallexample
+The footprint as an ellipse: @code{major} receives the vector along its
+longer axis, as long as that axis, and @code{minor} the length of the
+shorter one. @code{shade_texture_taps()} spreads up to @code{max_taps}
+points along the longer axis, at which a texture is to be evaluated and
+averaged, each filtered to the width returned in @code{width}; it
+returns the number of points, 1 (at the sample itself) when the
+footprint is round or unknown.
+
+@findex @code{noise_init()}
+@findex @code{noise()}
+@findex @code{Dnoise()}
+@findex @code{turbulence()}
+@smallexample
+void noise_init(void)
+double noise(Vector *v)
+Vector Dnoise(Vector *p)
+double turbulence(Vector *p, int octaves)
+@end smallexample
+The noise functions the provided textures are built on: a smooth random
+function of position with values in about [-1, 1] and features about
+one unit across, its gradient, and the sum of @code{octaves} octaves of
+it, each twice as fine and half as strong as the previous. A shader
+calls @code{noise_init()} before its first use of them; it may be
+called any number of times, from any thread.
+
+@findex @code{noise_weight()}
+@findex @code{noise_filtered()}
+@findex @code{turbulence_filtered()}
+@smallexample
+double noise_weight(double width)
+double noise_filtered(Vector *v, double width)
+double turbulence_filtered(Vector *p, int octaves, double width)
+@end smallexample
+Band-limited noise. @code{width} is the size of the area the sample
+covers, in the same units as the point. @code{noise_weight()} is how
+much of an octave to keep when a sample covers @code{width} lattice
+units of it: everything up to one unit, nothing from two units on, and
+a linear fade in between. @code{noise_filtered()} is @code{noise()}
+times that weight, and @code{turbulence_filtered()} weights, and stops,
+the octaves accordingly. With @code{width} 0.0 they are the unfiltered
+functions.
+
+@findex @code{filter_step()}
+@findex @code{filter_pulse()}
+@findex @code{filter_square_wave()}
+@findex @code{filter_checker()}
+@smallexample
+double filter_step(double edge, double x, double width)
+double filter_pulse(double edge0, double edge1, double x, double width)
+double filter_square_wave(double x, double width)
+double filter_checker(double u, double v, double wu, double wv)
+@end smallexample
+Building blocks of patterns, averaged over an interval of length
+@code{width} around their argument: a step from 0.0 to 1.0 at
+@code{edge} (the fraction of the sample above it), a pulse that is 1.0
+between @code{edge0} and @code{edge1}, a square wave of period 2.0 that
+is +1.0 on [0, 1) and -1.0 on [1, 2), and a checkerboard with unit
+squares (the fraction of a sample @code{wu} by @code{wv} that lies on
+squares where floor(u) + floor(v) is odd). With @code{width} 0.0 each
+is its unfiltered self.
+
+@findex @code{sipp_texture_create()}
+@findex @code{sipp_texture_from_pixmap()}
+@findex @code{sipp_texture_from_bitmap()}
+@findex @code{sipp_texture_destruct()}
+@smallexample
+Sipp_texture *sipp_texture_create(int width, int height, int channels,
+                                  const unsigned char *pixels)
+Sipp_texture *sipp_texture_from_pixmap(const Sipp_pixmap *pm)
+Sipp_texture *sipp_texture_from_bitmap(const Sipp_bitmap *bm)
+void sipp_texture_destruct(Sipp_texture *tex)
+@end smallexample
+Image textures. A @code{Sipp_texture} is an image of 1 to 4 channels of
+8 bits kept with a pyramid of half-size copies (a mipmap), so that it
+can be looked up filtered over the area a sample covers. It is created
+from @code{height} rows of @code{width} texels of @code{channels} bytes
+each, top row first (the pixels are copied), from a pixmap (3
+channels), or from a bitmap (1 channel, 1.0 where white). The member
+@code{wrap}, @code{TRUE} by default, repeats the image outside [0, 1];
+@code{FALSE} clamps to the edge. A texture is read-only once created,
+so any number of rendering threads may sample it at once.
+
+@findex @code{sipp_texture_sample()}
+@findex @code{sipp_texture_lookup()}
+@smallexample
+void sipp_texture_sample(const Sipp_texture *tex, double u, double v,
+                         double dudx, double dvdx, double dudy,
+                         double dvdy, double *values)
+void sipp_texture_lookup(const Sipp_texture *tex, const Shade_point *sp,
+                         double *values)
+@end smallexample
+Look the texture up at (@code{u}, @code{v}), (0, 0) the upper left and
+(1, 1) the lower right corner, filtered over the parallelogram spanned
+by (@code{dudx}, @code{dvdx}) and (@code{dudy}, @code{dvdy}), the change
+of (u, v) over one sample in x and y: the level of the pyramid whose
+texels are about the size of the sample is interpolated, between
+levels, and an elongated sample is averaged over several points along
+its long axis. @code{values} receives one value in [0, 1] per channel.
+@code{sipp_texture_lookup()} does the same with the first two texture
+coordinates of a @code{Shade_point} and its derivatives.
 
 
 @node     Object primitives, Future enhancements, Shaders, Top    
@@ -4092,12 +4104,8 @@ will have texture coordinates (0.0, 1.0) while the bottom will get
 
 @findex @code{sipp_cube()}
 @smallexample
-Object *
-sipp_cube(size, surface, shader, texture)
-        double   size;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_cube(double size, void *surface, Shader *shader,
+                  Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4139,12 +4147,8 @@ will have texture coordinates (0.0, 1.0) while the bottom will get
 
 @findex @code{sipp_block()}
 @smallexample
-Object *
-sipp_block(xsize, ysize, zsize, surface, shader, texture)
-        double   xsize, ysize, zsize;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_block(double xsize, double ysize, double zsize,
+                   void *surface, Shader *shader, Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4187,14 +4191,8 @@ will have texture coordinates (0.0, 1.0) while the bottom will get
 
 @findex @code{sipp_prism()}
 @smallexample
-Object *
-sipp_prism(num_points, points, zsize, surface, shader, texture)
-        int      num_points;
-        Vector   points[];
-        double   zsize;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_prism(int num_points, Vector *points, double zsize,
+                   void *surface, Shader *shader, Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4243,13 +4241,8 @@ The @code{NATURAL} texture mapping is @code{SPHERICAL}.
 
 @findex @code{sipp_sphere()}
 @smallexample
-Object *
-sipp_sphere(radius, resol, surface, shader, texture)
-        double   radius;
-        int      resol;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_sphere(double radius, int resol, void *surface,
+                    Shader *shader, Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4292,15 +4285,9 @@ The @code{NATURAL} texture mapping is @code{SPHERICAL}.
 
 @findex @code{sipp_ellipsoid()}
 @smallexample
-Object *
-sipp_ellipsoid(xradius, yradius, zradius, resol, surface, shader, texture)
-        double   xradius;
-        double   yradius;
-        double   zradius;
-        int      resol;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_ellipsoid(double xradius, double yradius, double zradius,
+                       int resol, void *surface, Shader *shader,
+                       Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4343,13 +4330,9 @@ The @code{NATURAL} texture mapping is @code{CYLINDRICAL}.
 
 @findex @code{sipp_cylinder()}
 @smallexample
-Object *
-sipp_cylinder(radius, resol, surface, shader, texture)
-        double   radius;
-        int      resol;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_cylinder(double radius, double length, int res,
+                      void *surface, Shader *shader,
+                      Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4358,9 +4341,15 @@ sipp_cylinder(radius, resol, surface, shader, texture)
 Radius of the cylinder.
 
 @item
-@code{resol}
+@code{length}
 
-The cylinder is tessellated into polygons, @code{resol} tells SIPP how
+Length of the cylinder along the z-axis; it extends from -@code{length}/2
+to @code{length}/2.
+
+@item
+@code{res}
+
+The cylinder is tessellated into polygons, @code{res} tells SIPP how
 many polygons there should be around it.
 
 @item
@@ -4393,26 +4382,27 @@ The @code{NATURAL} texture mapping is @code{CYLINDRICAL}.
 
 @findex @code{sipp_cone()}
 @smallexample
-Object *
-sipp_cone(topradius, bottomradius, resol, surface, shader, texture)
-        double   topradius;
-        double   bottomradius;
-        int      resol;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_cone(double radius_bot, double radius_top, double length,
+                  int res, void *surface, Shader *shader,
+                  Texture_type texture)
 @end smallexample
 @itemize
 @item
-@code{topradius, bottomradius}
+@code{radius_bot, radius_top}
 
-Radius of the cone at the top and bottom. If the cone should be pointed
-at one of the end, specify 0 as radius.
+Radius of the cone at the bottom and at the top. If the cone should be
+pointed at one of the ends, specify 0 as that radius.
 
 @item
-@code{resol}
+@code{length}
 
-The cone is tessellated into polygons, @code{resol} tells SIPP how
+Length of the cone along the z-axis; it extends from -@code{length}/2 to
+@code{length}/2.
+
+@item
+@code{res}
+
+The cone is tessellated into polygons, @code{res} tells SIPP how
 many polygons there should be around it.
 
 @item
@@ -4445,15 +4435,9 @@ coordinate going around the "large" circle.
 
 @findex @code{sipp_torus()}
 @smallexample
-Object *
-sipp_torus(bigradius, smallradius, res1, res2, surface, shader, texture)
-        double   bigradius;
-        double   smallradius;
-        int      res1;
-        int      res2;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_torus(double bigradius, double smallradius, int res1,
+                   int res2, void *surface, Shader *shader,
+                   Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4520,10 +4504,10 @@ the patch should be given (and how @i{u} and @i{v} varies over the patch):
 
        u=0               u=1
 @end smallexample
-@findex @code{sipp_bezier_patch()}
+@findex @code{sipp_bezier_patches()}
 @smallexample
 Object *
-sipp_bezier_patch(num_vertex, vertex, num_patch, vx_index, resol, 
+sipp_bezier_patches(num_vertex, vertex, num_patch, vx_index, resol, 
                   surface, shader, texture)
         int      num_vertex;
         Vector   vertex[];
@@ -4674,7 +4658,7 @@ in a predefined format from a file and creates objects out of them. The
 file can contain a description of patches or curves, but not both. If
 curves are defined, a surface will be created by rotating them about the
 world z-axis. The file contain basically the same information as the
-parameters to a call to @code{sipp_bezier_patch()} or
+parameters to a call to @code{sipp_bezier_patches()} or
 @code{sipp_bezier_rotcurve()} and texture mapping is applied in the same
 way as in these functions too.
 
@@ -4745,13 +4729,8 @@ curve_list:
 @end smallexample
 @findex @code{sipp_bezier_file()}
 @smallexample
-Object *
-sipp_bezier_file(file, resol, surface, shader, texture)
-        FILE    *file;
-        int      resol;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_bezier_file(FILE *file, int resol, void *surface,
+                         Shader *shader, Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4811,12 +4790,8 @@ patch}).
 
 @findex @code{sipp_teapot()}
 @smallexample
-Object *
-sipp_teapot(resol, surface, shader, texture)
-        int      resol;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_teapot(int resol, void *surface, Shader *shader,
+                    Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4858,12 +4833,8 @@ rotational curves.
 
 @findex @code{sipp_teapot_body()}
 @smallexample
-Object *
-sipp_teapot_body(resol, surface, shader, texture)
-        int      resol;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_teapot_body(int resol, void *surface, Shader *shader,
+                         Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4901,12 +4872,8 @@ rotational curves.
 
 @findex @code{sipp_teapot_lid()}
 @smallexample
-Object *
-sipp_teapot_lid(resol, surface, shader, texture)
-        int      resol;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_teapot_lid(int resol, void *surface, Shader *shader,
+                        Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4944,12 +4911,8 @@ patches.
 
 @findex @code{sipp_teapot_handle()}
 @smallexample
-Object *
-sipp_teapot_handle(resol, surface, shader, texture)
-        int      resol;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_teapot_handle(int resol, void *surface, Shader *shader,
+                           Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -4984,12 +4947,8 @@ patches.
 
 @findex @code{sipp_teapot_spout()}
 @smallexample
-Object *
-sipp_teapot_spout(resol, surface, shader, texture)
-        int      resol;
-        void    *surface;
-        Shader  *shader;
-        Texture_type texture;
+Object *sipp_teapot_spout(int resol, void *surface, Shader *shader,
+                          Texture_type texture)
 @end smallexample
 @itemize
 @item
@@ -5028,12 +4987,28 @@ adding to this list, please do! Check out the chapter on bug reports
 
 @itemize @bullet
 @item
-More sophisticated anti-aliasing. This should not be so difficult with the
-new pixel buffer.
-
-@item
 Generalized interface to lightsources, much in the same way as the
 shader interface. This would allow users to design "lightsource shaders"
+(and point lights with a fall-off with distance, which they lack today).
+
+@item
+Lights that only illuminate some of the objects, and objects that are
+culled or lit two-sided individually (culling is a global setting).
+
+@item
+Orthographic projection, and a screen window that is not centered on
+the sight line.
+
+@item
+Colors given per vertex and interpolated across polygons.
+
+@item
+Shadows from point and directional lights (only spotlights cast them).
+
+@item
+Parallel transformation and clipping of the objects; the rendering of
+the scanlines is already done by several threads, but the traversal of
+the object tree is not.
 
 @item
 Better support for animation.
@@ -5043,22 +5018,7 @@ Support for some more advanced object primitives, especially patches
 (Hermite, NURBS, etc.)
 
 @item
-Four channel output. Write out an alpha channel together with RGB. This
-is troublesome if we want to stick with the ppm-format which does not
-support this. Possible solutions include switching to Utah Raster format
-or writing the alpha channel in a separate pgm-file.
-
-@item
 Curved surface rendering (this would mean a name change I guess... :-) )
-
-@item
-Use some sort of "virtual memory" by swapping things to disk. This would
-make it possible to run SIPP on machines with brain-damaged OS and/or
-hardware which doesn't support real VM.
-
-@item
-Front-end for reading RIB-files (RenderMan Interface Bytestream). This
-might not be as impossible as it may sound.
 
 @item
 Store objects in a "higher order" format, and tessellate to polygons at
