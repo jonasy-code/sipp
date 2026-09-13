@@ -447,11 +447,13 @@ various shading models and to do special effects. A basic shading
 algorithm is provided with the library, and also a package of other,
 more special shaders.
 
-Images can be rendered directly onto a file in the Portable Pixmap
-format (ppm) or, for line images, Portable Bitmap, (pbm) or, with a
-function defined by the user, into anything that it is capable of
-plotting a pixel (or drawing a line), e.g. a window in a window system
-or even a plotter file.
+Images can be rendered directly onto a file either in the Portable
+Pixmap format (ppm) or, for line images, Portable Bitmap, (pbm) or to
+a Portable Network Graphics (png) format file. A user can also supply
+their own callback function which is then called for each rendered
+pixel (or line), which can be used to render into anything that it is
+capable of plotting a pixel (or drawing a line), e.g. a window in a
+window system or even a plotter file.
 
 The object creation functions in SIPP are on a rather low level so to
 make it easier to build scenes, a set of object primitives, like sphere,
@@ -1225,13 +1227,13 @@ scanlines. The @code{direction} argument can have the values
 void sipp_render_threads(int n)
 @end smallexample
 Render with @code{n} threads; @code{n} <= 0 selects one per processor.
-The default is 1, which renders exactly as before. The image is
+The default is 1, which renders with a single thread. The image is
 rendered as bands of scanlines, each band by one thread with the same
 result as the sequential sweep, so the picture does not depend on the
 number of threads (except for the jitter of soft shadows, which does,
 but is deterministic for a given number). With several threads the
 rows are delivered after rendering, in scan order, and the update
-callback runs less often. Shaders, deformation and mask functions are
+callback runs less often. Note that Shaders, deformation and mask functions are
 then called from several threads at once and must be reentrant: no
 static scratch variables, no writing into the surface description they
 are given, and anything they need (texture images, tables) loaded
@@ -2736,7 +2738,7 @@ specifically ordered with @code{sipp_show_backfaces()}
 They differ in the place to which the rendered image is sent.
 
 @menu
-* Rendering to file::           Rendering into a PPM or PBM file.
+* Rendering to file::           Rendering into a PNG, PPM or PBM file.
 * Rendering to other devices::  Rendering with a user specified function
 * Rendering to in-core images:: Rendering to an image in memory
 * Aborting a rendering::        Terminate a rendering prematurely
@@ -3777,7 +3779,7 @@ complicated. Lightsources and possible shadows must be considered. The
 heart of such a shader must contain a loop over all lightsources, which
 are stored in a linked list. Inside this loop every lightsource is
 @i{evaluated} to see how much light from it that reaches the shaded
-point. Here is an skeleton example of how the code could look:
+point. Here is a skeleton example of how the code could look:
 
 @smallexample
 void

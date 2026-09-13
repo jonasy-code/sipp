@@ -134,7 +134,7 @@ clean:
 	cd demo/animation; $(MAKE) clean;
 	cd demo/qtanim; [ -f Makefile ] && $(MAKE) distclean; $(RM) .qmake.stash; true
 	cd doc; ls -1 | egrep -v \
-        \(\\.man$$\)\|\(\\.tex$$\)\|\(\\.texinfo$$\)\|\(\\.ps$$\) | xargs $(RM)
+        \(\\.man$$\)\|\(\\.md$$\) | xargs $(RM)
 
 
 shar: clean

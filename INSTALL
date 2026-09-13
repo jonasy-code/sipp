@@ -2,11 +2,8 @@
 		   ================================
 
   This file describes the installation of the SIPP rendering library.
-You should install not only the library itself, but also the on-line
-documentation so that your users will know how to use it.  You can
-create typeset documentation from the file 'sipp.texinfo' as well as
-an on-line Info file.  The following steps are also described in the
-texinfo manual in the chapter 'Installation'.
+The same steps are described in the user's guide, 'doc/sipp.md', in
+the chapter 'Installation'.
 
 
 I. Installing the C library
@@ -78,72 +75,9 @@ and you can safely ignore it too.
 
 
 
-II. Installing the Info manual
+II. Documentation
 
-1. Create the Info files 'sipp', 'sipp-1', 'sipp-2' and so on from
-   'sipp.texinfo'.  If you have the 'makeinfo' program, you can do
-   this by running it on 'sipp.texinfo'.  Otherwise you can do it with
-   emacs by running these steps: 
-
-  1.1  Read 'sipp.texinfo' into an emacs buffer.  
-
-  1.2  Type `'M-X texinfo-format-buffer'' 
-
-  1.3  Save the newly created Info file 'sipp', 'sipp-1', 'sipp-2' and 
-       so on.  
-
-2. Move the Info files 'sipp', 'sipp-1' and so on to the standard Info 
-   directory.  Usually this is '/usr/gnu/emacs/info' or something
-   similar. (See step 3 above).
-
-3. Edit the file 'dir' in the info directory and enter one line to
-   contain a pointer to the Info file 'sipp'.  The line can, for
-   instance, look like this: 
-
-  * SIPP: (sipp).       3D rendering library.
-
-
-III. Creating typeset manual
-
-  You can also make a typeset manual from the file 'sipp.texinfo'.  To
-do this, you must have the TeX text formatting program installed. However,
-we have put a ready made PostScript version of the manual in the doc
-directory too, for those of you who haven't got TeX, but have access to a
-PostScript printer.  
-
-
-The default setup is to format the manual for one-sided printing.  The
-supplied PostScript file is also formatted for one-sided printing.  If you
-want formatting for two sided printing you should change the line:
-
-@setchapternewpage on
-
-in the beginning of the file sipp.texinfo into:
-
-@setchapternewpage odd
-
-and then proceed as follows.
-
-
-To typeset the manual, just follow these steps:
-
-1. If the file 'texinfo.tex' is not properly installed in the path
-   given by the environment variable 'TEXINPUTS', get it and put
-   it in the same directory as 'sipp.texinfo' (the 'doc' directory of
-   SIPP).  This file contains macros used by the TeX text formatting
-   program to produce typeset output from a texinfo file.  You can get
-   this from, e.g., 'prep.ai.mit.edu' in the US or from 'isy.liu.se'
-   in Europe.  
-
-2. Run TeX by typing `'tex sipp.texinfo''.  You might need to do this
-   twice to get all cross references correct.  If you have the
-   'texindex' program, you can create a sorted index by typing
-
-      texindex sipp.cp sipp.fn
-
-   between the two TeX passes.  If you don't do this, you still get a
-   typeset manual, but you will not get a correct index. 
-
-3. Convert the resulting device independent file 'sipp.dvi' to a form
-   which your printer can output and print it.  If you have a
-   postscript printer there is a program, 'dvips', which can do this.
+  The complete user's guide is the file 'doc/sipp.md', written in
+Markdown.  It needs no formatting: read it in any editor, or on a web
+page.  The directory 'doc' also holds the UNIX manual pages, which
+'make install' copies to MANDIR.

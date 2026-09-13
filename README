@@ -58,12 +58,8 @@ is also availiable by anonymous ftp from the same site.
 
 
 The directory 'doc' contains standard UNIX man pages for quick
-reference, and also a complete "User's Guide" in texinfo format.  To
-make a typeset version of this manual you need the TeX typesetting
-system.  You can also create an online info-manual of this document,
-either with the program 'makeinfo' or in GNU-emacs with the command
-M-X texinfo-format-buffer.  Here also, see the file INSTALL for more
-details.
+reference, and the complete "User's Guide", doc/sipp.md, in Markdown:
+readable as it is in any editor or on a web page.
 
 
 The directory 'contrib' contains varous little routines that people
