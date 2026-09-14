@@ -52,7 +52,7 @@ called 'RANDOM()' is defined.  If your system does not have the
 'drand48()' function, you must change this definition.  The macro
 should return a random floating point number in the range (-1, 1).
 
-  By just typing 'make' in the 'sipp-3.1' directory, the library and
+  By just typing 'make' in the 'sipp-4.0' directory, the library and
 the demonstration programs will be compiled.  The library is not
 installed, but only compiled in place.
 

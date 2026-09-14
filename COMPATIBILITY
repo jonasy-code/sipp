@@ -1,6 +1,6 @@
 
 ========================================================================
-Changes in the modernized (C99/C23) source
+Compatibility Guide for SIPP 4.0 (the modernized C99/C23 source)
 ========================================================================
 
 The library is now written in standard C and requires a C99 (or later)

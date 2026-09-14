@@ -1,8 +1,8 @@
 # SIPP - a 3D rendering library
 
-User's Guide, version 3.1  
+User's Guide, version 4.0  
 Jonas Yngvesson, Inge Wallin  
-Last updated 13 September 2026
+Last updated 15 September 2026
 
 Copyright (C) 1992 Jonas Yngvesson, Inge Wallin. SIPP is free software;
 see the GNU General Public License below.
@@ -157,7 +157,7 @@ site that archives that group.
 
 This section describes the installation of the SIPP rendering library
 and where its documentation is.  The steps are also described in the
-file `INSTALL` in the directory `sipp-3.1`.
+file `INSTALL` in the directory `sipp-4.0`.
 
 ### Installation of the SIPP library
 
@@ -208,7 +208,7 @@ file a macro called `RANDOM()` is defined. If your system does not
 have the `drand48()` function, you must change this definition. The
 macro should return a random floating point number in the range (-1, 1).
 
-By just typing `make` in the `sipp-3.1` directory, the library
+By just typing `make` in the `sipp-4.0` directory, the library
 and the demonstration programs will be compiled. The library is not
 installed, but only compiled in place. `make qtanim` builds the
 interactive animation demo in `demo/qtanim`, which needs Qt 6 and

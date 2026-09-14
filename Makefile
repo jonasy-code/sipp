@@ -3,7 +3,7 @@
 #
 # Copyright 1992 Jonas Yngvesson, Inge Wallin
 #
-# This is the main Makefile for sipp version 3.1. This directory
+# This is the main Makefile for sipp version 4.0. This directory
 # contains three subdirectories:
 # libsipp: source code for the library itself.
 # demo:    source code for demonstrations and tests

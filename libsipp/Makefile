@@ -2,7 +2,7 @@
 # Makefile for libsipp
 #
 
-VERSION = 3.1
+VERSION = 4.0
 
 # Instruction-set flags, chosen by host architecture.
 #

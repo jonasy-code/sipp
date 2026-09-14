@@ -5,7 +5,7 @@
                         Inge Wallin
 *******************************************************************
 
-This is SIPP, the SImple Polygon Processor, version 3.1.  SIPP is a
+This is SIPP, the SImple Polygon Processor, version 4.0.  SIPP is a
 library for creating 3-dimensional scenes and rendering them using a
 scan-line z-buffer algorithm.  A scene is built up of objects which
 can be transformed with rotation, translation and scaling.  The

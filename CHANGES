@@ -1,3 +1,49 @@
+Changes in version 4.0 vs version 3.1
+
+Performance
+
+ - Vertex spatial hash instead of a binary tree: object build linear,
+   26 s to 0.5 s at 1.2M polygons.
+ - Active edge list with per-polygon rings: render time linear in
+   polygons, 8.2 s to 0.5 s at 1.2M.
+ - Multithreaded scanline sweep in bands, exact same output as
+   sequential; depth maps too. Teapot 0.9 s to 0.1 s, planet 1.7 s to
+   0.2 s at 1024, all cores.
+ - Shading once per pixel with the sub-samples reused, 4 to 9 times
+   fewer shader calls; now the default.
+ - Filtered textures drop noise octaves finer than the sample, which
+   also made the shader-bound demos 30 percent faster.
+ - SSE4.1 on x86-64 for a 1.7x on noise textures.
+
+Quality
+
+ - Texture anti-aliasing: shaders get per-sample derivatives,
+   band-limited noise, anisotropic taps, filtered step and checker
+   helpers, mipmapped image textures with trilinear and anisotropic
+   lookup.
+ - Fixes: Strauss shader ignored shadows and spotlight cones; a printf
+   format bug; PBM parsing and an out-of-bounds texture read in the
+   scroll demo.
+ - Filtered mask shader with coverage blending; anti-aliased hole
+   edges in the teapot demo.
+
+New features
+
+ - Alpha channel through the whole pipeline; PNG and PAM output with a
+   built-in encoder; a format parameter on the render calls.
+ - Explicit near and far clipping planes. Qt demo: real-time looping
+   animation on a background thread, camera orbit and zoom, spotlight
+   shadows in the scene.
+ - Hand-written bezier file lexer, no flex needed.
+
+Modernization
+
+ - C99 with typed function pointers and enums instead of defines, zero
+   warnings under gcc and clang, clang-format, sanitizer-clean. -
+   Documentation: manual converted to Markdown and brought up to date
+   with every call, man pages and COMPATIBILITY maintained, Texinfo
+   kept frozen.
+
 Changes in version 3.1 vs. version 3.0
 
     - Use of the pixel-buffer has been changed so that hidden surface
