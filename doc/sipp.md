@@ -712,12 +712,12 @@ ever called from the thread that called the rendering function.
 void sipp_shading_per_pixel(bool flag)
 ```
 When rendering with oversampling, each polygon is normally shaded at
-every sub-sample. With `flag` `TRUE` it is shaded once per
+every sub-sample. With `flag` `TRUE` (default) it is shaded once per
 output pixel instead and the result reused for the pixel's sub-samples:
 the shader is called 4 to 9 times less often, edges are still
 anti-aliased by the oversampling, and shading detail within a polygon
 (procedural textures) is sampled once per pixel, with the sample size
-told to the shader so that a filtering shader (See [Filtering textures](#filtering-textures)) still comes out right. Off by default. Only affects
+told to the shader so that a filtering shader (See [Filtering textures](#filtering-textures)) still comes out right. On by default. Only affects
 `PHONG` rendering.
 
 ```c

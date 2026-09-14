@@ -2589,7 +2589,7 @@ void sipp_init(void) {
   lightsource_init();
   camera_init();
   sipp_shadows(FALSE, 0);
-  sipp_shading_per_pixel(FALSE);
+  sipp_shading_per_pixel(TRUE);
   sipp_render_threads(1);
   sipp_show_backfaces(FALSE);
   sipp_render_direction(TOP_TO_BOTTOM);
