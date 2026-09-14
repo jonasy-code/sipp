@@ -25,8 +25,9 @@ may affect existing programs:
 * "u_char" in the pixmap and bitmap interfaces is now "unsigned char"
   (the same type; only the spelling changed).
 
-* The _ANSI_ARGS_ macro is still defined (as a no-op) so that old
-  declarations keep compiling, but it is no longer used.
+* The _ANSI_ARGS_, _USING_PROTOTYPES_ and CONST macros of the K&R era
+  are gone.  Old code that wraps parameter lists in _ANSI_ARGS_(...) must
+  drop the wrapper; CONST is spelled const.
 
 * The bezier description file reader no longer uses lex; a hand-written
   tokenizer (bezier_lex.c) replaces the generated one, so lex/flex is

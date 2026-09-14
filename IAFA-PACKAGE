@@ -1,11 +1,8 @@
 Title:          sipp
-Version:        3.1
+Version:        4.0
 Description:    3D rendering library
-Author:         Jonas Yngvesson (jonas-y@isy.liu.se)
-                Inge Wallin (ingwa@isy.liu.se)
-                Dept. of Electrical Engineering
-                Linkoping University
-                S-581 83 Linkoping
+Author:         Jonas Yngvesson (jonas.yngvesson@gmail.com)
+                Inge Wallin
                 Sweden
 Maintained-by:  See author.
 Maintained-at:  isy.liu.se:/pub/sipp

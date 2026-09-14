@@ -24,15 +24,8 @@
 #define _SIPP_H
 
 /*
- * SIPP is written in standard C (C99 or later).  The macros below are
- * kept so that user code written against older releases keeps compiling.
+ * SIPP is written in standard C (C99 or later).
  */
-#undef _ANSI_ARGS_
-#define _ANSI_ARGS_(x) x
-#define _USING_PROTOTYPES_ 1
-#undef CONST
-#define CONST const
-
 #undef EXTERN
 #ifdef __cplusplus
 #define EXTERN extern "C"

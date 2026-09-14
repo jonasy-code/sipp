@@ -1,13 +1,8 @@
 *******************************************************************
              SIPP  --  3d rendering package
 
-             Copyright  Equivalent Software HB   1992
-
-             Authors:   Jonas Yngvesson   jonas-y@isy.liu.se
-                        Inge Wallin       ingwa@isy.liu.se
-                 _
-             Linkoping Institute of Technology
-             Sweden
+             Authors:   Jonas Yngvesson   jonas.yngvesson@gmail.com
+                        Inge Wallin
 *******************************************************************
 
 This is SIPP, the SImple Polygon Processor, version 3.1.  SIPP is a
