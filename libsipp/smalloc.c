@@ -3,7 +3,7 @@
  **
  **  A general 3d graphic package
  **
- **  Copyright Equivalent Software HB  1992
+ **  Copyright 1992 Jonas Yngvesson, Inge Wallin
  **
  ** This program is free software; you can redistribute it and/or modify
  ** it under the terms of the GNU General Public License as published by

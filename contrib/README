@@ -20,7 +20,7 @@ xrender.c:
 xchain.c:
         chain.c from the demo directory with minor modifications to
         use the above xrender function.
-        Author: Jonas Yngvesson <jonas-y@isy.liu.se>
+        Author: Jonas Yngvesson <jonas.yngvesson@gmail.com>
 
 snail.c:
         Function to create a "snail" or "shell" object in SIPP.

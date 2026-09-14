@@ -1,7 +1,7 @@
 #
 # SIPP - a 3-d rendering library
 #
-# Copyright  Equivalent Software HB
+# Copyright 1992 Jonas Yngvesson, Inge Wallin
 #
 # This is the main Makefile for sipp version 3.1. This directory
 # contains three subdirectories:

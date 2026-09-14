@@ -3759,9 +3759,9 @@ especially looking for new primitive objects and interesting shaders.
 We have tried to test SIPP thoroughly, but since it is constantly being
 developed, there are probably numerous bugs remaining, both in the
 source code and in the documentation.  If you find a bug in either,
-please send a bug report to either `jonas-y@isy.liu.se` or
-`ingwa@isy.liu.se`. We will try to be as quick as possible in
-fixing the bugs and redistributing the fixes.
+please send a bug report to `jonas.yngvesson@gmail.com`. We will try
+to be as quick as possible in fixing the bugs and redistributing the
+fixes.
 
 /Jonas Yngvesson & Inge Wallin
 

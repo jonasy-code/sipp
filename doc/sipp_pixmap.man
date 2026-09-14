@@ -1,4 +1,4 @@
-.\" Copyright Equivalent Software HB   1992
+.\" Copyright 1992 Jonas Yngvesson, Inge Wallin
 .\" This program and documentation may be distributed freely under
 .\" the terms of GNU GENERAL PUBLIC LICENSE.
 .TH PIXMAP 3X "July , 1991" 3X
@@ -192,9 +192,9 @@ primitives(3X) - a collection of geometric primitives for \fIsipp\fR.
 shaders(3X) - a collection of shaders for \fIsipp\fR.
 
 .SH AUTHORS
-Jonas Yngvesson\	\	(jonas-y@isy.liu.se)
+Jonas Yngvesson\	\	(jonas.yngvesson@gmail.com)
 .br
-Inge Wallin\		(ingwa@isy.liu.se)
+Inge Wallin
 
 .SH BUGS
 No known bugs.

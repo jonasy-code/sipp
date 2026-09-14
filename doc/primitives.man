@@ -1,4 +1,4 @@
-.\" Copyright Equivalent Software HB   1992
+.\" Copyright 1992 Jonas Yngvesson, Inge Wallin
 .\" This program and documentation may be distributed freely under
 .\" the terms of GNU GENERAL PUBLIC LICENSE.
 .TH PRIMITIVES 3X "December , 1990" 3X
@@ -338,9 +338,9 @@ sipp_pixmap(3X) - pixmap handling code for SIPP.
 sipp_bitmap(3X) - bitmap handling code for SIPP.
 
 .SH AUTHORS
-Jonas Yngvesson\	\	(jonas-y@isy.liu.se)
+Jonas Yngvesson\	\	(jonas.yngvesson@gmail.com)
 .br
-Inge Wallin\		(ingwa@isy.liu.se)
+Inge Wallin
 
 .SH BUGS
 The format for the bezier patches and curves is prohibitively ugly.
