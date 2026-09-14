@@ -229,8 +229,10 @@ to their appropriate places.
 
 This manual is the file `doc/sipp.md`, written in Markdown, so it
 can be read as it is, in any editor or on a web page, and needs no
-tools to be formatted.  It is the only user's guide; earlier versions
-were kept in Texinfo.
+tools to be formatted.  It was converted from the original Texinfo
+source, `doc/sipp.texinfo`, which is kept in the distribution for
+historical reasons but is no longer maintained: this file is the
+user's guide.
 
 The directory `doc` also holds manual pages in the traditional
 UNIX style: `sipp.man` for the library itself, `shaders.man`

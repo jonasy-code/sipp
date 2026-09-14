@@ -160,8 +160,9 @@ void get_view_transf(Transf_mat *view_mat, Camera *camera,
    * Then we need a rotation that makes the
    * up-vector point up, and alignes the sightline
    * with the z-axis.
-   * This code might seem magic but the algebra behind
-   * it can be found in Jim Blinn's Corner in IEEE CG&A July 1988
+   * This code might seem magic (it is a Gaussian-elimination solve)
+   * but the algebra behind it can be found in Jim Blinn's Corner in
+   * IEEE CG&A July 1988
    */
   vecnorm(&tmp);
   vecnorm(&camera->up);
